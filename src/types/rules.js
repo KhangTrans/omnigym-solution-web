@@ -1,0 +1,1 @@
+// # Định nghĩa các Interface/Type
