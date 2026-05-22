@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import Register from '../pages/pubblic/Register';
 import Login from '../pages/pubblic/Login';
+import ForgotPassword from '../pages/pubblic/ForgotPassword';
 import AuthLayout from '../layouts/AuthLayout';
 
 // JSON-like configuration array
@@ -19,6 +20,10 @@ export const routesConfig = [
       {
         path: '/login',
         element: <Login />,
+      },
+      {
+        path: '/forgot-password',
+        element: <ForgotPassword />,
       },
     ],
   },

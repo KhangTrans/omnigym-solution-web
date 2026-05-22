@@ -24,5 +24,15 @@ export const authApi = {
   // Lấy thông tin người dùng hiện tại
   getMe: () => {
     return api.get('/auth/me');
+  },
+
+  // Quên mật khẩu - Gửi OTP
+  forgotPassword: (email: string) => {
+    return api.post('/auth/forgot-password', { email });
+  },
+
+  // Đặt lại mật khẩu mới
+  resetPassword: (payload: any) => {
+    return api.post('/auth/reset-password', payload);
   }
 };
