@@ -4,12 +4,17 @@ import Login from '../pages/pubblic/Login';
 import ForgotPassword from '../pages/pubblic/ForgotPassword';
 import Home from '../pages/pubblic/Home';
 import AuthLayout from '../layouts/AuthLayout';
+import Dashboard from '../pages/admin/Dashboard';
 
 // JSON-like configuration array
 export const routesConfig = [
   {
     path: '/',
     element: <Home />,
+  },
+  {
+    path: '/dashboard',
+    element: <Dashboard />,
   },
   {
     element: <AuthLayout />,
