@@ -16,8 +16,20 @@ const Login = () => {
     setError(null);
     try {
       const response = await authApi.login(formData);
-      localStorage.setItem('token', response.data.token);
-      navigate('/dashboard');
+      const { user } = response.data;
+      
+      // Lưu thông tin user vào localStorage
+      localStorage.setItem('user', JSON.stringify(user));
+
+      // Phát sự kiện để Navbar cập nhật ngay lập tức
+      window.dispatchEvent(new Event('user-login'));
+
+      // Kiểm tra vai trò từ backend để chuyển hướng
+      if (user?.role === 'Admin' || user?.role_id === 1) {
+        navigate('/dashboard');
+      } else {
+        navigate('/');
+      }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Email hoặc mật khẩu không đúng');
     } finally {

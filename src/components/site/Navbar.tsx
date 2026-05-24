@@ -1,6 +1,7 @@
-import { useState } from "react";
-import { Menu, X, Dumbbell, Globe } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Menu, X, Dumbbell, Globe, LogOut } from "lucide-react";
 import { Link } from "react-router-dom";
+import { authApi } from "../../api/auth";
 
 // Mocking the i18n and user store for now
 const useLang = () => ({
@@ -14,20 +15,70 @@ const useLang = () => ({
       "nav.gyms": "Phòng tập",
       "nav.signin": "Đăng nhập",
       "nav.join": "Tham gia ngay",
+      "nav.signout": "Đăng xuất",
     };
     return translations[key] || key;
   },
 });
 
-const useCurrentUser = () => ({
-  user: null, // Mocking no user logged in
-  signOut: () => console.log("Đăng xuất"),
-});
+const useCurrentUser = () => {
+  const [user, setUser] = useState<{ avatar_url?: string; full_name?: string; email?: string } | null>(null);
+
+  const checkUser = () => {
+    const userData = localStorage.getItem("user");
+    if (userData && userData !== "undefined" && userData !== "null") {
+      try {
+        const parsedUser = JSON.parse(userData);
+        // Ưu tiên dùng avatar_url trực tiếp từ object user
+        const avatar = parsedUser.avatar_url && parsedUser.avatar_url !== "null" && parsedUser.avatar_url !== ""
+          ? parsedUser.avatar_url 
+          : `https://ui-avatars.com/api/?name=${encodeURIComponent(parsedUser.full_name || 'User')}&background=4F8A74&color=fff`;
+        
+        setUser({
+          avatar_url: avatar,
+          full_name: parsedUser.full_name || "Người dùng",
+          email: parsedUser.email
+        });
+      } catch (e) {
+        setUser(null);
+      }
+    } else {
+      setUser(null);
+    }
+  };
+
+  useEffect(() => {
+    checkUser();
+    // Lắng nghe sự thay đổi của localStorage và sự kiện đăng nhập
+    window.addEventListener('storage', checkUser);
+    window.addEventListener('user-login', checkUser);
+    
+    return () => {
+      window.removeEventListener('storage', checkUser);
+      window.removeEventListener('user-login', checkUser);
+    };
+  }, []);
+
+  const signOut = async () => {
+    try {
+      await authApi.logout();
+    } catch (error) {
+      console.error("Logout failed:", error);
+    } finally {
+      localStorage.removeItem("user");
+      localStorage.removeItem("token");
+      setUser(null);
+      window.location.href = "/";
+    }
+  };
+
+  return { user, signOut };
+};
 
 export function Navbar() {
   const [open, setOpen] = useState(false);
   const { lang, setLang, t } = useLang();
-  // const { user, signOut } = useCurrentUser(); // Removed for now to avoid lint errors since user is null
+  const { user, signOut } = useCurrentUser();
 
   const links = [
     { label: t("nav.home"), href: "#home" },
@@ -78,15 +129,48 @@ export function Navbar() {
             </button>
           </div>
 
-          <Link to="/login" className="text-sm font-medium text-foreground/80 hover:text-foreground transition-colors">
-            {t("nav.signin")}
-          </Link>
-          <Link
-            to="/register"
-            className="inline-flex items-center justify-center rounded-full bg-[var(--primary)] px-5 py-2 text-sm font-semibold text-[var(--primary-foreground)] shadow-md transition-transform hover:scale-[1.03]"
-          >
-            {t("nav.join")}
-          </Link>
+          {user ? (
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 group cursor-pointer relative">
+                <img
+                  src={user.avatar_url}
+                  alt={user.full_name}
+                  className="h-9 w-9 rounded-full border-2 border-[var(--primary)] object-cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.full_name || 'User')}&background=4F8A74&color=fff`;
+                  }}
+                />
+                <div className="hidden group-hover:block absolute top-[100%] right-0 pt-2 w-48 z-50">
+                  <div className="bg-background border border-border rounded-lg shadow-lg py-1">
+                    <div className="px-4 py-2 border-b border-border">
+                      <p className="text-sm font-semibold truncate">{user.full_name}</p>
+                    </div>
+                    <button
+                      onClick={signOut}
+                      type="button"
+                      className="w-full flex items-center gap-2 px-4 py-2 text-sm text-left text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      {t("nav.signout")}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <>
+              <Link to="/login" className="text-sm font-medium text-foreground/80 hover:text-foreground transition-colors">
+                {t("nav.signin")}
+              </Link>
+              <Link
+                to="/register"
+                className="inline-flex items-center justify-center rounded-full bg-[var(--primary)] px-5 py-2 text-sm font-semibold text-[var(--primary-foreground)] shadow-md transition-transform hover:scale-[1.03]"
+              >
+                {t("nav.join")}
+              </Link>
+            </>
+          )}
         </div>
         <button
           aria-label="Toggle menu"
@@ -112,12 +196,46 @@ export function Navbar() {
             <Link to="/login" onClick={() => setOpen(false)} className="py-2 text-sm font-medium">
               {t("nav.gyms")}
             </Link>
-            <Link to="/login" onClick={() => setOpen(false)} className="py-2 text-sm font-medium">
-              {t("nav.signin")}
-            </Link>
-            <Link to="/register" onClick={() => setOpen(false)} className="py-2 text-sm font-medium">
-              Tham gia ngay
-            </Link>
+
+            {user ? (
+              <div className="flex flex-col gap-3 py-2 border-t border-border mt-2">
+                <div className="flex items-center gap-3">
+                  <img
+                    src={user.avatar_url}
+                    alt={user.full_name}
+                    className="h-10 w-10 rounded-full border border-border"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.full_name || 'User')}&background=4F8A74&color=fff`;
+                    }}
+                  />
+                  <div>
+                    <p className="text-sm font-semibold">{user.full_name}</p>
+                    <button
+                      onClick={signOut}
+                      type="button"
+                      className="text-sm font-medium text-rose-600 flex items-center gap-2 mt-2 w-full py-2"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      {t("nav.signout")}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <>
+                <Link to="/login" onClick={() => setOpen(false)} className="py-2 text-sm font-medium">
+                  {t("nav.signin")}
+                </Link>
+                <Link
+                  to="/register"
+                  onClick={() => setOpen(false)}
+                  className="inline-flex items-center justify-center rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-[var(--primary-foreground)] shadow-sm"
+                >
+                  {t("nav.join")}
+                </Link>
+              </>
+            )}
           </div>
         </div>
       )}
