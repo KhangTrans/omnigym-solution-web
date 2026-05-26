@@ -22,7 +22,7 @@ const useLang = () => ({
 });
 
 const useCurrentUser = () => {
-  const [user, setUser] = useState<{ avatar_url?: string; full_name?: string; email?: string } | null>(null);
+  const [user, setUser] = useState<{ avatar_url?: string; full_name?: string; email?: string; role?: string; role_id?: number } | null>(null);
 
   const checkUser = () => {
     const userData = localStorage.getItem("user");
@@ -37,7 +37,9 @@ const useCurrentUser = () => {
         setUser({
           avatar_url: avatar,
           full_name: parsedUser.full_name || "Người dùng",
-          email: parsedUser.email
+          email: parsedUser.email,
+          role: parsedUser.role,
+          role_id: parsedUser.role_id
         });
       } catch (e) {
         setUser(null);
@@ -146,6 +148,16 @@ export function Navbar() {
                     <div className="px-4 py-2 border-b border-border">
                       <p className="text-sm font-semibold truncate">{user.full_name}</p>
                     </div>
+                    {/* Thêm link Quản trị nếu là Admin hoặc Staff */}
+                    {(user.role === 'Admin' || user.role === 'Staff' || user.role_id === 1 || user.role_id === 2) && (
+                      <Link
+                        to="/admin"
+                        className="w-full flex items-center gap-2 px-4 py-2 text-sm text-left text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                      >
+                        <Dumbbell className="h-4 w-4" />
+                        Quản trị hệ thống
+                      </Link>
+                    )}
                     <button
                       onClick={signOut}
                       type="button"
