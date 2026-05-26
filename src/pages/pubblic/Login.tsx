@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Mail, Lock, ChevronRight, Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { authApi } from '../../api/auth';
@@ -9,6 +9,23 @@ const Login = () => {
   const [showPwd, setShowPwd] = useState(false);
   const [formData, setFormData] = useState({ identifier: '', password: '' });
   const navigate = useNavigate();
+
+  // Kiểm tra nếu đã đăng nhập rồi thì chuyển hướng
+  useEffect(() => {
+    const savedUser = localStorage.getItem('user');
+    if (savedUser) {
+      try {
+        const user = JSON.parse(savedUser);
+        if (user?.role === 'Admin' || user?.role === 'Staff' || user?.role_id === 1 || user?.role_id === 2) {
+          navigate('/admin');
+        } else {
+          navigate('/');
+        }
+      } catch (e) {
+        localStorage.removeItem('user');
+      }
+    }
+  }, [navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,8 +42,9 @@ const Login = () => {
       window.dispatchEvent(new Event('user-login'));
 
       // Kiểm tra vai trò từ backend để chuyển hướng
-      if (user?.role === 'Admin' || user?.role_id === 1) {
-        navigate('/dashboard');
+      // Giả định role_id: 1 là Admin, 2 là Staff (hoặc dùng chuỗi 'Admin', 'Staff')
+      if (user?.role === 'Admin' || user?.role === 'Staff' || user?.role_id === 1 || user?.role_id === 2) {
+        navigate('/admin');
       } else {
         navigate('/');
       }
