@@ -1,152 +1,340 @@
-import { useState } from 'react';
-import { 
-  Library as LibraryIcon, 
-  Search, 
-  Plus, 
-  Filter, 
-  Play, 
-  ChevronRight, 
-  Dumbbell,
-  Target,
-  Layers,
-  MoreVertical,
-  ArrowUpRight
-} from 'lucide-react';
-import { cn } from '../../utils/cn';
 
-const Card = ({ children, className }: { children: React.ReactNode; className?: string }) => (
-  <div className={cn("bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden", className)}>
-    {children}
-  </div>
-);
+import { useMemo, useState } from "react";
+import { Card, CardContent } from "../../components/ui/card";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
+import { Label } from "../../components/ui/label";
+import { Badge } from "../../components/ui/badge";
+import { Textarea } from "../../components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../../components/ui/dialog";
+import { Plus, Pencil, Trash2, Search, Dumbbell, Film, Image as ImageIcon, Upload } from "lucide-react";
+import {
+  useExerciseLibrary,
+  newExercise,
+  type Exercise,
+  type ExerciseMediaType,
+} from "../../lib/admin-store";
+import { toast } from "sonner";
+import { DifficultyBar } from "../../components/site/DifficultyBar";
 
-const Badge = ({ children, variant = 'default' }: { children: React.ReactNode, variant?: 'default' | 'success' | 'warning' | 'error' | 'outline' }) => {
-  const styles = {
-    default: "bg-slate-100 text-slate-700",
-    success: "bg-emerald-100 text-emerald-700",
-    warning: "bg-amber-100 text-amber-700",
-    error: "bg-rose-100 text-rose-700",
-    outline: "border border-slate-200 text-slate-600"
-  };
-  return (
-    <span className={cn("px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap inline-flex items-center gap-1", styles[variant])}>
-      {children}
-    </span>
-  );
-};
+function detectMediaType(file: File): ExerciseMediaType {
+  if (file.type.startsWith("video/")) return "video";
+  if (file.type === "image/gif") return "gif";
+  return "image";
+}
 
-const Library = () => {
-  const [query, setQuery] = useState("");
+function readAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result));
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(file);
+  });
+}
 
-  const exercises = [
-    { id: 1, title: "Push Up (Hít đất)", bodyPart: "Ngực, Tay sau", equipment: "Không", video: true, level: "Cơ bản" },
-    { id: 2, title: "Bench Press", bodyPart: "Ngực", equipment: "Tạ đòn", video: true, level: "Trung bình" },
-    { id: 3, title: "Squat", bodyPart: "Đùi, Mông", equipment: "Tạ đòn/Tạ đơn", video: true, level: "Mọi cấp độ" },
-    { id: 4, title: "Deadlift", bodyPart: "Lưng dưới, Đùi sau", equipment: "Tạ đòn", video: true, level: "Nâng cao" },
-    { id: 5, title: "Plank", bodyPart: "Cơ bụng (Core)", equipment: "Không", video: false, level: "Cơ bản" },
-    { id: 6, title: "Pull Up (Hít xà)", bodyPart: "Lưng xô, Tay trước", equipment: "Xà đơn", video: true, level: "Trung bình" },
-  ];
+function LibraryPage() {
+  const { exercises, create, update, remove } = useExerciseLibrary();
+  const [q, setQ] = useState("");
+  const [open, setMở] = useState(false);
+  const [editing, setEditing] = useState<Exercise | null>(null);
+  const [draft, setDraft] = useState<Omit<Exercise, "id">>(stripId(newExercise()));
+
+  const filtered = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    if (!needle) return exercises;
+    return exercises.filter(
+      (e) =>
+        e.name.toLowerCase().includes(needle) ||
+        (e.description?.toLowerCase().includes(needle) ?? false),
+    );
+  }, [exercises, q]);
+
+  function startCreate() {
+    setEditing(null);
+    setDraft(stripId(newExercise()));
+    setMở(true);
+  }
+  function startEdit(ex: Exercise) {
+    setEditing(ex);
+    setDraft(stripId(ex));
+    setMở(true);
+  }
+  function submit() {
+    if (!draft.name.trim()) return toast.error("Name required");
+    if (!draft.mediaUrl.trim()) return toast.error("Please upload a media file");
+    if (editing) {
+      update(editing.id, draft);
+      toast.success("Exercise updated");
+    } else {
+      create(draft);
+      toast.success("Exercise added to library");
+    }
+    setMở(false);
+  }
+
+  async function handleFile(file: File | null | undefined) {
+    if (!file) return;
+    const MAX = 8 * 1024 * 1024;
+    if (file.size > MAX) {
+      return toast.error("File too large (max 8MB)");
+    }
+    try {
+      const dataUrl = await readAsDataUrl(file);
+      setDraft({ ...draft, mediaUrl: dataUrl, mediaType: detectMediaType(file) });
+    } catch {
+      toast.error("Could not read file");
+    }
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Thư viện bài tập</h1>
-          <p className="text-sm text-slate-500">Kho lưu trữ video hướng dẫn và kỹ thuật các động tác tập luyện.</p>
-        </div>
-        <button className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-lg transition-all shadow-md active:scale-95">
-          <Plus className="h-4 w-4" /> Thêm bài tập mới
-        </button>
-      </div>
-
-      <div className="flex flex-col md:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-          <input 
-            type="text" 
-            placeholder="Tìm theo tên bài tập, nhóm cơ..." 
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            className="w-full bg-white rounded-xl border border-slate-200 pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all shadow-sm"
-          />
+          <h1 className="text-2xl font-bold tracking-tight">Thư viện bài tập</h1>
+          <p className="text-sm text-muted-foreground">
+            {exercises.length} exercise{exercises.length === 1 ? "" : "s"} available for pack creation.
+          </p>
         </div>
         <div className="flex items-center gap-2">
-           <select className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500/10 transition-all shadow-sm font-medium text-slate-600">
-             <option>Tất cả nhóm cơ</option>
-             <option>Ngực</option>
-             <option>Lưng</option>
-             <option>Đùi</option>
-             <option>Bụng</option>
-           </select>
-           <button className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 shadow-sm transition-colors">
-             <Filter className="h-4 w-4" />
-           </button>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Tìm bài tập…"
+              className="w-64 pl-8"
+            />
+          </div>
+          <Button size="sm" onClick={startCreate}>
+            <Plus className="mr-2 h-3 w-3" />
+            New exercise
+          </Button>
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {exercises.map((ex) => (
-          <Card key={ex.id} className="group hover:border-emerald-200 transition-all">
-            <div className="aspect-video bg-slate-100 relative overflow-hidden">
-               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex flex-col justify-end p-4">
-                  <Badge variant="outline" className="w-fit bg-white/20 text-white border-white/30 backdrop-blur-md mb-2">
-                    {ex.level}
-                  </Badge>
-                  <h3 className="text-white font-bold leading-tight group-hover:text-emerald-300 transition-colors uppercase tracking-tight">
-                    {ex.title}
-                  </h3>
-               </div>
-               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all duration-300 transform scale-75 group-hover:scale-100">
-                  <div className="h-12 w-12 rounded-full bg-white/90 text-emerald-600 flex items-center justify-center shadow-lg">
-                    <Play className="h-6 w-6 fill-current" />
-                  </div>
-               </div>
-            </div>
-            <div className="p-4 space-y-3">
-               <div className="flex items-start justify-between">
-                  <div className="space-y-1">
-                     <div className="flex items-center gap-1.5 text-xs font-bold text-slate-500">
-                        <Target className="h-3.5 w-3.5" /> {ex.bodyPart}
-                     </div>
-                     <div className="flex items-center gap-1.5 text-xs font-bold text-slate-400">
-                        <Layers className="h-3.5 w-3.5" /> {ex.equipment}
-                     </div>
-                  </div>
-                  <button className="p-1.5 hover:bg-slate-50 rounded-lg text-slate-400">
-                    <MoreVertical className="h-4 w-4" />
-                  </button>
-               </div>
-               <div className="pt-2 border-t border-slate-50 flex items-center justify-between">
-                  <div className="flex -space-x-1.5">
-                    {[1,2,3].map(i => (
-                      <div key={i} className="h-6 w-6 rounded-full border-2 border-white bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-400">
-                        U
+      {filtered.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center gap-2 py-12 text-center text-sm text-muted-foreground">
+            <Dumbbell className="h-8 w-8" />
+            {exercises.length === 0
+              ? "No exercises yet. Add one to make it available in packs."
+              : "No exercise matches your search."}
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {filtered.map((ex) => (
+            <Card key={ex.id}>
+              <CardContent className="flex gap-3 p-3">
+                <MediaThumb url={ex.mediaUrl} type={ex.mediaType} />
+                <div className="min-w-0 flex-1 space-y-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="truncate font-medium">{ex.name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {ex.sets} × {ex.reps} · rest {ex.rest}s
                       </div>
-                    ))}
+                    </div>
+                    <div className="flex shrink-0">
+                      <Button size="icon" variant="ghost" onClick={() => startEdit(ex)} aria-label="Sửa">
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        aria-label="Remove"
+                        onClick={() => {
+                          remove(ex.id);
+                          toast("Đã gỡ from library");
+                        }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   </div>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sử dụng trong 12 bài tập</span>
-               </div>
-            </div>
-          </Card>
-        ))}
-      </div>
+                  <div className="flex flex-wrap items-center gap-1">
+                    <Badge variant="secondary" className="text-[10px] uppercase">
+                      {ex.mediaType}
+                    </Badge>
+                    {ex.difficulty && <DifficultyBar level={ex.difficulty} />}
+                  </div>
+                  {ex.description && (
+                    <p className="line-clamp-2 text-xs text-muted-foreground">
+                      {ex.description}
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
-      <div className="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-2xl p-6 text-white flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl shadow-emerald-500/20">
-         <div className="flex items-center gap-4">
-            <div className="h-12 w-12 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-md">
-               <LibraryIcon className="h-6 w-6" />
+      <Dialog open={open} onOpenChange={setMở}>
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editing ? "Edit exercise" : "New exercise"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <Label>Name</Label>
+              <Input
+                value={draft.name}
+                onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+                placeholder="e.g. Push-Ups"
+              />
             </div>
             <div>
-               <h2 className="font-bold text-lg">Bạn muốn tạo chuỗi bài tập tự động?</h2>
-               <p className="text-sm text-emerald-100 opacity-90">Sử dụng AI để gợi ý lộ trình tập dựa trên thư viện có sẵn.</p>
+              <Label>Media (image, gif, or video)</Label>
+              <div className="mt-1 flex items-start gap-3">
+                <div className="shrink-0">
+                  {draft.mediaUrl ? (
+                    <MediaThumb url={draft.mediaUrl} type={draft.mediaType} />
+                  ) : (
+                    <div className="grid h-20 w-20 place-items-center rounded-md border bg-muted text-muted-foreground">
+                      <ImageIcon className="h-5 w-5" />
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 space-y-2">
+                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm hover:bg-accent">
+                    <Upload className="h-4 w-4" />
+                    {draft.mediaUrl ? "Replace file" : "Upload file"}
+                    <input
+                      type="file"
+                      accept="image/*,image/gif,video/*"
+                      className="hidden"
+                      onChange={(e) => void handleFile(e.target.files?.[0])}
+                    />
+                  </label>
+                  <p className="text-xs text-muted-foreground">
+                    Accepts images, GIFs, or videos · max 8MB · type{" "}
+                    <Badge variant="secondary" className="text-[10px] uppercase">
+                      {draft.mediaType}
+                    </Badge>{" "}
+                    detected automatically.
+                  </p>
+                </div>
+              </div>
             </div>
-         </div>
-         <button className="px-6 py-2.5 bg-white text-emerald-600 font-bold rounded-xl hover:bg-emerald-50 transition-all flex items-center gap-2 active:scale-95 shadow-lg">
-           Thử ngay <ArrowUpRight className="h-4 w-4" />
-         </button>
-      </div>
+            <div className="grid gap-3 sm:grid-cols-4">
+              <div>
+                <Label>Sets</Label>
+                <Input
+                  type="number"
+                  value={draft.sets}
+                  onChange={(e) => setDraft({ ...draft, sets: +e.target.value })}
+                />
+              </div>
+              <div>
+                <Label>Reps</Label>
+                <Input
+                  value={draft.reps}
+                  onChange={(e) => setDraft({ ...draft, reps: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label>Rest (s)</Label>
+                <Input
+                  type="number"
+                  value={draft.rest}
+                  onChange={(e) => setDraft({ ...draft, rest: +e.target.value })}
+                />
+              </div>
+              <div>
+                <Label>Difficulty</Label>
+                <Select
+                  value={String(draft.difficulty ?? 1)}
+                  onValueChange={(v) =>
+                    setDraft({ ...draft, difficulty: +v as 1 | 2 | 3 })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">Easy</SelectItem>
+                    <SelectItem value="2">Medium</SelectItem>
+                    <SelectItem value="3">Hard</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div>
+              <Label>Description</Label>
+              <Textarea
+                rows={3}
+                value={draft.description ?? ""}
+                onChange={(e) => setDraft({ ...draft, description: e.target.value })}
+                placeholder="How to perform this exercise…"
+              />
+            </div>
+            <div>
+              <Label>Coaching notes</Label>
+              <Textarea
+                rows={2}
+                value={draft.notes ?? ""}
+                onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
+                placeholder="Cues, common mistakes…"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setMở(false)}>
+              Cancel
+            </Button>
+            <Button onClick={submit}>{editing ? "Lưu" : "Thêm"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
-};
+}
 
-export default Library;
+function stripId(ex: Exercise): Omit<Exercise, "id"> {
+  const { id: _id, ...rest } = ex;
+  void _id;
+  return rest;
+}
+
+function MediaThumb({ url, type }: { url: string; type: ExerciseMediaType }) {
+  if (!url) {
+    return (
+      <div className="grid h-20 w-20 shrink-0 place-items-center rounded-md border bg-muted text-muted-foreground">
+        <ImageIcon className="h-4 w-4" />
+      </div>
+    );
+  }
+  if (type === "video") {
+    return (
+      <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-md border bg-muted">
+        <video src={url} muted loop playsInline autoPlay className="h-full w-full object-cover" />
+        <Film className="absolute right-1 top-1 h-3 w-3 text-white/90" />
+      </div>
+    );
+  }
+  return (
+    <img
+      src={url}
+      alt=""
+      className="h-20 w-20 shrink-0 rounded-md border object-cover"
+      onError={(e) => ((e.currentTarget.style.opacity = "0.3"))}
+    />
+  );
+}
+
+
+export default LibraryPage;

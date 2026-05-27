@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate, Link } from 'react-router-dom';
+import { createBrowserRouter, Navigate, Link, type RouteObject } from 'react-router-dom';
 import Register from '../pages/pubblic/Register';
 import Login from '../pages/pubblic/Login';
 import ForgotPassword from '../pages/pubblic/ForgotPassword';
@@ -18,7 +18,7 @@ import Exercises from '../pages/admin/Exercises';
 import Library from '../pages/admin/Library';
 
 // JSON-like configuration array
-export const routesConfig = [
+export const routesConfig: RouteObject[] = [
   {
     path: '/',
     element: <Home />,
