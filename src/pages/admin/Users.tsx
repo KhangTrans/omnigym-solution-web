@@ -1,176 +1,211 @@
-import { useState, useMemo } from 'react';
-import { 
-  Plus, 
-  Search, 
-  Filter, 
-  MoreHorizontal, 
-  Pencil, 
-  Trash2, 
-  UserPlus,
-  Shield,
-  Clock,
-  ExternalLink,
-  CheckCircle2,
-  XCircle
-} from 'lucide-react';
-import { cn } from '../../utils/cn';
 
-// Simple reusable components
-const Card = ({ children, className }: { children: React.ReactNode; className?: string }) => (
-  <div className={cn("bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden", className)}>
-    {children}
-  </div>
-);
+import { useMemo, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Plus, Pencil, Trash2 } from "lucide-react";
+import { useAdminUsers, type AdminUser } from "@/lib/admin-store";
+import { toast } from "sonner";
 
-const Badge = ({ children, variant = 'default' }: { children: React.ReactNode, variant?: 'default' | 'success' | 'warning' | 'error' | 'outline' }) => {
-  const styles = {
-    default: "bg-slate-100 text-slate-700",
-    success: "bg-emerald-100 text-emerald-700",
-    warning: "bg-amber-100 text-amber-700",
-    error: "bg-rose-100 text-rose-700",
-    outline: "border border-slate-200 text-slate-600"
-  };
-  return (
-    <span className={cn("px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider", styles[variant])}>
-      {children}
-    </span>
-  );
+
+
+const PLANS: AdminUser["plan"][] = ["Free", "Basic", "Pro", "Elite"];
+const ROLES: AdminUser["role"][] = ["member", "trainer", "admin"];
+const STATUSES: AdminUser["status"][] = ["active", "paused", "banned"];
+
+const empty: Omit<AdminUser, "id"> = {
+  name: "",
+  email: "",
+  plan: "Basic",
+  role: "member",
+  status: "active",
+  joined: new Date().toISOString().slice(0, 10),
+  spend: 0,
 };
 
-const UsersManagement = () => {
+function UsersPage() {
+  const { users, create, update, remove } = useAdminUsers();
   const [query, setQuery] = useState("");
-  
-  // Mock data for users
-  const [users] = useState([
-    { id: 1, name: "Nguyễn Văn A", email: "vana@gmail.com", role: "Quản trị viên", status: "Hoạt động", joined: "2024-01-15", spend: "5.000.000đ" },
-    { id: 2, name: "Trần Thị B", email: "thib@gmail.com", role: "Chủ phòng tập", status: "Hoạt động", joined: "2024-02-10", spend: "12.500.000đ" },
-    { id: 3, name: "Lê Văn C", role: "Học viên", email: "vanc@gmail.com", status: "Tạm dừng", joined: "2024-03-01", spend: "1.200.000đ" },
-    { id: 4, name: "Phạm Minh D", role: "Nhân viên", email: "minhd@gmail.com", status: "Hoạt động", joined: "2024-03-05", spend: "0đ" },
-    { id: 5, name: "Hoàng Anh E", role: "Học viên", email: "anhe@gmail.com", status: "Bị khóa", joined: "2024-03-12", spend: "2.400.000đ" },
-  ]);
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<AdminUser | null>(null);
+  const [draft, setDraft] = useState<Omit<AdminUser, "id">>(empty);
 
-  const filteredUsers = useMemo(() => {
-    return users.filter(u => 
-      u.name.toLowerCase().includes(query.toLowerCase()) || 
-      u.email.toLowerCase().includes(query.toLowerCase())
+  const filtered = useMemo(() => {
+    const q = query.toLowerCase().trim();
+    if (!q) return users;
+    return users.filter((u) =>
+      [u.name, u.email, u.plan, u.role, u.status].some((v) => v.toLowerCase().includes(q)),
     );
   }, [users, query]);
+
+  function startCreate() {
+    setEditing(null);
+    setDraft(empty);
+    setOpen(true);
+  }
+  function startEdit(u: AdminUser) {
+    setEditing(u);
+    const { id: _id, ...rest } = u;
+    void _id;
+    setDraft(rest);
+    setOpen(true);
+  }
+  function submit() {
+    if (!draft.name.trim() || !draft.email.trim()) {
+      toast.error("Name and email required");
+      return;
+    }
+    if (editing) {
+      update(editing.id, draft);
+      toast.success("User updated");
+    } else {
+      create(draft);
+      toast.success("User created");
+    }
+    setOpen(false);
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Quản lý người dùng</h1>
-          <p className="text-sm text-slate-500">
-            {users.length} tài khoản · {users.filter(u => u.status === "Hoạt động").length} đang hoạt động
-          </p>
+          <h1 className="text-2xl font-bold tracking-tight">Users</h1>
+          <p className="text-sm text-muted-foreground">{users.length} accounts · {users.filter(u => u.status === "active").length} active</p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-lg transition-all shadow-md active:scale-95">
-          <UserPlus className="h-4 w-4" /> Thêm người dùng
-        </button>
+        <Button size="sm" onClick={startCreate}><Plus className="mr-2 h-3 w-3" />New user</Button>
       </div>
 
       <Card>
-        <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <input 
-              type="text" 
-              placeholder="Tìm kiếm theo tên, email..." 
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              className="w-full bg-white rounded-lg border border-slate-200 pl-10 pr-4 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all"
-            />
-          </div>
-          <button className="flex items-center justify-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50 transition-colors">
-            <Filter className="h-4 w-4" /> Bộ lọc
-          </button>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-slate-100 bg-slate-50/30">
-                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Người dùng</th>
-                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Vai trò</th>
-                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Trạng thái</th>
-                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 hidden md:table-cell">Ngày tham gia</th>
-                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Tổng chi tiêu</th>
-                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 w-20"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filteredUsers.map((user) => (
-                <tr key={user.id} className="hover:bg-slate-50/80 transition-colors group">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 font-bold border border-emerald-100">
-                        {user.name.charAt(0)}
-                      </div>
-                      <div>
-                        <div className="font-semibold text-slate-900">{user.name}</div>
-                        <div className="text-xs text-slate-500">{user.email}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-1.5 text-slate-600 text-sm">
-                      <Shield className="h-3.5 w-3.5" />
-                      {user.role}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <Badge variant={
-                      user.status === 'Hoạt động' ? 'success' : 
-                      user.status === 'Tạm dừng' ? 'warning' : 'error'
-                    }>
-                      {user.status === 'Hoạt động' ? <CheckCircle2 className="inline h-3 w-3 mr-1" /> : <XCircle className="inline h-3 w-3 mr-1" />}
-                      {user.status}
-                    </Badge>
-                  </td>
-                  <td className="px-6 py-4 hidden md:table-cell">
-                    <div className="flex items-center gap-1.5 text-slate-500 text-sm">
-                      <Clock className="h-3.5 w-3.5" />
-                      {new Date(user.joined).toLocaleDateString('vi-VN')}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-right font-bold text-slate-900 tabular-nums">
-                    {user.spend}
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-md transition-all">
-                        <Pencil className="h-4 w-4" />
-                      </button>
-                      <button className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-all">
+        <CardHeader><CardTitle className="text-base">Members & staff</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <Input placeholder="Search by name, email, plan…" value={query} onChange={(e) => setQuery(e.target.value)} />
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead className="hidden md:table-cell">Email</TableHead>
+                  <TableHead>Plan</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="hidden lg:table-cell">Joined</TableHead>
+                  <TableHead className="text-right">Spend</TableHead>
+                  <TableHead className="w-20" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((u) => (
+                  <TableRow key={u.id}>
+                    <TableCell className="font-medium">{u.name}</TableCell>
+                    <TableCell className="hidden md:table-cell text-muted-foreground">{u.email}</TableCell>
+                    <TableCell><Badge variant="outline">{u.plan}</Badge></TableCell>
+                    <TableCell className="capitalize">{u.role}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={u.status === "active" ? "default" : u.status === "paused" ? "secondary" : "destructive"}
+                      >
+                        {u.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell tabular-nums">{u.joined.slice(0, 10)}</TableCell>
+                    <TableCell className="text-right tabular-nums">${u.spend.toFixed(0)}</TableCell>
+                    <TableCell className="text-right">
+                      <Button size="icon" variant="ghost" onClick={() => startEdit(u)}><Pencil className="h-4 w-4" /></Button>
+                      <Button size="icon" variant="ghost" onClick={() => { remove(u.id); toast("User removed"); }}>
                         <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {filteredUsers.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-slate-500 text-sm">
-                    Không tìm thấy người dùng nào phù hợp.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-        
-        <div className="p-4 border-t border-slate-100 bg-slate-50/30 flex items-center justify-between">
-          <p className="text-xs text-slate-500">Hiển thị {filteredUsers.length} trên tổng số {users.length} người dùng</p>
-          <div className="flex items-center gap-2">
-            <button disabled className="px-3 py-1 rounded border border-slate-200 text-xs font-semibold disabled:opacity-50">Trước</button>
-            <button className="px-3 py-1 bg-emerald-600 text-white rounded text-xs font-semibold">1</button>
-            <button className="px-3 py-1 rounded border border-slate-200 text-xs font-semibold">Sau</button>
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {filtered.length === 0 && (
+                  <TableRow><TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-8">No users found.</TableCell></TableRow>
+                )}
+              </TableBody>
+            </Table>
           </div>
-        </div>
+        </CardContent>
       </Card>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>{editing ? "Edit user" : "New user"}</DialogTitle></DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Name</Label>
+                <Input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
+              </div>
+              <div>
+                <Label>Email</Label>
+                <Input value={draft.email} onChange={(e) => setDraft({ ...draft, email: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <Label>Plan</Label>
+                <Select value={draft.plan} onValueChange={(v) => setDraft({ ...draft, plan: v as AdminUser["plan"] })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{PLANS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Role</Label>
+                <Select value={draft.role} onValueChange={(v) => setDraft({ ...draft, role: v as AdminUser["role"] })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{ROLES.map((r) => <SelectItem key={r} value={r} className="capitalize">{r}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Status</Label>
+                <Select value={draft.status} onValueChange={(v) => setDraft({ ...draft, status: v as AdminUser["status"] })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{STATUSES.map((s) => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Joined</Label>
+                <Input type="date" value={draft.joined.slice(0, 10)} onChange={(e) => setDraft({ ...draft, joined: e.target.value })} />
+              </div>
+              <div>
+                <Label>Lifetime spend</Label>
+                <Input type="number" value={draft.spend} onChange={(e) => setDraft({ ...draft, spend: +e.target.value })} />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button onClick={submit}>{editing ? "Lưu" : "Tạo mới"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
-};
+}
 
-export default UsersManagement;
+export default UsersPage;
