@@ -3,10 +3,8 @@ import { ArrowRight } from "lucide-react";
 
 export function FinalCTA() {
   return (
-    <section id="contact" className="relative py-24 bg-background">
-      <div className="absolute inset-0 opacity-10" 
-           style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, gray 1px, transparent 0)', backgroundSize: '40px 40px' }} 
-           aria-hidden />
+    <section id="contact" className="relative py-24 bg-background overflow-hidden">
+      <div className="absolute inset-0 bg-grid opacity-[0.03] pointer-events-none" aria-hidden />
       <div className="relative mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, scale: 0.96 }}
@@ -15,9 +13,7 @@ export function FinalCTA() {
           transition={{ duration: 0.7 }}
           className="relative overflow-hidden rounded-3xl bg-primary p-10 sm:p-16 text-center shadow-lg"
         >
-          <div className="absolute inset-0 opacity-20" 
-               style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)', backgroundSize: '20px 20px' }} 
-               aria-hidden />
+          <div className="absolute inset-0 bg-grid opacity-10 pointer-events-none" aria-hidden />
           <div className="relative">
             <h2 className="text-4xl font-extrabold tracking-tight text-primary-foreground sm:text-5xl lg:text-6xl">
               Phiên bản mạnh mẽ nhất của bạn<br />bắt đầu từ hôm nay.

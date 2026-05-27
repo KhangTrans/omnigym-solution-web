@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Menu, X, Dumbbell, Globe, LogOut } from "lucide-react";
+import { Menu, X, Dumbbell, Globe, LogOut, User as UserIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 import { authApi } from "../../api/auth";
 
@@ -108,7 +108,7 @@ export function Navbar() {
             </a>
           ))}
           <Link
-            to="/login"
+            to="/gyms"
             className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             {t("nav.gyms")}
@@ -137,35 +137,50 @@ export function Navbar() {
                 <img
                   src={user.avatar_url}
                   alt={user.full_name}
-                  className="h-9 w-9 rounded-full border-2 border-[var(--primary)] object-cover"
+                  className="h-9 w-9 rounded-full border border-primary/20 hover:border-primary/50 transition-colors object-cover ring-2 ring-transparent group-hover:ring-primary/20"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
                     target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.full_name || 'User')}&background=4F8A74&color=fff`;
                   }}
                 />
-                <div className="hidden group-hover:block absolute top-[100%] right-0 pt-2 w-48 z-50">
-                  <div className="bg-background border border-border rounded-lg shadow-lg py-1">
-                    <div className="px-4 py-2 border-b border-border">
-                      <p className="text-sm font-semibold truncate">{user.full_name}</p>
+                <div className="hidden group-hover:block absolute top-[100%] right-0 pt-2 w-56 z-50">
+                  <div className="bg-background border border-border rounded-xl shadow-xl py-1 overflow-hidden ring-1 ring-black/5 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="px-4 py-3 border-b border-border bg-muted/30">
+                      <p className="text-sm font-bold text-foreground truncate">{user.full_name}</p>
+                      <p className="text-[10px] text-muted-foreground truncate uppercase tracking-wider font-medium">{user.email}</p>
                     </div>
-                    {/* Thêm link Quản trị nếu là Admin hoặc Staff */}
-                    {(user.role === 'Admin' || user.role === 'Staff' || user.role_id === 1 || user.role_id === 2) && (
+                    
+                    <div className="py-1">
                       <Link
-                        to="/admin"
-                        className="w-full flex items-center gap-2 px-4 py-2 text-sm text-left text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                        to="/profile"
+                        className="w-full flex items-center gap-3 px-4 py-2 text-sm text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all"
                       >
-                        <Dumbbell className="h-4 w-4" />
-                        Quản trị hệ thống
+                        <UserIcon className="h-4 w-4" />
+                        <span className="font-medium">Hồ sơ cá nhân</span>
                       </Link>
-                    )}
-                    <button
-                      onClick={signOut}
-                      type="button"
-                      className="w-full flex items-center gap-2 px-4 py-2 text-sm text-left text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                    >
-                      <LogOut className="h-4 w-4" />
-                      {t("nav.signout")}
-                    </button>
+                      
+                      {/* Thêm link Quản trị nếu là Admin hoặc Staff */}
+                      {(user.role === 'Admin' || user.role === 'Staff' || user.role_id === 1 || user.role_id === 2) && (
+                        <Link
+                          to="/admin"
+                          className="w-full flex items-center gap-3 px-4 py-2 text-sm text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all"
+                        >
+                          <Dumbbell className="h-4 w-4" />
+                          <span className="font-medium">Quản trị hệ thống</span>
+                        </Link>
+                      )}
+                    </div>
+
+                    <div className="border-t border-border mt-1 py-1">
+                      <button
+                        onClick={signOut}
+                        type="button"
+                        className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-500 hover:text-red-600 hover:bg-red-50 transition-all font-medium"
+                      >
+                        <LogOut className="h-4 w-4" />
+                        {t("nav.signout")}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -223,6 +238,14 @@ export function Navbar() {
                   />
                   <div>
                     <p className="text-sm font-semibold">{user.full_name}</p>
+                    <Link 
+                      to="/profile" 
+                      onClick={() => setOpen(false)}
+                      className="text-sm font-medium text-muted-foreground flex items-center gap-2 mt-2 w-full py-2 hover:text-primary transition-colors"
+                    >
+                      <UserIcon className="h-4 w-4" />
+                      Hồ sơ cá nhân
+                    </Link>
                     <button
                       onClick={signOut}
                       type="button"
