@@ -269,7 +269,7 @@ function ExercisesPage() {
               </div>
               <div className="space-y-3">
                 {draft.exercises.map((ex, idx) => (
-                  <div key={ex.id} className="rounded-md border p-3">
+                  <div key={ex.id} className="rounded-md bg-card shadow-[0_2px_10px_rgba(15,23,42,0.10)] p-3">
                     <div className="flex items-start gap-3">
                       <div className="flex flex-col items-center pt-1 text-muted-foreground">
                         <button
@@ -375,7 +375,7 @@ function ExercisesPage() {
                         {ex.mediaUrl ? (
                           <MediaThumb url={ex.mediaUrl} type={ex.mediaType} />
                         ) : (
-                          <div className="grid h-16 w-16 place-items-center rounded-md border bg-muted text-muted-foreground">
+                          <div className="grid h-16 w-16 place-items-center rounded-md bg-muted shadow-[0_2px_10px_rgba(15,23,42,0.10)] text-muted-foreground">
                             <ImageIcon className="h-5 w-5" />
                           </div>
                         )}
@@ -407,7 +407,7 @@ function ExercisesPage() {
               <p className="text-sm text-muted-foreground">{previewing.description}</p>
               <div className="space-y-3">
                 {previewing.exercises.map((ex, i) => (
-                  <div key={ex.id} className="flex gap-3 rounded-md border p-3">
+                  <div key={ex.id} className="flex gap-3 rounded-md bg-card shadow-[0_2px_10px_rgba(15,23,42,0.10)] p-3">
                     <MediaThumb url={ex.mediaUrl} type={ex.mediaType} large />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
@@ -438,7 +438,7 @@ function MediaThumb({ url, type, large = false }: { url: string; type: ExerciseM
   const size = large ? "h-24 w-24" : "h-16 w-16";
   if (type === "video") {
     return (
-      <div className={`relative ${size} overflow-hidden rounded-md border bg-muted`}>
+      <div className={`relative ${size} overflow-hidden rounded-md bg-muted shadow-[0_2px_10px_rgba(15,23,42,0.10)]`}>
         <video src={url} muted loop playsInline autoPlay className="h-full w-full object-cover" />
         <Film className="absolute right-1 top-1 h-3 w-3 text-white drop-shadow" />
       </div>
@@ -449,7 +449,7 @@ function MediaThumb({ url, type, large = false }: { url: string; type: ExerciseM
       src={url}
       alt=""
       loading="lazy"
-      className={`${size} rounded-md border object-cover`}
+      className={`${size} rounded-md bg-card shadow-[0_2px_10px_rgba(15,23,42,0.10)] object-cover`}
       onError={(e) => ((e.currentTarget.style.opacity = "0.3"))}
     />
   );
@@ -497,7 +497,7 @@ function ExerciseNameSearch({
         placeholder="Search library or type a new name…"
       />
       {open && matches.length > 0 && (
-        <div className="absolute z-50 mt-1 max-h-72 w-full overflow-y-auto rounded-md border bg-popover p-1 shadow-md">
+        <div className="absolute z-50 mt-1 max-h-72 w-full overflow-y-auto rounded-md bg-popover shadow-[0_2px_10px_rgba(15,23,42,0.10)] p-1">
           {matches.map((ex) => (
             <button
               key={ex.id}
@@ -512,7 +512,7 @@ function ExerciseNameSearch({
               {ex.mediaUrl ? (
                 <MediaThumb url={ex.mediaUrl} type={ex.mediaType} />
               ) : (
-                <div className="grid h-16 w-16 place-items-center rounded-md border bg-muted text-muted-foreground">
+                <div className="grid h-16 w-16 place-items-center rounded-md bg-muted shadow-[0_2px_10px_rgba(15,23,42,0.10)] text-muted-foreground">
                   <ImageIcon className="h-4 w-4" />
                 </div>
               )}

@@ -99,7 +99,7 @@ function AdminProfilePage() {
       <Card>
         <CardHeader><CardTitle className="text-base">Security</CardTitle></CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between rounded-md border p-3">
+          <div className="flex items-center justify-between rounded-md bg-card shadow-[0_2px_10px_rgba(15,23,42,0.10)] p-3">
             <div>
               <div className="text-sm font-medium">Two-factor authentication</div>
               <div className="text-xs text-muted-foreground">
