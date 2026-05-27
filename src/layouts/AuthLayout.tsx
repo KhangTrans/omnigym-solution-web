@@ -5,19 +5,24 @@ import heroImg from "../assets/hero-gym.jpg";
 
 export default function AuthLayout() {
   return (
-    <div className="min-h-screen w-full grid lg:grid-cols-[1fr_1.1fr] bg-white text-slate-900 overflow-hidden font-sans">
+    <div className="min-h-screen w-full grid lg:grid-cols-2 bg-background text-foreground overflow-hidden font-sans">
       {/* Left: form area */}
-      <div className="relative flex flex-col px-8 py-10 sm:px-12 lg:px-20 bg-white z-10 overflow-y-auto no-scrollbar">
-        <div className="flex items-center gap-2 mb-12">
-          <div className="flex h-8 w-8 items-center justify-center rounded bg-[#4F8A74] text-white">
-            <Dumbbell className="h-5 w-5" />
+      <div className="relative flex flex-col px-8 py-10 sm:px-12 lg:px-20 bg-background z-10 overflow-y-auto no-scrollbar border-r border-border text-left">
+        {/* Subtle grid for the left side */}
+        <div className="absolute inset-0 bg-grid bg-grid-fade opacity-[0.03] pointer-events-none" />
+        
+        <div className="relative z-10">
+          <div className="flex items-center gap-2 mb-12">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-primary text-primary-foreground shadow-card">
+              <Dumbbell className="h-5 w-5" />
+            </div>
+            <span className="text-xl font-bold tracking-tight text-foreground">
+              OmniGym
+            </span>
           </div>
-          <span className="text-xl font-bold tracking-tight text-slate-900">
-            OmniGym
-          </span>
         </div>
 
-        <div className="flex flex-1 items-center justify-center py-4">
+        <div className="flex flex-1 items-center justify-center py-4 relative z-10">
           <div className="w-full max-w-sm">
             <AnimatePresence mode="wait">
               <Outlet />
@@ -36,7 +41,7 @@ export default function AuthLayout() {
       </div>
 
       {/* Right: Visionary Hero Section */}
-      <div className="relative hidden lg:block overflow-hidden bg-slate-900">
+      <div className="relative hidden lg:block overflow-hidden bg-background">
         <motion.div
             initial={{ scale: 1.05, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -46,25 +51,15 @@ export default function AuthLayout() {
             <img
             src={heroImg}
             alt="Athletes training"
-            className="h-full w-full object-cover brightness-[0.4] contrast-[1.1]"
+            className="h-full w-full object-cover"
             />
         </motion.div>
         
-        <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
-            <div 
-                className="absolute inset-0" 
-                style={{ 
-                    backgroundImage: `
-                    linear-gradient(to right, rgba(255,255,255,0.1) 1px, transparent 1px),
-                    linear-gradient(to bottom, rgba(255,255,255,0.1) 1px, transparent 1px)
-                    `,
-                    backgroundSize: '40px 40px' 
-                }} 
-            />
-        </div>
+        <div className="absolute inset-0 bg-gradient-to-tr from-primary/70 via-primary/30 to-transparent" />
+        <div className="absolute inset-0 bg-grid-animated bg-grid-fade opacity-30" />
 
-        <div className="absolute inset-0 flex flex-col justify-end p-20 text-white z-20">
-          <div className="max-w-xl">
+        <div className="absolute inset-0 flex flex-col justify-end p-20 text-primary-foreground z-20">
+          <div className="max-w-xl text-left">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -80,7 +75,7 @@ export default function AuthLayout() {
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5, duration: 0.8 }}
-              className="text-base text-slate-300 mb-10 max-w-md leading-relaxed"
+              className="text-base text-primary-foreground/90 mb-10 max-w-md leading-relaxed"
             >
               Tham gia cùng cộng đồng hơn 12.000+ hội viên đang cùng OmniGym chinh phục phiên bản khỏe mạnh nhất của chính mình.
             </motion.p>
@@ -89,7 +84,7 @@ export default function AuthLayout() {
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.7, duration: 0.8 }}
-              className="flex gap-12 border-t border-white/10 pt-8"
+              className="flex gap-12 pt-8"
             >
               {[
                 { label: "Hội viên", value: "12k+" },
@@ -98,7 +93,7 @@ export default function AuthLayout() {
               ].map((stat, idx) => (
                 <div key={idx} className="flex flex-col gap-0.5">
                   <div className="text-xl font-bold">{stat.value}</div>
-                  <div className="text-[10px] uppercase tracking-[0.1em] text-slate-400 font-semibold">{stat.label}</div>
+                  <div className="text-[10px] uppercase tracking-[0.1em] text-primary-foreground/70 font-semibold">{stat.label}</div>
                 </div>
               ))}
             </motion.div>
