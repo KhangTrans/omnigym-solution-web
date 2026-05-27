@@ -1,6 +1,7 @@
 ﻿import React, { useState, useEffect } from 'react';
-import { Mail, Lock, ChevronRight, Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import { GoogleLogin } from '@react-oauth/google';
 import { authApi } from '../../api/auth';
 
 const Login = () => {
@@ -21,7 +22,7 @@ const Login = () => {
         } else {
           navigate('/');
         }
-      } catch (e) {
+      } catch {
         localStorage.removeItem('user');
       }
     }
@@ -50,6 +51,28 @@ const Login = () => {
       }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Email hoặc mật khẩu không đúng');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSuccess = async (credentialResponse: any) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await authApi.googleLogin(credentialResponse.credential);
+      const { user } = response.data;
+      
+      localStorage.setItem('user', JSON.stringify(user));
+      window.dispatchEvent(new Event('user-login'));
+
+      if (user?.role === 'Admin' || user?.role === 'Staff' || user?.role_id === 1 || user?.role_id === 2) {
+        navigate('/admin');
+      } else {
+        navigate('/');
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Đăng nhập Google thất bại. Vui lòng thử lại.');
     } finally {
       setLoading(false);
     }
@@ -126,6 +149,26 @@ const Login = () => {
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Đăng nhập ngay"}
         </button>
       </form>
+
+      <div className="relative my-8">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-slate-100"></div>
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-white px-4 text-slate-400 font-medium">Hoặc đăng nhập với</span>
+        </div>
+      </div>
+
+      <div className="flex justify-center">
+        <GoogleLogin
+          onSuccess={handleGoogleSuccess}
+          onError={() => setError('Đăng nhập Google thất bại')}
+          useOneTap
+          theme="outline"
+          shape="rectangular"
+          width="100%"
+        />
+      </div>
 
       <div className="mt-10 text-center text-sm text-slate-500 pt-6 border-t border-slate-100">
         Bạn chưa có tài khoản? <Link to="/register" className="text-slate-900 font-bold hover:underline">Đăng ký ngay</Link>
