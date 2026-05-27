@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Play } from "lucide-react";
 import heroImage from "../../assets/hero-gym.jpg";
 
-const WORDS = ["mạnh mẽ hơn.", "khỏe mạnh.", "không giới hạn."];
+const WORDS = ["mạnh mẽ hơn.", "khỏe mạnh hơn.", "không giới hạn."];
 
 export function Hero() {
   const [i, setI] = useState(0);
