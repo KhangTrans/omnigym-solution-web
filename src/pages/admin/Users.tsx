@@ -103,7 +103,7 @@ function UsersPage() {
         <CardHeader><CardTitle className="text-base">Members & staff</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <Input placeholder="Search by name, email, plan…" value={query} onChange={(e) => setQuery(e.target.value)} />
-          <div className="rounded-md border">
+          <div className="rounded-md bg-card shadow-[0_2px_10px_rgba(15,23,42,0.10)]">
             <Table>
               <TableHeader>
                 <TableRow>

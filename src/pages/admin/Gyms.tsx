@@ -84,7 +84,7 @@ function AdminGymsPage() {
         <CardHeader><CardTitle className="text-base">All brands</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <Input placeholder="Search by name or owner email…" value={q} onChange={(e) => setQ(e.target.value)} />
-          <div className="rounded-md border">
+          <div className="rounded-md bg-card shadow-[0_2px_10px_rgba(15,23,42,0.10)]">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -102,7 +102,7 @@ function AdminGymsPage() {
                     <TableRow key={b.id}>
                       <TableCell>
                         <div className="flex items-center gap-3">
-                          <img src={b.logo} alt={b.name} className="h-9 w-9 rounded object-cover border border-border" />
+                          <img src={b.logo} alt={b.name} className="h-9 w-9 rounded object-cover shadow-[0_2px_8px_rgba(15,23,42,0.10)]" />
                           <div>
                             <div className="font-medium">{b.name}</div>
                             <div className="text-xs text-muted-foreground line-clamp-1">{b.tagline}</div>
@@ -141,7 +141,7 @@ function AdminGymsPage() {
             {gyms.map((g) => {
               const brand = brands.find((b) => b.id === g.brandId);
               return (
-                <div key={g.id} className="overflow-hidden rounded-lg border bg-card">
+                <div key={g.id} className="overflow-hidden rounded-lg bg-card shadow-[0_2px_10px_rgba(15,23,42,0.10)]">
                   <div className="aspect-[16/9] bg-muted">
                     <img src={g.image} alt={g.name} className="h-full w-full object-cover" />
                   </div>

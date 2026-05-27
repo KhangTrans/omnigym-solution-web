@@ -206,13 +206,13 @@ function LibraryPage() {
                   {draft.mediaUrl ? (
                     <MediaThumb url={draft.mediaUrl} type={draft.mediaType} />
                   ) : (
-                    <div className="grid h-20 w-20 place-items-center rounded-md border bg-muted text-muted-foreground">
+                    <div className="grid h-20 w-20 place-items-center rounded-md bg-muted shadow-[0_2px_10px_rgba(15,23,42,0.10)] text-muted-foreground">
                       <ImageIcon className="h-5 w-5" />
                     </div>
                   )}
                 </div>
                 <div className="flex-1 space-y-2">
-                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm hover:bg-accent">
+                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-md bg-background shadow-[0_2px_10px_rgba(15,23,42,0.10)] px-3 py-2 text-sm hover:bg-accent">
                     <Upload className="h-4 w-4" />
                     {draft.mediaUrl ? "Replace file" : "Upload file"}
                     <input
@@ -315,14 +315,14 @@ function stripId(ex: Exercise): Omit<Exercise, "id"> {
 function MediaThumb({ url, type }: { url: string; type: ExerciseMediaType }) {
   if (!url) {
     return (
-      <div className="grid h-20 w-20 shrink-0 place-items-center rounded-md border bg-muted text-muted-foreground">
+      <div className="grid h-20 w-20 shrink-0 place-items-center rounded-md bg-muted shadow-[0_2px_10px_rgba(15,23,42,0.10)] text-muted-foreground">
         <ImageIcon className="h-4 w-4" />
       </div>
     );
   }
   if (type === "video") {
     return (
-      <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-md border bg-muted">
+      <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-md bg-muted shadow-[0_2px_10px_rgba(15,23,42,0.10)]">
         <video src={url} muted loop playsInline autoPlay className="h-full w-full object-cover" />
         <Film className="absolute right-1 top-1 h-3 w-3 text-white/90" />
       </div>
@@ -332,7 +332,7 @@ function MediaThumb({ url, type }: { url: string; type: ExerciseMediaType }) {
     <img
       src={url}
       alt=""
-      className="h-20 w-20 shrink-0 rounded-md border object-cover"
+      className="h-20 w-20 shrink-0 rounded-md bg-card shadow-[0_2px_10px_rgba(15,23,42,0.10)] object-cover"
       onError={(e) => ((e.currentTarget.style.opacity = "0.3"))}
     />
   );

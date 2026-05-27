@@ -101,7 +101,7 @@ function ModerationPage() {
                 </Badge>
               </CardHeader>
               <CardContent className="space-y-3">
-                <blockquote className="rounded border-l-4 border-primary/40 bg-muted/30 p-3 text-sm italic">
+                <blockquote className="rounded bg-muted/30 shadow-[inset_4px_0_0_hsl(var(--primary)/0.40),0_2px_10px_rgba(15,23,42,0.08)] p-3 text-sm italic">
                   “{r.excerpt}”
                 </blockquote>
                 {r.status === "open" && (

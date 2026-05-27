@@ -114,7 +114,7 @@ function RefundsPage() {
               <TabsTrigger value="all">All ({refunds.length})</TabsTrigger>
             </TabsList>
             <TabsContent value={tab} className="mt-4">
-              <div className="rounded-md border">
+              <div className="rounded-md bg-card shadow-[0_2px_10px_rgba(15,23,42,0.10)]">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -192,7 +192,7 @@ function RefundsPage() {
                 <span className="text-muted-foreground">Amount: </span>
                 <span className="font-medium tabular-nums">{fmt(active.amount)}</span>
               </div>
-              <div className="rounded border bg-muted/30 p-3 text-sm">{active.reason}</div>
+              <div className="rounded bg-muted/30 shadow-[0_2px_10px_rgba(15,23,42,0.08)] p-3 text-sm">{active.reason}</div>
               <Textarea
                 placeholder="Note (optional, visible internally)"
                 value={note}

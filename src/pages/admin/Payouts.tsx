@@ -88,7 +88,7 @@ function PayoutsPage() {
               <TabsTrigger value="all">All ({payouts.length})</TabsTrigger>
             </TabsList>
             <TabsContent value={tab} className="mt-4">
-              <div className="rounded-md border">
+              <div className="rounded-md bg-card shadow-[0_2px_10px_rgba(15,23,42,0.10)]">
                 <Table>
                   <TableHeader>
                     <TableRow>

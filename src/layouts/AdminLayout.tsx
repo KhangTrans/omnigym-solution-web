@@ -115,8 +115,8 @@ const AdminLayout = () => {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="grid min-h-screen w-full lg:grid-cols-[260px_1fr]">
-        <aside className="hidden border-r bg-card lg:flex lg:flex-col">
-          <div className="flex h-16 items-center gap-2 border-b px-6">
+        <aside className="hidden bg-card shadow-[2px_0_14px_rgba(15,23,42,0.08)] lg:flex lg:flex-col">
+          <div className="flex h-16 items-center gap-2 px-6 shadow-[0_1px_8px_rgba(15,23,42,0.08)]">
             <div className="grid h-8 w-8 place-items-center rounded-md bg-primary text-primary-foreground font-bold shadow-lg shadow-primary/20">
               O
             </div>
@@ -170,7 +170,7 @@ const AdminLayout = () => {
         </aside>
 
         <div className="flex min-w-0 flex-col">
-          <header className="flex h-16 items-center justify-between border-b bg-card/60 px-4 backdrop-blur lg:px-8">
+          <header className="flex h-16 items-center justify-between bg-card/60 shadow-[0_1px_8px_rgba(15,23,42,0.08)] px-4 backdrop-blur lg:px-8">
             <div className="flex items-center gap-3 overflow-x-auto lg:hidden">
               {NAV.map((item) => {
                 const active = item.exact
@@ -208,7 +208,7 @@ const AdminLayout = () => {
               <img
                 src={profile.avatar}
                 alt={profile.name}
-                className="h-9 w-9 rounded-full object-cover ring-2 ring-primary/40"
+                className="h-9 w-9 rounded-full object-cover shadow-[0_2px_10px_rgba(15,23,42,0.16)]"
               />
             </Link>
           </header>
