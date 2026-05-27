@@ -16,6 +16,11 @@ export const authApi = {
     return api.post('/auth/login', credentials);
   },
 
+  // Đăng nhập bằng Google
+  googleLogin: (idToken: string) => {
+    return api.post('/auth/google-login', { idToken });
+  },
+
   // Đăng xuất
   logout: () => {
     return api.post('/auth/logout');
