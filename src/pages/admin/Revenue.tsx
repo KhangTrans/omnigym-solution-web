@@ -1,206 +1,321 @@
-import { useState, useMemo } from 'react';
-import { 
-  TrendingUp, 
-  DollarSign, 
-  Calendar, 
-  ArrowUpRight, 
-  ArrowDownRight,
-  Filter,
-  PieChart as PieChartIcon,
-  BarChart as BarChartIcon,
-  Activity
-} from 'lucide-react';
-import { cn } from '../../utils/cn';
 
-// Simple reusable components
-const Card = ({ children, className }: { children: React.ReactNode; className?: string }) => (
-  <div className={cn("bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden", className)}>
-    {children}
-  </div>
-);
+import { useMemo, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Plus, Trash2, RotateCcw, TrendingUp } from "lucide-react";
+import { useAdminRevenue, type RevenueEntry } from "@/lib/admin-store";
+import { toast } from "sonner";
+import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
-const CardContent = ({ children, className }: { children: React.ReactNode; className?: string }) => (
-  <div className={cn("p-6", className)}>
-    {children}
-  </div>
-);
 
-const CardHeader = ({ children, className }: { children: React.ReactNode; className?: string }) => (
-  <div className={cn("px-6 py-4 border-b border-slate-100 flex items-center justify-between", className)}>
-    {children}
-  </div>
-);
 
-const Revenue = () => {
-  const [timeRange, setTimeRange] = useState('30');
+const SOURCES: RevenueEntry["source"][] = ["Membership", "Shop", "Class", "PT Session"];
 
-  const stats = {
-    total: 1254300000,
-    growth: 12.5,
-    avgTicket: 450000,
-    transactions: 2450
-  };
+function fmt(n: number) {
+  return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(n);
+}
 
-  const revenueBySource = [
-    { label: 'Gói thành viên', value: 752000000, color: 'bg-emerald-500' },
-    { label: 'Buổi tập PT', value: 324000000, color: 'bg-teal-500' },
-    { label: 'Lớp học nhóm', value: 128000000, color: 'bg-amber-500' },
-    { label: 'Cửa hàng/Dịch vụ', value: 50300000, color: 'bg-rose-500' },
+function RevenuePage() {
+  const { revenue, create, remove, reset } = useAdminRevenue();
+  const [filter, setFilter] = useState<"all" | RevenueEntry["source"]>("all");
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState<Omit<RevenueEntry, "id">>({
+    date: new Date().toISOString().slice(0, 10),
+    source: "Membership",
+    amount: 49,
+    customer: "",
+  });
+
+  const filtered = useMemo(
+    () => revenue.filter((r) => filter === "all" || r.source === filter),
+    [revenue, filter],
+  );
+
+  const totals = useMemo(() => {
+    const total = filtered.reduce((s, r) => s + r.amount, 0);
+    const bySource = SOURCES.map((s) => ({
+      source: s,
+      total: revenue.filter((r) => r.source === s).reduce((sum, r) => sum + r.amount, 0),
+    }));
+    return { total, bySource };
+  }, [filtered, revenue]);
+
+  const daily = useMemo(() => {
+    const days = 30;
+    const buckets = Array.from({ length: days }).map((_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (days - 1 - i));
+      return { label: d.toLocaleDateString(undefined, { month: "short", day: "numeric" }), key: d.toISOString().slice(0, 10), amount: 0 };
+    });
+    revenue.forEach((r) => {
+      const k = new Date(r.date).toISOString().slice(0, 10);
+      const b = buckets.find((x) => x.key === k);
+      if (b) b.amount += r.amount;
+    });
+    return buckets;
+  }, [revenue]);
+
+  const monthly = useMemo(() => {
+    const months: Record<string, number> = {};
+    revenue.forEach((r) => {
+      const d = new Date(r.date);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      months[key] = (months[key] || 0) + r.amount;
+    });
+    return Object.entries(months)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-6)
+      .map(([k, v]) => ({
+        label: new Date(`${k}-01`).toLocaleDateString(undefined, { month: "short" }),
+        amount: Math.round(v),
+      }));
+  }, [revenue]);
+
+  const PIE_COLORS = [
+    "hsl(var(--primary))",
+    "hsl(var(--chart-2, 200 70% 50%))",
+    "hsl(var(--chart-3, 30 80% 55%))",
+    "hsl(var(--chart-4, 280 60% 55%))",
   ];
 
-  const fmt = (n: number) => {
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n);
-  };
+  function submit() {
+    if (!draft.customer.trim()) {
+      toast.error("Customer name required");
+      return;
+    }
+    create({
+      ...draft,
+      date: new Date(draft.date).toISOString(),
+      amount: Number(draft.amount) || 0,
+    });
+    toast.success("Revenue entry added");
+    setOpen(false);
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Báo cáo doanh thu</h1>
-          <p className="text-sm text-slate-500">Phân tích sâu về dòng tiền và nguồn thu nhập của hệ thống.</p>
+          <h1 className="text-2xl font-bold tracking-tight">Revenue</h1>
+          <p className="text-sm text-muted-foreground">Total: {fmt(totals.total)} ({filtered.length} entries)</p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="bg-white border border-slate-200 rounded-lg p-1 flex items-center shadow-sm">
-            <button 
-              onClick={() => setTimeRange('7')}
-              className={cn("px-3 py-1 text-xs font-bold rounded-md transition-all", timeRange === '7' ? "bg-emerald-600 text-white" : "text-slate-500 hover:text-slate-900")}
-            >7 ngày</button>
-            <button 
-              onClick={() => setTimeRange('30')}
-              className={cn("px-3 py-1 text-xs font-bold rounded-md transition-all", timeRange === '30' ? "bg-emerald-600 text-white" : "text-slate-500 hover:text-slate-900")}
-            >30 ngày</button>
-            <button 
-              onClick={() => setTimeRange('90')}
-              className={cn("px-3 py-1 text-xs font-bold rounded-md transition-all", timeRange === '90' ? "bg-emerald-600 text-white" : "text-slate-500 hover:text-slate-900")}
-            >3 tháng</button>
-          </div>
+          <Button variant="outline" size="sm" onClick={() => { reset(); toast("Revenue regenerated"); }}>
+            <RotateCcw className="mr-2 h-3 w-3" /> Regenerate
+          </Button>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm"><Plus className="mr-2 h-3 w-3" />New entry</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>New revenue entry</DialogTitle></DialogHeader>
+              <div className="space-y-3 py-2">
+                <div>
+                  <Label>Customer</Label>
+                  <Input value={draft.customer} onChange={(e) => setDraft({ ...draft, customer: e.target.value })} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Date</Label>
+                    <Input type="date" value={draft.date.slice(0, 10)} onChange={(e) => setDraft({ ...draft, date: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label>Amount (USD)</Label>
+                    <Input type="number" value={draft.amount} onChange={(e) => setDraft({ ...draft, amount: +e.target.value })} />
+                  </div>
+                </div>
+                <div>
+                  <Label>Source</Label>
+                  <Select value={draft.source} onValueChange={(v) => setDraft({ ...draft, source: v as RevenueEntry["source"] })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {SOURCES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+                <Button onClick={submit}>Add</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardContent>
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
-                <DollarSign className="h-5 w-5" />
-              </div>
-              <div className="flex items-center gap-1 text-emerald-600 text-xs font-bold bg-emerald-50 px-2 py-0.5 rounded-full">
-                <ArrowUpRight className="h-3 w-3" /> 12%
-              </div>
-            </div>
-            <div className="text-sm font-medium text-slate-500">Tổng doanh thu</div>
-            <div className="text-2xl font-bold text-slate-900 mt-1 tabular-nums">{fmt(stats.total)}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent>
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
-                <Activity className="h-5 w-5" />
-              </div>
-              <div className="flex items-center gap-1 text-emerald-600 text-xs font-bold bg-emerald-50 px-2 py-0.5 rounded-full">
-                <ArrowUpRight className="h-3 w-3" /> 5%
-              </div>
-            </div>
-            <div className="text-sm font-medium text-slate-500">Giao dịch thành công</div>
-            <div className="text-2xl font-bold text-slate-900 mt-1 tabular-nums">{stats.transactions.toLocaleString()}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent>
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-2 bg-amber-50 text-amber-600 rounded-lg">
-                <BarChartIcon className="h-5 w-5" />
-              </div>
-              <div className="flex items-center gap-1 text-rose-600 text-xs font-bold bg-rose-50 px-2 py-0.5 rounded-full">
-                <ArrowDownRight className="h-3 w-3" /> 2%
-              </div>
-            </div>
-            <div className="text-sm font-medium text-slate-500">Doanh thu trung bình</div>
-            <div className="text-2xl font-bold text-slate-900 mt-1 tabular-nums">{fmt(stats.avgTicket)}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent>
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-2 bg-rose-50 text-rose-600 rounded-lg">
-                <Calendar className="h-5 w-5" />
-              </div>
-            </div>
-            <div className="text-sm font-medium text-slate-500">Tăng trưởng năm</div>
-            <div className="text-2xl font-bold text-slate-900 mt-1 tabular-nums">+{stats.growth}%</div>
-          </CardContent>
-        </Card>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {totals.bySource.map((b) => (
+          <Card key={b.source}>
+            <CardContent className="p-4">
+              <div className="text-xs uppercase tracking-wide text-muted-foreground">{b.source}</div>
+              <div className="mt-1 text-xl font-bold tabular-nums">{fmt(b.total)}</div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
-          <CardHeader>
-            <h2 className="text-base font-bold text-slate-900">Doanh thu theo thời gian</h2>
-            <button className="p-1.5 hover:bg-slate-100 rounded-md transition-colors">
-              <Filter className="h-4 w-4 text-slate-400" />
-            </button>
+          <CardHeader className="flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-base flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" /> Revenue · last 30 days
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-80 w-full flex items-end justify-between gap-3 pt-6">
-              {[35, 55, 45, 75, 60, 95, 80, 70, 85, 90, 65, 50].map((val, i) => (
-                <div key={i} className="flex-1 flex flex-col items-center gap-3 group relative">
-                  <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                    {fmt(val * 1000000)}
-                  </div>
-                  <div 
-                    className="w-full bg-slate-100 group-hover:bg-emerald-500 rounded-t-md transition-all duration-300 relative overflow-hidden" 
-                    style={{ height: `${val}%` }}
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/5 to-transparent"></div>
-                  </div>
-                  <span className="text-[10px] font-bold text-slate-400 capitalize">Th {i + 1}</span>
-                </div>
-              ))}
+            <div className="h-72 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={daily} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="rev" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
+                      <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="label" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+                  <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+                  <Tooltip
+                    contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
+                    formatter={(v) => fmt(Number(v ?? 0))}
+                  />
+                  <Area type="monotone" dataKey="amount" stroke="hsl(var(--primary))" fill="url(#rev)" strokeWidth={2} />
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader>
-            <h2 className="text-base font-bold text-slate-900">Cơ cấu nguồn thu</h2>
-            <PieChartIcon className="h-4 w-4 text-slate-400" />
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="relative h-48 w-48 mx-auto mt-4">
-              {/* Fake Pie Chart with SVG */}
-              <svg viewBox="0 0 36 36" className="w-full h-full rotate-[-90deg]">
-                <circle cx="18" cy="18" r="15.9" fill="transparent" stroke="#f0fdf4" strokeWidth="3.8" />
-                <circle cx="18" cy="18" r="15.9" fill="transparent" stroke="#10b981" strokeWidth="3.8" strokeDasharray="60 100" />
-                <circle cx="18" cy="18" r="15.9" fill="transparent" stroke="#14b8a6" strokeWidth="3.8" strokeDasharray="25 100" strokeDashoffset="-60" />
-                <circle cx="18" cy="18" r="15.9" fill="transparent" stroke="#f59e0b" strokeWidth="3.8" strokeDasharray="10 100" strokeDashoffset="-85" />
-                <circle cx="18" cy="18" r="15.9" fill="transparent" stroke="#f43f5e" strokeWidth="3.8" strokeDasharray="5 100" strokeDashoffset="-95" />
-              </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-xs text-slate-500">Tổng cộng</span>
-                <span className="text-lg font-bold text-emerald-600">1.25B</span>
-              </div>
-            </div>
-            
-            <div className="space-y-3">
-              {revenueBySource.map((source) => (
-                <div key={source.label} className="flex items-center justify-between group cursor-help">
-                  <div className="flex items-center gap-2">
-                    <div className={cn("h-2.5 w-2.5 rounded-full", source.color)}></div>
-                    <span className="text-sm font-medium text-slate-600">{source.label}</span>
-                  </div>
-                  <span className="text-sm font-bold text-slate-900 tabular-nums">{Math.round((source.value / stats.total) * 100)}%</span>
-                </div>
-              ))}
+          <CardHeader><CardTitle className="text-base">Source split</CardTitle></CardHeader>
+          <CardContent>
+            <div className="h-72 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={totals.bySource}
+                    dataKey="total"
+                    nameKey="source"
+                    innerRadius={50}
+                    outerRadius={90}
+                    paddingAngle={2}
+                  >
+                    {totals.bySource.map((_, i) => (
+                      <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(v) => fmt(Number(v ?? 0))} contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                </PieChart>
+              </ResponsiveContainer>
             </div>
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader><CardTitle className="text-base">Monthly revenue · last 6 months</CardTitle></CardHeader>
+        <CardContent>
+          <div className="h-64 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={monthly} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey="label" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+                <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+                <Tooltip formatter={(v) => fmt(Number(v ?? 0))} contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} />
+                <Bar dataKey="amount" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex-row items-center justify-between space-y-0">
+          <CardTitle className="text-base">Transactions</CardTitle>
+          <Select value={filter} onValueChange={(v) => setFilter(v as typeof filter)}>
+            <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All sources</SelectItem>
+              {SOURCES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Customer</TableHead>
+                  <TableHead>Source</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead className="w-12" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.slice(0, 50).map((r) => (
+                  <TableRow key={r.id}>
+                    <TableCell className="tabular-nums">{new Date(r.date).toLocaleDateString()}</TableCell>
+                    <TableCell>{r.customer}</TableCell>
+                    <TableCell><Badge variant="secondary">{r.source}</Badge></TableCell>
+                    <TableCell className="text-right tabular-nums font-medium">{fmt(r.amount)}</TableCell>
+                    <TableCell>
+                      <Button size="icon" variant="ghost" onClick={() => remove(r.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          {filtered.length > 50 && (
+            <p className="mt-2 text-xs text-muted-foreground">Showing first 50 of {filtered.length} entries.</p>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
-};
+}
 
-export default Revenue;
+export default RevenuePage;
