@@ -9,8 +9,11 @@ const features = [
 
 export function About() {
   return (
-    <section className="relative py-24 bg-background">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <section className="relative py-24 bg-background overflow-hidden">
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-border to-transparent opacity-50" />
+        <div className="absolute inset-0 bg-grid opacity-[0.03] pointer-events-none" />
+        
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="grid gap-12 lg:grid-cols-2 lg:gap-20 items-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}

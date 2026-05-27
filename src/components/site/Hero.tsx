@@ -14,7 +14,7 @@ export function Hero() {
 
   return (
     <section id="home" className="relative overflow-hidden bg-background">
-      <div className="absolute inset-0 bg-grid-animated opacity-60" aria-hidden />
+      <div className="absolute inset-0 bg-grid-animated bg-grid-fade opacity-60" aria-hidden />
       <div className="absolute -top-32 -right-32 h-96 w-96 rounded-full bg-primary opacity-20 blur-3xl" aria-hidden />
 
       <div className="relative mx-auto grid max-w-7xl grid-cols-1 items-center gap-12 px-4 py-20 sm:px-6 lg:grid-cols-2 lg:gap-16 lg:py-28 lg:px-8">

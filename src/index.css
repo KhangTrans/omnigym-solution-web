@@ -80,8 +80,8 @@
   --border: oklch(0.208 0.042 265.755);
   --input: oklch(0.208 0.042 265.755);
   --ring: oklch(0.45 0.07 162);
+  --grid-line: oklch(0.25 0.04 162);
 }
-/* 
 @layer utilities {
   .bg-grid {
     background-image:
@@ -99,14 +99,18 @@
   }
 
   @keyframes grid-scroll {
-    0% { background-position: 0 -48px; }
-    100% { background-position: 0 0; }
+    0% { background-position: 0 0; }
+    100% { background-position: 48px 48px; }
   }
 
   .bg-grid-fade {
-    mask-image: radial-gradient(ellipse at center, black 40%, transparent 90%);
+    mask-image: radial-gradient(ellipse at center, black 40%, transparent 95%);
   }
-} */
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
 
 :root {
   --text: #6b6375;
