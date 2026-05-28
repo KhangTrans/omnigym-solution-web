@@ -3,7 +3,6 @@ import {
   Mail, 
   Lock, 
   User, 
-  ChevronRight, 
   ShieldCheck, 
   Loader2,
   AlertCircle,

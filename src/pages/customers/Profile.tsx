@@ -51,12 +51,21 @@ const CustomerProfile = () => {
       try {
         const response = await authApi.getMe();
         const user = response.data;
+        
+        // Flatten nested customer data if it exists
+        const customerData = user.customer || {};
+        
         setProfile(prev => ({
           ...prev,
           ...user,
+          ...customerData,
           full_name: user.full_name || 'Hội viên',
-          gender: user.gender || 'Other',
-          dob: user.dob ? new Date(user.dob).toISOString().split('T')[0] : ''
+          gender: customerData.gender || 'Other',
+          dob: customerData.dob ? new Date(customerData.dob).toISOString().split('T')[0] : '',
+          height: customerData.height || '',
+          weight: customerData.weight || '',
+          workout_goal: customerData.workout_goal || '',
+          medical_history: customerData.medical_history || ''
         }));
       } catch {
         // Fallback to local storage if API fails
@@ -79,9 +88,23 @@ const CustomerProfile = () => {
     try {
       const response = await authApi.updateProfile(profile);
       const updatedUser = response.data.user;
+      const customerData = updatedUser.customer || {};
       
+      // Update local storage with full structured user object
       localStorage.setItem('user', JSON.stringify(updatedUser));
-      setProfile(prev => ({ ...prev, ...updatedUser }));
+      
+      // Flatten for the local profile state
+      setProfile(prev => ({ 
+        ...prev, 
+        ...updatedUser,
+        ...customerData,
+        gender: customerData.gender || 'Other',
+        dob: customerData.dob ? new Date(customerData.dob).toISOString().split('T')[0] : '',
+        height: customerData.height || '',
+        weight: customerData.weight || '',
+        workout_goal: customerData.workout_goal || '',
+        medical_history: customerData.medical_history || ''
+      }));
       
       setSuccess(true);
       notify.success("Cập nhật hồ sơ thành công");
@@ -111,7 +134,12 @@ const CustomerProfile = () => {
         const updatedUser = response.data.user;
         
         localStorage.setItem('user', JSON.stringify(updatedUser));
-        setProfile(prev => ({ ...prev, avatar_url: updatedUser.avatar_url }));
+        setProfile(prev => ({ 
+          ...prev, 
+          avatar_url: updatedUser.avatar_url,
+          full_name: updatedUser.full_name,
+          phone_number: updatedUser.phone_number
+        }));
         
         window.dispatchEvent(new Event('user-login'));
         notify.success("Cập nhật ảnh đại diện thành công");
