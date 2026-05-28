@@ -1,34 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  User as UserIcon, 
   Mail, 
   Phone, 
   Calendar, 
   Ruler, 
   Weight, 
-  Target, 
-  Activity,
-  LogOut,
-  ChevronLeft,
   Camera,
   Save,
   CheckCircle2
 } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { cn } from '../../utils/cn';
-
-// Reuse basic UI components (simulating the Shadcn ones used in the reference)
-const Card = ({ children, className }: { children: React.ReactNode; className?: string }) => (
-  <div className={cn("bg-card text-card-foreground rounded-2xl border border-border shadow-card overflow-hidden", className)}>
-    {children}
-  </div>
-);
-
-const CardContent = ({ children, className }: { children: React.ReactNode; className?: string }) => (
-  <div className={cn("p-6", className)}>
-    {children}
-  </div>
-);
+import { authApi } from '../../api/auth';
+import { notify } from '../../utils/notify';
 
 const Badge = ({ children, className, variant = 'default' }: { children: React.ReactNode; className?: string; variant?: 'default' | 'secondary' }) => {
   const variants = {
@@ -45,13 +29,14 @@ const Badge = ({ children, className, variant = 'default' }: { children: React.R
 const CustomerProfile = () => {
   const navigate = useNavigate();
   const [profile, setProfile] = useState({
+    id: 0,
     full_name: '',
     email: '',
     phone_number: '',
     avatar_url: '',
     dob: '',
-    height: '',
-    weight: '',
+    height: '' as string | number,
+    weight: '' as string | number,
     gender: 'Other',
     workout_goal: '',
     medical_history: '',
@@ -62,37 +47,81 @@ const CustomerProfile = () => {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
+    const fetchProfile = async () => {
       try {
-        const user = JSON.parse(savedUser);
+        const response = await authApi.getMe();
+        const user = response.data;
         setProfile(prev => ({
           ...prev,
           ...user,
-          // Handle cases where fields might be missing
           full_name: user.full_name || 'Hội viên',
-          gender: user.gender || 'Khác'
+          gender: user.gender || 'Other',
+          dob: user.dob ? new Date(user.dob).toISOString().split('T')[0] : ''
         }));
-      } catch (e) {
-        console.error("Failed to parse user data", e);
+      } catch {
+        // Fallback to local storage if API fails
+        const savedUser = localStorage.getItem('user');
+        if (savedUser) {
+          try {
+            const user = JSON.parse(savedUser);
+            setProfile(prev => ({ ...prev, ...user }));
+          } catch {
+            // Ignore parse error
+          }
+        }
       }
-    }
+    };
+    fetchProfile();
   }, []);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setIsSaving(true);
-    // Simulate API call
-    setTimeout(() => {
-      setIsSaving(false);
+    try {
+      const response = await authApi.updateProfile(profile);
+      const updatedUser = response.data.user;
+      
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      setProfile(prev => ({ ...prev, ...updatedUser }));
+      
       setSuccess(true);
-      localStorage.setItem('user', JSON.stringify(profile));
+      notify.success("Cập nhật hồ sơ thành công");
       setTimeout(() => setSuccess(false), 3000);
-    }, 1000);
+    } catch (error: any) {
+      notify.error(error.response?.data?.message || "Không thể cập nhật hồ sơ");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('user');
-    navigate('/login');
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      notify.error("Kích thước ảnh không được vượt quá 2MB");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const base64String = reader.result as string;
+      setIsSaving(true);
+      try {
+        const response = await authApi.updateProfile({ avatar_url: base64String });
+        const updatedUser = response.data.user;
+        
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        setProfile(prev => ({ ...prev, avatar_url: updatedUser.avatar_url }));
+        
+        window.dispatchEvent(new Event('user-login'));
+        notify.success("Cập nhật ảnh đại diện thành công");
+      } catch {
+        notify.error("Không thể tải ảnh lên. Vui lòng thử lại.");
+      } finally {
+        setIsSaving(false);
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   const initials = profile.full_name
@@ -103,194 +132,173 @@ const CustomerProfile = () => {
     .substring(0, 2) || 'U';
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      {/* Header */}
-      <header className="border-b border-border bg-white/80 backdrop-blur-md sticky top-0 z-10">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4 sm:px-6">
-          <Link to="/" className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-primary transition-colors">
-            <ChevronLeft className="h-4 w-4" /> Quay lại trang chủ
-          </Link>
-          <button 
-            onClick={handleLogout}
-            className="text-sm font-medium text-destructive hover:text-destructive/80 transition-colors"
-          >
-            Đăng xuất
-          </button>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
+    <div className="bg-white">
+      <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
         <div className="space-y-8">
           {/* Profile Hero Card */}
-          <Card>
-            <CardContent className="flex flex-col items-center gap-6 p-8 text-center sm:flex-row sm:text-left">
-              <div className="relative group">
-                {profile.avatar_url ? (
-                  <img 
-                    src={profile.avatar_url} 
-                    alt={profile.full_name} 
-                    className="h-28 w-28 rounded-full border-4 border-background object-cover ring-2 ring-border shadow-md"
-                  />
-                ) : (
-                  <div className="grid h-28 w-28 place-items-center rounded-full bg-muted text-2xl font-bold text-foreground ring-2 ring-border ring-offset-4 ring-offset-background group-hover:bg-muted/80 transition-all">
-                    {initials}
-                  </div>
-                )}
-                <button className="absolute bottom-0 right-0 p-2 bg-white rounded-full border border-border shadow-sm text-foreground hover:text-primary transition-all hover:scale-110">
-                  <Camera className="h-4 w-4" />
-                </button>
-              </div>
+          <div className="flex flex-col items-center gap-6 p-2 text-center sm:flex-row sm:text-left border-b pb-8">
+            <div className="relative group">
+              {profile.avatar_url ? (
+                <img 
+                  src={profile.avatar_url} 
+                  alt={profile.full_name} 
+                  referrerPolicy="no-referrer"
+                  className="h-24 w-24 rounded-full border-4 border-background object-cover ring-2 ring-border shadow-md"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.full_name || 'User')}&background=4F8A74&color=fff`;
+                  }}
+                />
+              ) : (
+                <div className="grid h-24 w-24 place-items-center rounded-full bg-slate-100 text-2xl font-bold text-slate-700 ring-2 ring-border ring-offset-4 ring-offset-background group-hover:bg-slate-200 transition-all">
+                  {initials}
+                </div>
+              )}
+              <button 
+                onClick={() => document.getElementById('avatar-upload')?.click()}
+                className="absolute bottom-0 right-0 p-1.5 bg-white rounded-full border border-border shadow-sm text-foreground hover:text-primary transition-all hover:scale-110"
+              >
+                <Camera className="h-4 w-4" />
+              </button>
+              <input 
+                id="avatar-upload"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleAvatarChange}
+              />
+            </div>
 
-              <div className="flex-1">
-                <Badge variant="secondary" className="mb-2">Hội viên</Badge>
-                <h1 className="text-3xl font-bold tracking-tight">{profile.full_name}</h1>
-                <p className="mt-1 inline-flex items-center gap-1.5 text-sm text-muted-foreground">
-                  <Mail className="h-4 w-4" /> {profile.email || 'Không có email'}
-                </p>
-                <div className="mt-4 flex flex-wrap gap-2 justify-center sm:justify-start">
-                  <div className="flex items-center gap-1.5 px-3 py-1 bg-secondary/50 rounded-lg text-xs font-medium border border-border">
-                    <Activity className="h-3 w-3" /> Trạng thái hoạt động
+            <div className="flex-1">
+              <Badge variant="secondary" className="mb-2">Hội viên</Badge>
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900">{profile.full_name}</h1>
+              <p className="mt-1 inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+                <Mail className="h-4 w-4" /> {profile.email || 'Không có email'}
+              </p>
+            </div>
+          </div>
+
+          <div className="grid gap-8">
+            <section className="space-y-6">
+              <h2 className="text-lg font-bold flex items-center gap-2 text-slate-900 border-l-4 border-[var(--primary)] pl-3">
+                Thông tin cá nhân
+              </h2>
+              <div className="grid gap-6 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Họ và tên</label>
+                  <input 
+                    type="text" 
+                    value={profile.full_name} 
+                    onChange={e => setProfile({...profile, full_name: e.target.value})}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Số điện thoại</label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <input 
+                      type="tel" 
+                      value={profile.phone_number} 
+                      onChange={e => setProfile({...profile, phone_number: e.target.value})}
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                    />
                   </div>
-                  {profile.workout_goal && (
-                    <div className="flex items-center gap-1.5 px-3 py-1 bg-primary/10 text-primary rounded-lg text-xs font-medium border border-primary/20">
-                      <Target className="h-3 w-3" /> {profile.workout_goal}
-                    </div>
-                  )}
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Giới tính</label>
+                  <select 
+                    value={profile.gender}
+                    onChange={e => setProfile({...profile, gender: e.target.value})}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                  >
+                    <option value="Male">Nam</option>
+                    <option value="Female">Nữ</option>
+                    <option value="Other">Khác</option>
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Ngày sinh</label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <input 
+                      type="date" 
+                      value={profile.dob} 
+                      onChange={e => setProfile({...profile, dob: e.target.value})}
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                    />
+                  </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </section>
 
-          {/* Details Sections */}
-          <div className="grid gap-6">
-            <section className="space-y-4">
-              <h2 className="text-xl font-bold flex items-center gap-2">
-                <UserIcon className="h-5 w-5 text-primary" /> Thông tin cá nhân
+            <section className="space-y-6">
+              <h2 className="text-lg font-bold flex items-center gap-2 text-slate-900 border-l-4 border-[var(--primary)] pl-3">
+                Chỉ số hình thể
               </h2>
-              <Card>
-                <CardContent className="grid gap-6 sm:grid-cols-2">
+              <div className="space-y-6">
+                <div className="grid gap-6 sm:grid-cols-2">
                   <div className="space-y-1.5">
-                    <label className="text-sm font-semibold text-muted-foreground">Họ và tên</label>
-                    <input 
-                      type="text" 
-                      value={profile.full_name} 
-                      onChange={e => setProfile({...profile, full_name: e.target.value})}
-                      className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-semibold text-muted-foreground">Số điện thoại</label>
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Chiều cao (cm)</label>
                     <div className="relative">
-                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Ruler className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                       <input 
-                        type="tel" 
-                        value={profile.phone_number} 
-                        onChange={e => setProfile({...profile, phone_number: e.target.value})}
-                        className="w-full rounded-xl border border-border bg-background pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                        type="number" 
+                        value={profile.height} 
+                        onChange={e => setProfile({...profile, height: e.target.value})}
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                        placeholder="0"
                       />
                     </div>
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-sm font-semibold text-muted-foreground">Giới tính</label>
-                    <select 
-                      value={profile.gender}
-                      onChange={e => setProfile({...profile, gender: e.target.value})}
-                      className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                    >
-                      <option value="Male">Nam</option>
-                      <option value="Female">Nữ</option>
-                      <option value="Other">Khác</option>
-                    </select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-semibold text-muted-foreground">Ngày sinh</label>
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Cân nặng (kg)</label>
                     <div className="relative">
-                      <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Weight className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                       <input 
-                        type="date" 
-                        value={profile.dob} 
-                        onChange={e => setProfile({...profile, dob: e.target.value})}
-                        className="w-full rounded-xl border border-border bg-background pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                        type="number" 
+                        value={profile.weight} 
+                        onChange={e => setProfile({...profile, weight: e.target.value})}
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                        placeholder="0"
                       />
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Mục tiêu tập luyện</label>
+                  <textarea 
+                    rows={2}
+                    value={profile.workout_goal}
+                    onChange={e => setProfile({...profile, workout_goal: e.target.value})}
+                    placeholder="Bạn đang hướng tới mục tiêu gì?"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none"
+                  />
+                </div>
+              </div>
             </section>
 
-            <section className="space-y-4">
-              <h2 className="text-xl font-bold flex items-center gap-2">
-                <Target className="h-5 w-5 text-primary" /> Chỉ số hình thể
+            <section className="space-y-6">
+              <h2 className="text-lg font-bold flex items-center gap-2 text-slate-900 border-l-4 border-[var(--primary)] pl-3">
+                Thông tin sức khỏe
               </h2>
-              <Card>
-                <CardContent className="space-y-6">
-                  <div className="grid gap-6 sm:grid-cols-2">
-                    <div className="space-y-1.5">
-                      <label className="text-sm font-semibold text-muted-foreground">Chiều cao (cm)</label>
-                      <div className="relative">
-                        <Ruler className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <input 
-                          type="number" 
-                          value={profile.height} 
-                          onChange={e => setProfile({...profile, height: e.target.value})}
-                          className="w-full rounded-xl border border-border bg-background pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                          placeholder="0"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-sm font-semibold text-muted-foreground">Cân nặng (kg)</label>
-                      <div className="relative">
-                        <Weight className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <input 
-                          type="number" 
-                          value={profile.weight} 
-                          onChange={e => setProfile({...profile, weight: e.target.value})}
-                          className="w-full rounded-xl border border-border bg-background pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                          placeholder="0"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-semibold text-muted-foreground">Mục tiêu tập luyện</label>
-                    <textarea 
-                      rows={2}
-                      value={profile.workout_goal}
-                      onChange={e => setProfile({...profile, workout_goal: e.target.value})}
-                      placeholder="Bạn đang hướng tới mục tiêu gì?"
-                      className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none"
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            </section>
-
-            <section className="space-y-4">
-              <h2 className="text-xl font-bold flex items-center gap-2">
-                <Activity className="h-5 w-5 text-primary" /> Thông tin sức khỏe
-              </h2>
-              <Card>
-                <CardContent>
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-semibold text-muted-foreground">Tiền sử bệnh lý</label>
-                    <textarea 
-                      rows={3}
-                      value={profile.medical_history}
-                      onChange={e => setProfile({...profile, medical_history: e.target.value})}
-                      placeholder="Bất kỳ tình trạng hoặc chấn thương nào chúng tôi cần biết?"
-                      className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none"
-                    />
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Tiền sử bệnh lý</label>
+                <textarea 
+                  rows={3}
+                  value={profile.medical_history}
+                  onChange={e => setProfile({...profile, medical_history: e.target.value})}
+                  placeholder="Bất kỳ tình trạng hoặc chấn thương nào chúng tôi cần biết?"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none"
+                />
+              </div>
             </section>
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-4 pb-20">
+          <div className="flex items-center justify-end gap-3 pt-8 pb-10">
             <button 
               onClick={() => navigate(-1)}
-              className="px-6 py-2.5 text-sm font-semibold text-muted-foreground hover:bg-secondary rounded-xl transition-colors"
+              className="px-6 py-2.5 text-sm font-semibold text-slate-500 hover:bg-slate-50 rounded-xl transition-colors"
             >
               Hủy
             </button>
@@ -311,11 +319,12 @@ const CustomerProfile = () => {
                 </>
               ) : (
                 <>
-                  <Save className="h-5 w-5" /> Lưu hồ sơ
+                  <Save className="h-5 w-5" /> Cập nhật hồ sơ
                 </>
               )}
             </button>
           </div>
+
         </div>
       </main>
     </div>

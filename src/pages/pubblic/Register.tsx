@@ -13,6 +13,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { authApi } from '../../api/auth';
+import { notify } from '../../utils/notify';
 
 // --- Helper Components ---
 
@@ -100,6 +101,7 @@ const Register = () => {
   const handleRequestOTP = async () => {
     if (!formData.identifier) {
       setError("Vui lòng nhập Email trước");
+      notify.error("Vui lòng nhập Email trước");
       return;
     }
     setLoading(true);
@@ -107,15 +109,14 @@ const Register = () => {
     try {
       await authApi.requestOTP(formData.identifier);
       setSuccess("Mã OTP đã được gửi đến email!");
+      notify.success("Mã OTP đã được gửi thành công!", "Vui lòng kiểm tra hộp thư đến của bạn.");
       setOtpSent(true);
       setCountdown(120);
     } catch (err: any) {
       console.error("OTP Error:", err);
-      if (err.message === "Network Error") {
-        setError("Lỗi kết nối (CORS). Vui lòng kiểm tra cấu hình Backend.");
-      } else {
-        setError(err.response?.data?.message || "Không thể gửi OTP. Vui lòng thử lại.");
-      }
+      const msg = err.response?.data?.message || "Không thể gửi OTP. Vui lòng thử lại.";
+      setError(msg);
+      notify.error(msg);
     } finally {
       setLoading(false);
     }
@@ -132,8 +133,8 @@ const Register = () => {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isAgreed) return setError("Bạn cần đồng ý với các Điều khoản");
-    if (!otpSent) return setError("Vui lòng xác thực email trước");
+    if (!isAgreed) return notify.error("Bạn cần đồng ý với các Điều khoản");
+    if (!otpSent) return notify.error("Vui lòng xác thực email trước");
 
     setLoading(true);
     setError(null);
@@ -147,8 +148,23 @@ const Register = () => {
         }
       });
       setSuccess("Tạo tài khoản thành công!");
+      notify.success("Đăng ký thành công!", "Bây giờ bạn có thể đăng nhập.");
+      
+      // Clear form after success
+      setFormData({
+        firstName: '',
+        lastName: '',
+        identifier: '',
+        otp: '',
+        password: '',
+      });
+      setOtpSent(false);
+      setCountdown(0);
+      setIsAgreed(false);
     } catch (err: any) {
-      setError(err.response?.data?.message || "Đăng ký thất bại.");
+      const msg = err.response?.data?.message || "Đăng ký thất bại. Vui lòng thử lại.";
+      setError(msg);
+      notify.error(msg);
     } finally {
       setLoading(false);
     }

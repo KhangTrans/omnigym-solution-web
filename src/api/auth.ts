@@ -39,5 +39,15 @@ export const authApi = {
   // Đặt lại mật khẩu mới
   resetPassword: (payload: any) => {
     return api.post('/auth/reset-password', payload);
+  },
+
+  // Đổi mật khẩu (dành cho user đã đăng nhập)
+  changePassword: (payload: any) => {
+    return api.post('/auth/change-password', payload);
+  },
+
+  // Cập nhật hồ sơ người dùng
+  updateProfile: (payload: any) => {
+    return api.put('/users/profile', payload);
   }
 };

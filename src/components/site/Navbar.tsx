@@ -137,6 +137,7 @@ export function Navbar() {
                 <img
                   src={user.avatar_url}
                   alt={user.full_name}
+                  referrerPolicy="no-referrer"
                   className="h-9 w-9 rounded-full border border-primary/20 hover:border-primary/50 transition-colors object-cover ring-2 ring-transparent group-hover:ring-primary/20"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
@@ -230,6 +231,7 @@ export function Navbar() {
                   <img
                     src={user.avatar_url}
                     alt={user.full_name}
+                    referrerPolicy="no-referrer"
                     className="h-10 w-10 rounded-full border border-border"
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;

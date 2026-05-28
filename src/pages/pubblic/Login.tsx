@@ -3,6 +3,7 @@ import { Mail, Lock, Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
 import { authApi } from '../../api/auth';
+import { notify } from '../../utils/notify';
 
 const Login = () => {
   const [loading, setLoading] = useState(false);
@@ -42,6 +43,8 @@ const Login = () => {
       // Phát sự kiện để Navbar cập nhật ngay lập tức
       window.dispatchEvent(new Event('user-login'));
 
+      notify.success(`Chào mừng ${user.full_name || 'bạn'} quay trở lại!`);
+
       // Kiểm tra vai trò từ backend để chuyển hướng
       // Giả định role_id: 1 là Admin, 2 là Staff (hoặc dùng chuỗi 'Admin', 'Staff')
       if (user?.role === 'Admin' || user?.role === 'Staff' || user?.role_id === 1 || user?.role_id === 2) {
@@ -50,7 +53,9 @@ const Login = () => {
         navigate('/');
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Email hoặc mật khẩu không đúng');
+      const msg = err.response?.data?.message || 'Email hoặc mật khẩu không đúng';
+      setError(msg);
+      notify.error(msg);
     } finally {
       setLoading(false);
     }
@@ -66,13 +71,17 @@ const Login = () => {
       localStorage.setItem('user', JSON.stringify(user));
       window.dispatchEvent(new Event('user-login'));
 
+      notify.success("Đăng nhập Google thành công!");
+
       if (user?.role === 'Admin' || user?.role === 'Staff' || user?.role_id === 1 || user?.role_id === 2) {
         navigate('/admin');
       } else {
         navigate('/');
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Đăng nhập Google thất bại. Vui lòng thử lại.');
+      const msg = err.response?.data?.message || 'Đăng nhập Google thất bại. Vui lòng thử lại.';
+      setError(msg);
+      notify.error(msg);
     } finally {
       setLoading(false);
     }
