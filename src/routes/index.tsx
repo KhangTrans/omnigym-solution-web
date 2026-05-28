@@ -2,9 +2,11 @@ import { createBrowserRouter, Navigate, Link } from 'react-router-dom';
 import Register from '../pages/pubblic/Register';
 import Login from '../pages/pubblic/Login';
 import ForgotPassword from '../pages/pubblic/ForgotPassword';
+import ChangePassword from '../pages/customers/ChangePassword';
 import Home from '../pages/pubblic/Home';
 import AuthLayout from '../layouts/AuthLayout';
 import AdminLayout from '../layouts/AdminLayout';
+import CustomerLayout from '../layouts/CustomerLayout';
 import Dashboard from '../pages/admin/Dashboard';
 import AdminProfile from '../pages/admin/Profile';
 import UsersManagement from '../pages/admin/Users';
@@ -25,8 +27,17 @@ export const routesConfig = [
     element: <Home />,
   },
   {
-    path: '/profile',
-    element: <CustomerProfile />,
+    element: <CustomerLayout />,
+    children: [
+      {
+        path: '/profile',
+        element: <CustomerProfile />,
+      },
+      {
+        path: '/change-password',
+        element: <ChangePassword />,
+      },
+    ],
   },
   {
     path: '/admin',
