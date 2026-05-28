@@ -4,7 +4,6 @@ import {
   Users,
   DollarSign,
   Dumbbell,
-  ArrowLeft,
   Library,
   Building2,
   RefreshCcw,
@@ -12,13 +11,15 @@ import {
   Receipt,
   Banknote,
   UserCog,
+  CircleHelp,
+  type LucideIcon,
 } from "lucide-react";
 import { cn } from "../utils/cn";
 
 type NavItem = {
   to: string;
   label: string;
-  icon: any;
+  icon: LucideIcon;
   exact?: boolean;
   group: "Insights" | "Operations" | "Content" | "Account";
 };
@@ -78,6 +79,12 @@ const NAV: NavItem[] = [
     to: "/admin/library",
     label: "Thư viện bài tập",
     icon: Library,
+    group: "Content",
+  },
+  {
+    to: "/admin/faq",
+    label: "FAQ",
+    icon: CircleHelp,
     group: "Content",
   },
   {
@@ -223,3 +230,4 @@ const AdminLayout = () => {
 };
 
 export default AdminLayout;
+

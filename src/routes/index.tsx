@@ -18,6 +18,7 @@ import Refunds from '../pages/admin/Refunds';
 import Moderation from '../pages/admin/Moderation';
 import Exercises from '../pages/admin/Exercises';
 import Library from '../pages/admin/Library';
+import FaqAdminPage from '../pages/admin/FAQ';
 import CustomerProfile from '../pages/customers/Profile';
 
 // JSON-like configuration array
@@ -82,6 +83,10 @@ export const routesConfig = [
       {
         path: 'library',
         element: <Library />,
+      },
+      {
+        path: 'faq',
+        element: <FaqAdminPage />,
       },
       {
         path: 'profile',
