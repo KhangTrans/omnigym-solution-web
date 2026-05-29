@@ -12,6 +12,7 @@ import {
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import { authApi } from '../../api/auth';
+import { rsaService } from '../../utils/rsa';
 
 const ChangePassword = () => {
   const navigate = useNavigate();
@@ -40,9 +41,13 @@ const ChangePassword = () => {
     setLoading(true);
     setError(null);
     try {
+      // Mã hóa RSA trước khi gửi lên server
+      const encryptedOldPassword = await rsaService.encrypt(currentPassword);
+      const encryptedNewPassword = await rsaService.encrypt(newPassword);
+
       await authApi.changePassword({
-        oldPassword: currentPassword,
-        newPassword
+        oldPassword: encryptedOldPassword,
+        newPassword: encryptedNewPassword
       });
       setSuccess("Đổi mật khẩu thành công!");
       

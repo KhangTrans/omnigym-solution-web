@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
 import { authApi } from '../../api/auth';
 import { notify } from '../../utils/notify';
+import { rsaService } from '../../utils/rsa';
 
 const Login = () => {
   const [loading, setLoading] = useState(false);
@@ -34,7 +35,13 @@ const Login = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await authApi.login(formData);
+      // Mã hóa mật khẩu bằng RSA trước khi gửi
+      const encryptedPassword = await rsaService.encrypt(formData.password);
+
+      const response = await authApi.login({
+        ...formData,
+        password: encryptedPassword
+      });
       const { user } = response.data;
       
       // Lưu thông tin user vào localStorage

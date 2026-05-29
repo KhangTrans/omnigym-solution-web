@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { authApi } from '../../api/auth';
 import { notify } from '../../utils/notify';
+import { rsaService } from '../../utils/rsa';
 
 // --- Helper Components ---
 
@@ -138,10 +139,13 @@ const Register = () => {
     setLoading(true);
     setError(null);
     try {
+      // Mã hóa mật khẩu bằng RSA trước khi gửi
+      const encryptedPassword = await rsaService.encrypt(formData.password);
+
       await authApi.register({
         identifier: formData.identifier,
         otp: formData.otp,
-        password: formData.password,
+        password: encryptedPassword,
         personalInfo: {
           full_name: `${formData.firstName} ${formData.lastName}`.trim(),
         }
