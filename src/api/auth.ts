@@ -16,6 +16,11 @@ export const authApi = {
     return api.post('/auth/login', credentials);
   },
 
+  // Lấy Public Key cho RSA
+  getPublicKey: () => {
+    return api.get('/auth/public-key');
+  },
+
   // Đăng nhập bằng Google
   googleLogin: (idToken: string) => {
     return api.post('/auth/google-login', { idToken });
@@ -49,5 +54,10 @@ export const authApi = {
   // Cập nhật hồ sơ người dùng
   updateProfile: (payload: any) => {
     return api.put('/users/profile', payload);
+  },
+
+  // Lấy Public Key cho RSA
+  getPublicKey: () => {
+    return api.get('/auth/public-key');
   }
 };

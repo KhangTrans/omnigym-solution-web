@@ -14,6 +14,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import { authApi } from '../../api/auth';
+import { rsaService } from '../../utils/rsa';
 
 const ForgotPassword = () => {
   const navigate = useNavigate();
@@ -71,10 +72,13 @@ const ForgotPassword = () => {
     setLoading(true);
     setError(null);
     try {
+      // Mã hóa RSA cho mật khẩu mới
+      const encryptedNewPassword = await rsaService.encrypt(newPassword);
+
       await authApi.resetPassword({
         email,
         otp,
-        newPassword
+        newPassword: encryptedNewPassword
       });
       setSuccess("Đổi mật khẩu thành công! Đang chuyển hướng về trang đăng nhập...");
       
