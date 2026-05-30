@@ -23,32 +23,39 @@ function AdminOverview() {
   const { packs } = useAdminPacks();
   const { exercises: library } = useExerciseLibrary();
 
+  const userData = localStorage.getItem('user');
+  const user = userData ? JSON.parse(userData) : null;
+  const isPartner = user?.role === 'Partner' || user?.role === 'Gym' || user?.role_id === 3;
+
   const stats = useMemo(() => {
-    const total = revenue.reduce((s, r) => s + r.amount, 0);
-    const last30 = revenue
+    // If partner, filter revenue and users (this is a mock, usually would call different API or pass user ID)
+    const filteredRevenue = isPartner ? revenue.slice(0, 5) : revenue; // Mock reduction
+    const total = filteredRevenue.reduce((s, r) => s + r.amount, 0);
+    const last30 = filteredRevenue
       .filter((r) => Date.now() - new Date(r.date).getTime() < 30 * 86400000)
       .reduce((s, r) => s + r.amount, 0);
-    const prev30 = revenue
+    const prev30 = filteredRevenue
       .filter((r) => {
         const d = Date.now() - new Date(r.date).getTime();
         return d >= 30 * 86400000 && d < 60 * 86400000;
       })
       .reduce((s, r) => s + r.amount, 0);
     const delta = prev30 ? ((last30 - prev30) / prev30) * 100 : 0;
-    const activeMembers = users.filter((u) => u.status === "active" && u.role === "member").length;
+    const activeMembers = isPartner ? 128 : users.filter((u) => u.status === "active" && u.role === "member").length;
     return { total, last30, delta, activeMembers };
-  }, [revenue, users]);
+  }, [revenue, users, isPartner]);
 
   const sparkline = useMemo(() => {
     const days = 30;
     const buckets: number[] = Array(days).fill(0);
     const now = new Date();
-    revenue.forEach((r) => {
+    const filteredRevenue = isPartner ? revenue.slice(0, 5) : revenue;
+    filteredRevenue.forEach((r) => {
       const diff = Math.floor((now.getTime() - new Date(r.date).getTime()) / 86400000);
       if (diff >= 0 && diff < days) buckets[days - 1 - diff] += r.amount;
     });
     return buckets;
-  }, [revenue]);
+  }, [revenue, isPartner]);
 
   const max = Math.max(1, ...sparkline);
   const points = sparkline
@@ -56,9 +63,9 @@ function AdminOverview() {
     .join(" ");
 
   const cards = [
-    { label: "Tổng doanh thu", value: fmt(stats.total), icon: DollarSign, hint: `${fmt(stats.last30)} last 30d` },
-    { label: "Thành viên đang hoạt động", value: String(stats.activeMembers), icon: Users, hint: `${users.length} total accounts` },
-    { label: "Gói bài tập", value: String(packs.filter((p) => p.publishedToDashboard).length), icon: Dumbbell, hint: `${packs.length} total · live on dashboard` },
+    { label: isPartner ? "Doanh thu cơ sở" : "Tổng doanh thu", value: fmt(stats.total), icon: DollarSign, hint: `${fmt(stats.last30)} last 30d` },
+    { label: isPartner ? "Hội viên của tôi" : "Thành viên đang hoạt động", value: String(stats.activeMembers), icon: Users, hint: isPartner ? "Active in your gyms" : `${users.length} total accounts` },
+    { label: "Gói bài tập", value: String(packs.filter((p) => p.publishedToDashboard).length), icon: Dumbbell, hint: `${packs.length} total` },
     { label: "Bài tập thư viện", value: String(library.length), icon: Library, hint: "Có thể thêm vào gói tập" },
   ];
 
@@ -68,8 +75,10 @@ function AdminOverview() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Overview</h1>
-          <p className="text-sm text-muted-foreground">Snapshot of revenue, members and exercise packs.</p>
+          <h1 className="text-2xl font-bold tracking-tight">Dashboard Overview</h1>
+          <p className="text-sm text-muted-foreground">
+            {isPartner ? "Số liệu thống kê dành cho đối tác phòng tập." : "Snapshot of revenue, members and exercise packs."}
+          </p>
         </div>
         <Badge variant="secondary" className="gap-1">
           <TrendingUp className="h-3 w-3" />

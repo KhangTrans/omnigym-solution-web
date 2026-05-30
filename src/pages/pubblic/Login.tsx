@@ -19,7 +19,8 @@ const Login = () => {
     if (savedUser) {
       try {
         const user = JSON.parse(savedUser);
-        if (user?.role === 'Admin' || user?.role === 'Staff' || user?.role_id === 1 || user?.role_id === 2) {
+        const rolesForAdmin = ['Admin', 'Staff', 'Partner', 'Gym'];
+        if (rolesForAdmin.includes(user?.role) || [1, 2, 3].includes(user?.role_id)) {
           navigate('/admin');
         } else {
           navigate('/');
@@ -53,8 +54,8 @@ const Login = () => {
       notify.success(`Chào mừng ${user.full_name || 'bạn'} quay trở lại!`);
 
       // Kiểm tra vai trò từ backend để chuyển hướng
-      // Giả định role_id: 1 là Admin, 2 là Staff (hoặc dùng chuỗi 'Admin', 'Staff')
-      if (user?.role === 'Admin' || user?.role === 'Staff' || user?.role_id === 1 || user?.role_id === 2) {
+      const rolesForAdmin = ['Admin', 'Staff', 'Partner', 'Gym'];
+      if (rolesForAdmin.includes(user?.role) || [1, 2, 3].includes(user?.role_id)) {
         navigate('/admin');
       } else {
         navigate('/');
@@ -80,7 +81,8 @@ const Login = () => {
 
       notify.success("Đăng nhập Google thành công!");
 
-      if (user?.role === 'Admin' || user?.role === 'Staff' || user?.role_id === 1 || user?.role_id === 2) {
+      const rolesForAdmin = ['Admin', 'Staff', 'Partner', 'Gym'];
+      if (rolesForAdmin.includes(user?.role) || [1, 2, 3].includes(user?.role_id)) {
         navigate('/admin');
       } else {
         navigate('/');
