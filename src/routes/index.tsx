@@ -20,6 +20,28 @@ import Exercises from '../pages/admin/Exercises';
 import Library from '../pages/admin/Library';
 import CustomerProfile from '../pages/customers/Profile';
 
+const DashboardRedirect = () => {
+  const userData = localStorage.getItem('user');
+  if (userData) {
+    try {
+      const user = JSON.parse(userData);
+      // Admin, Staff, and Partner all use the /admin dashboard route now
+      if (
+        user?.role === 'Admin' || 
+        user?.role === 'Staff' || 
+        user?.role === 'Partner' || 
+        user?.role === 'Gym' ||
+        [1, 2, 3].includes(user?.role_id)
+      ) {
+        return <Navigate to="/admin" replace />;
+      }
+    } catch (e) {
+      console.error('Error parsing user data', e);
+    }
+  }
+  return <Navigate to="/" replace />;
+};
+
 // JSON-like configuration array
 export const routesConfig = [
   {
@@ -91,7 +113,7 @@ export const routesConfig = [
   },
   {
     path: '/dashboard',
-    element: <Navigate to="/admin" replace />,
+    element: <DashboardRedirect />,
   },
   {
     element: <AuthLayout />,

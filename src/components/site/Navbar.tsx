@@ -160,14 +160,14 @@ export function Navbar() {
                         <span className="font-medium">Hồ sơ cá nhân</span>
                       </Link>
                       
-                      {/* Thêm link Quản trị nếu là Admin hoặc Staff */}
-                      {(user.role === 'Admin' || user.role === 'Staff' || user.role_id === 1 || user.role_id === 2) && (
+                      {/* Thêm link Quản trị nếu là Admin, Staff hoặc Partner */}
+                      {(user.role === 'Admin' || user.role === 'Staff' || user.role === 'Partner' || user.role === 'Gym' || [1, 2, 3].includes(user?.role_id)) && (
                         <Link
                           to="/admin"
                           className="w-full flex items-center gap-3 px-4 py-2 text-sm text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all"
                         >
                           <Dumbbell className="h-4 w-4" />
-                          <span className="font-medium">Quản trị hệ thống</span>
+                          <span className="font-medium">Trang quản trị</span>
                         </Link>
                       )}
                     </div>
