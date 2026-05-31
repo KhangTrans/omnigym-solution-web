@@ -25,8 +25,12 @@ export default function CustomerLayout() {
         setVerifying(false);
       } catch (error) {
         console.error("Session verification failed", error);
-        localStorage.removeItem('user');
-        navigate('/login');
+        const savedUser = localStorage.getItem('user');
+        if (!savedUser) {
+          navigate('/login');
+        } else {
+          setVerifying(false); // Cho phép xem trang bằng data cũ nếu đã từng login
+        }
       }
     };
 
