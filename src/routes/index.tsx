@@ -20,6 +20,8 @@ import Exercises from '../pages/admin/Exercises';
 import Library from '../pages/admin/Library';
 import FAQ from '../pages/admin/FAQ';
 import CustomerProfile from '../pages/customers/Profile';
+import BranchList from '../pages/admin/branch-management/BranchList';
+import CreateBranch from '../pages/admin/branch-management/CreateBranch';
 
 const DashboardRedirect = () => {
   const userData = localStorage.getItem('user');
@@ -85,6 +87,19 @@ export const routesConfig = [
       {
         path: 'gyms',
         element: <GymsManagement />,
+      },
+      {
+        path: 'branch-management',
+        children: [
+          {
+            index: true,
+            element: <BranchList />,
+          },
+          {
+            path: 'create',
+            element: <CreateBranch />,
+          },
+        ],
       },
       {
         path: 'payouts',

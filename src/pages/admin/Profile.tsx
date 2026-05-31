@@ -11,6 +11,7 @@ import { Loader2, ShieldCheck, Save, LogOut, KeyRound, Lock, UserCog } from "luc
 import { authApi } from "@/api/auth";
 import { toast } from "sonner";
 import { ImageUpload } from "@/components/site/ImageUpload";
+import { uploadImageToCloudinary } from "@/utils/cloudinary";
 
 function AdminProfilePage() {
   const [loading, setLoading] = useState(true);

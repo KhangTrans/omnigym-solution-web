@@ -1,0 +1,40 @@
+import api from './axios';
+
+export interface BranchFacility {
+  facility_name: string;
+  description?: string;
+  icon_url?: string;
+}
+
+export interface BranchImage {
+  image_url: string;
+  is_cover?: boolean;
+  sort_order?: number;
+}
+
+export interface CreateBranchRequest {
+  partner_id: number;
+  branch_name: string;
+  address: string;
+  province: string;
+  district: string;
+  hotline?: string;
+  opening_house?: string;
+  image_url?: string;
+  images?: BranchImage[];
+  facilities?: BranchFacility[];
+}
+
+export const branchesApi = {
+  create: (data: CreateBranchRequest) => {
+    return api.post('/branches', data);
+  },
+  
+  getAll: () => {
+    return api.get('/branches');
+  },
+  
+  getById: (id: string | number) => {
+    return api.get(`/branches/${id}`);
+  }
+};
