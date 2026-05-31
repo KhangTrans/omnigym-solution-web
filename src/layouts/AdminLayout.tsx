@@ -4,7 +4,6 @@ import {
   Users,
   DollarSign,
   Dumbbell,
-  ArrowLeft,
   Library,
   Building2,
   RefreshCcw,
@@ -13,6 +12,7 @@ import {
   Banknote,
   UserCog,
   LogOut,
+  CircleHelp,
 } from "lucide-react";
 import { cn } from "../utils/cn";
 import { toast } from "sonner";
@@ -80,6 +80,12 @@ const NAV: NavItem[] = [
     to: "/admin/library",
     label: "Thư viện bài tập",
     icon: Library,
+    group: "Content",
+  },
+  {
+    to: "/admin/faq",
+    label: "FAQ",
+    icon: CircleHelp,
     group: "Content",
   },
   {
