@@ -53,6 +53,12 @@ const NAV: NavItem[] = [
     group: "Operations",
   },
   {
+    to: "/admin/branch-management",
+    label: "Chi nhánh",
+    icon: Building2,
+    group: "Operations",
+  },
+  {
     to: "/admin/payouts",
     label: "Thanh toán đối tác",
     icon: Banknote,
