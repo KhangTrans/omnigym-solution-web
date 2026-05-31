@@ -89,7 +89,7 @@ export function Navbar() {
   ];
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border/60 bg-background/80 backdrop-blur-md">
+    <header className="sticky top-0 z-50 w-full bg-background/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <a href="#home" className="flex items-center gap-2 font-bold text-lg text-foreground">
           <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] shadow-md">
@@ -145,8 +145,8 @@ export function Navbar() {
                   }}
                 />
                 <div className="hidden group-hover:block absolute top-[100%] right-0 pt-2 w-56 z-50">
-                  <div className="bg-background border border-border rounded-xl shadow-xl py-1 overflow-hidden ring-1 ring-black/5 animate-in fade-in slide-in-from-top-2 duration-200">
-                    <div className="px-4 py-3 border-b border-border bg-muted/30">
+                  <div className="bg-background rounded-xl shadow-xl py-1 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="px-4 py-3 bg-muted/30">
                       <p className="text-sm font-bold text-foreground truncate">{user.full_name}</p>
                       <p className="text-[10px] text-muted-foreground truncate uppercase tracking-wider font-medium">{user.email}</p>
                     </div>
@@ -172,7 +172,7 @@ export function Navbar() {
                       )}
                     </div>
 
-                    <div className="border-t border-border mt-1 py-1">
+                    <div className="mt-1 py-1">
                       <button
                         onClick={signOut}
                         type="button"
