@@ -13,6 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import { cn } from '../../utils/cn';
 import { authApi } from '../../api/auth';
 import { notify } from '../../utils/notify';
+import { uploadImageToCloudinary } from '../../utils/cloudinary';
 
 const Badge = ({ children, className, variant = 'default' }: { children: React.ReactNode; className?: string; variant?: 'default' | 'secondary' }) => {
   const variants = {
@@ -120,36 +121,35 @@ const CustomerProfile = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 2 * 1024 * 1024) {
-      notify.error("Kích thước ảnh không được vượt quá 2MB");
+    if (file.size > 4 * 1024 * 1024) {
+      notify.error("Kích thước ảnh không được vượt quá 4MB");
       return;
     }
 
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      const base64String = reader.result as string;
-      setIsSaving(true);
-      try {
-        const response = await authApi.updateProfile({ avatar_url: base64String });
-        const updatedUser = response.data.user;
-        
-        localStorage.setItem('user', JSON.stringify(updatedUser));
-        setProfile(prev => ({ 
-          ...prev, 
-          avatar_url: updatedUser.avatar_url,
-          full_name: updatedUser.full_name,
-          phone_number: updatedUser.phone_number
-        }));
-        
-        window.dispatchEvent(new Event('user-login'));
-        notify.success("Cập nhật ảnh đại diện thành công");
-      } catch {
-        notify.error("Không thể tải ảnh lên. Vui lòng thử lại.");
-      } finally {
-        setIsSaving(false);
-      }
-    };
-    reader.readAsDataURL(file);
+    setIsSaving(true);
+    try {
+      // Gọi utility upload lên Cloudinary đã tạo
+      const imageUrl = await uploadImageToCloudinary(file);
+      
+      const response = await authApi.updateProfile({ avatar_url: imageUrl });
+      const updatedUser = response.data.user;
+      
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      setProfile(prev => ({ 
+        ...prev, 
+        avatar_url: updatedUser.avatar_url,
+        full_name: updatedUser.full_name,
+        phone_number: updatedUser.phone_number
+      }));
+      
+      window.dispatchEvent(new Event('user-login'));
+      notify.success("Cập nhật ảnh đại diện thành công");
+    } catch (error: any) {
+      console.error("Upload error:", error);
+      notify.error(error.message || "Không thể tải ảnh lên. Vui lòng thử lại.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const initials = profile.full_name

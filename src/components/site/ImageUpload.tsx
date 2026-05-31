@@ -1,11 +1,12 @@
 import * as React from "react";
-import { Image as ImageIcon, Upload, X } from "lucide-react";
+import { Image as ImageIcon, Upload, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { uploadImageToCloudinary } from "@/utils/cloudinary";
 
 type Props = {
   value: string;
-  onChange: (dataUrl: string) => void;
+  onChange: (url: string) => void;
   label?: string;
   required?: boolean;
   maxBytes?: number; // default 4MB
@@ -13,15 +14,6 @@ type Props = {
   previewClassName?: string;
   hint?: string;
 };
-
-function readAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(String(r.result));
-    r.onerror = () => reject(r.error);
-    r.readAsDataURL(file);
-  });
-}
 
 export function ImageUpload({
   value,
@@ -33,20 +25,29 @@ export function ImageUpload({
   previewClassName,
   hint,
 }: Props) {
+  const [isUploading, setIsUploading] = React.useState(false);
+
   async function handle(file: File | null | undefined) {
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      toast.error("Please upload an image file");
+      toast.error("Vui lòng tải lên file hình ảnh");
       return;
     }
     if (file.size > maxBytes) {
-      toast.error(`Image too large (max ${Math.round(maxBytes / 1024 / 1024)}MB)`);
+      toast.error(`Ảnh quá lớn (tối đa ${Math.round(maxBytes / 1024 / 1024)}MB)`);
       return;
     }
+    
     try {
-      onChange(await readAsDataUrl(file));
-    } catch {
-      toast.error("Could not read file");
+      setIsUploading(true);
+      const url = await uploadImageToCloudinary(file);
+      onChange(url);
+      toast.success("Tải ảnh lên thành công");
+    } catch (error: any) {
+      console.error("Upload error:", error);
+      toast.error(error.message || "Không thể tải ảnh lên Cloudinary");
+    } finally {
+      setIsUploading(false);
     }
   }
 
@@ -84,18 +85,26 @@ export function ImageUpload({
           )}
         </div>
         <div className="flex-1 space-y-1">
-          <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm hover:bg-accent">
-            <Upload className="h-4 w-4" />
-            {value ? "Replace image" : "Upload image"}
+          <label className={cn(
+            "inline-flex cursor-pointer items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm hover:bg-accent transition-colors",
+            isUploading && "opacity-50 cursor-not-allowed"
+          )}>
+            {isUploading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Upload className="h-4 w-4" />
+            )}
+            {isUploading ? "Đang tải lên..." : (value ? "Thay đổi ảnh" : "Tải ảnh lên")}
             <input
               type="file"
               accept="image/*"
               className="hidden"
+              disabled={isUploading}
               onChange={(e) => void handle(e.target.files?.[0])}
             />
           </label>
           <p className="text-xs text-muted-foreground">
-            {hint ?? `PNG, JPG or GIF · max ${Math.round(maxBytes / 1024 / 1024)}MB`}
+            {hint ?? `PNG, JPG hoặc GIF · tối đa ${Math.round(maxBytes / 1024 / 1024)}MB`}
           </p>
         </div>
       </div>
