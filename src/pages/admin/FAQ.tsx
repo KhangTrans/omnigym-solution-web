@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import api from "../../api/axios";
 import { Badge } from "../../components/ui/badge";
 import { Card, CardContent } from "../../components/ui/card";
 import { cn } from "../../utils/cn";
-import { ChevronDown, Eye } from "lucide-react";
+import { ChevronDown, Eye, Plus, X } from "lucide-react";
 
 type FaqStatus = "Published" | "Draft";
 
@@ -10,7 +11,7 @@ type FaqItem = {
   id: string;
   question: string;
   answer: string;
-  category: "Hội viên" | "Cá nhân" | "Thanh toán" | "Đặt lịch";
+  category: string;
   status: FaqStatus;
   views: number;
   author: {
@@ -20,84 +21,33 @@ type FaqItem = {
   updatedAt: string;
 };
 
-const FAQS: FaqItem[] = [
-  {
-    id: "faq-1",
-    question: "Tôi có thể tập thử trước khi đăng ký gói hội viên không?",
-    answer:
-      "Có. Khách hàng có thể đăng ký buổi tập thử tại các phòng tập đang hỗ trợ chương trình trải nghiệm. Admin cần kiểm tra tình trạng phòng tập, xác nhận khung giờ còn trống và gửi hướng dẫn check-in cho khách hàng trước buổi tập.",
-    category: "Hội viên",
-    status: "Draft",
-    views: 18,
-    author: { name: "Admin System", email: "admin@omnigym.com" },
-    updatedAt: "2026-05-26",
+type DbFaq = {
+  id: number;
+  title: string;
+  content: string;
+  category: string;
+  view_count?: number;
+  is_published: boolean;
+  created_at?: string;
+  creator?: {
+    full_name?: string;
+    email?: string;
+  };
+};
+
+const mapDbFaqToFaqItem = (faq: DbFaq): FaqItem => ({
+  id: String(faq.id),
+  question: faq.title,
+  answer: faq.content,
+  category: faq.category,
+  status: faq.is_published ? "Published" : "Draft",
+  views: faq.view_count ?? 0,
+  author: {
+    name: faq.creator?.full_name ?? "Admin System",
+    email: faq.creator?.email ?? "",
   },
-  {
-    id: "faq-2",
-    question: "ABC",
-    answer:
-      "Nội dung FAQ hướng dẫn người dùng về cách sử dụng gói hội viên, điều kiện áp dụng và các lưu ý khi đặt lịch tập tại phòng gym.",
-    category: "Hội viên",
-    status: "Published",
-    views: 42,
-    author: { name: "Admin System", email: "admin@omnigym.com" },
-    updatedAt: "2026-05-25",
-  },
-  {
-    id: "faq-3",
-    question: "Tôi có thể tập thử trước khi đăng ký gói hội viên không?",
-    answer:
-      "Người dùng cần đăng nhập, chọn phòng tập mong muốn và gửi yêu cầu tập thử. Hệ thống sẽ ghi nhận thông tin để nhân viên hoặc đối tác phòng tập xác nhận lịch hẹn.",
-    category: "Hội viên",
-    status: "Published",
-    views: 96,
-    author: { name: "Admin System", email: "admin@omnigym.com" },
-    updatedAt: "2026-05-24",
-  },
-  {
-    id: "faq-4",
-    question: "fwe",
-    answer: "FAQ nháp dùng để kiểm tra giao diện hiển thị trong trang quản trị.",
-    category: "Hội viên",
-    status: "Draft",
-    views: 7,
-    author: { name: "Admin System", email: "admin@omnigym.com" },
-    updatedAt: "2026-05-23",
-  },
-  {
-    id: "faq-5",
-    question: "Tôi có thể tập thử trước khi đăng ký gói hội viên không?",
-    answer:
-      "Người dùng có thể cập nhật thông tin cá nhân trong trang hồ sơ. Nếu email hoặc số điện thoại bị sai, admin cần hướng dẫn người dùng xác thực lại thông tin trước khi thay đổi dữ liệu quan trọng.",
-    category: "Cá nhân",
-    status: "Draft",
-    views: 31,
-    author: { name: "Admin System", email: "admin@omnigym.com" },
-    updatedAt: "2026-05-22",
-  },
-  {
-    id: "faq-6",
-    question: "Làm sao để thanh toán gói hội viên?",
-    answer:
-      "Khách hàng có thể thanh toán bằng thẻ, ví điện tử hoặc chuyển khoản tùy theo cấu hình của từng phòng tập. Sau khi giao dịch thành công, hệ thống tự động kích hoạt gói hội viên tương ứng.",
-    category: "Thanh toán",
-    status: "Published",
-    views: 84,
-    author: { name: "Admin System", email: "admin@omnigym.com" },
-    updatedAt: "2026-05-21",
-  },
-  {
-    id: "faq-7",
-    question: "Tôi có thể hủy lịch tập đã đặt không?",
-    answer:
-      "Có. Người dùng có thể hủy lịch trong thời gian cho phép theo chính sách của từng phòng tập. Với các lịch hủy sát giờ, hệ thống có thể áp dụng phí hoặc giới hạn đặt lịch tiếp theo.",
-    category: "Đặt lịch",
-    status: "Published",
-    views: 52,
-    author: { name: "Admin System", email: "admin@omnigym.com" },
-    updatedAt: "2026-05-20",
-  },
-];
+  updatedAt: faq.created_at ? new Date(faq.created_at).toISOString().slice(0, 10) : "",
+});
 
 const STATUS_LABELS: Record<FaqStatus, string> = {
   Published: "Đã xuất bản",
@@ -108,36 +58,141 @@ const FAQ = () => {
   const [statusFilter, setStatusFilter] = useState<"Tất cả" | FaqStatus>("Tất cả");
   const [categoryFilter, setCategoryFilter] = useState<"Tất cả" | FaqItem["category"]>("Tất cả");
   const [openId, setOpenId] = useState<string | null>(null);
+  const [faqs, setFaqs] = useState<FaqItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadMessage, setLoadMessage] = useState("");
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [newQuestion, setNewQuestion] = useState("");
+  const [newAnswer, setNewAnswer] = useState("");
+  const [newCategory, setNewCategory] = useState("");
+  const [newStatus, setNewStatus] = useState<FaqStatus>("Draft");
+  const [createMessage, setCreateMessage] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({
+    question: "",
+    answer: "",
+    category: "",
+  });
+
+  useEffect(() => {
+    const fetchFaqs = async () => {
+      try {
+        setIsLoading(true);
+        setLoadMessage("");
+        const response = await api.get<DbFaq[]>("/faqs");
+        setFaqs(response.data.map(mapDbFaqToFaqItem));
+      } catch {
+        setLoadMessage("Không thể tải danh sách FAQ từ dữ liệu.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchFaqs();
+  }, []);
 
   const filteredFaqs = useMemo(() => {
-    return FAQS.filter((faq) => {
+    return faqs.filter((faq) => {
       const matchesStatus = statusFilter === "Tất cả" || faq.status === statusFilter;
       const matchesCategory = categoryFilter === "Tất cả" || faq.category === categoryFilter;
 
       return matchesStatus && matchesCategory;
     });
-  }, [categoryFilter, statusFilter]);
+  }, [categoryFilter, faqs, statusFilter]);
 
-  const publishedCount = FAQS.filter((faq) => faq.status === "Published").length;
-  const draftCount = FAQS.length - publishedCount;
-  const totalViews = FAQS.reduce((sum, faq) => sum + faq.views, 0);
-  const categories = Array.from(new Set(FAQS.map((faq) => faq.category)));
+  const publishedCount = faqs.filter((faq) => faq.status === "Published").length;
+  const draftCount = faqs.length - publishedCount;
+  const totalViews = faqs.reduce((sum, faq) => sum + faq.views, 0);
+  const categories = Array.from(new Set(faqs.map((faq) => faq.category)));
   const statusOptions: Array<"Tất cả" | FaqStatus> = ["Tất cả", "Published", "Draft"];
+
+  const resetCreateForm = () => {
+    setNewQuestion("");
+    setNewAnswer("");
+    setNewCategory("");
+    setNewStatus("Draft");
+    setCreateMessage("");
+    setFieldErrors({ question: "", answer: "", category: "" });
+  };
+
+  const closeCreateForm = () => {
+    setShowCreateForm(false);
+    resetCreateForm();
+  };
+
+  const handleCreateFaq = async () => {
+    const errors = {
+      question: newQuestion.trim() ? "" : "Vui lòng nhập câu hỏi.",
+      answer: newAnswer.trim() ? "" : "Vui lòng nhập câu trả lời.",
+      category: newCategory.trim() ? "" : "Vui lòng nhập hoặc chọn danh mục.",
+    };
+
+    setFieldErrors(errors);
+
+    if (errors.question || errors.answer || errors.category) {
+      return;
+    }
+
+    setIsCreating(true);
+    setCreateMessage("");
+
+    try {
+      const response = await api.post("/faqs", {
+        title: newQuestion.trim(),
+        content: newAnswer.trim(),
+        category: newCategory.trim(),
+        is_published: newStatus === "Published",
+      });
+
+      const createdFaq = response.data as DbFaq;
+      setFaqs((currentFaqs) => [mapDbFaqToFaqItem(createdFaq), ...currentFaqs]);
+      resetCreateForm();
+      setCreateMessage("Tạo FAQ thành công.");
+    } catch (error: unknown) {
+      const message =
+        typeof error === "object" &&
+        error !== null &&
+        "response" in error &&
+        typeof error.response === "object" &&
+        error.response !== null &&
+        "data" in error.response &&
+        typeof error.response.data === "object" &&
+        error.response.data !== null &&
+        "message" in error.response.data &&
+        typeof error.response.data.message === "string"
+          ? error.response.data.message
+          : "Không thể tạo FAQ. Vui lòng thử lại.";
+
+      setCreateMessage(message);
+    } finally {
+      setIsCreating(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Quản lý FAQ</h1>
-        <p className="text-sm text-muted-foreground">
-          Quản lý câu hỏi thường gặp cho website và ứng dụng người dùng.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Quản lý FAQ</h1>
+          <p className="text-sm text-muted-foreground">
+            Quản lý câu hỏi thường gặp cho website và ứng dụng người dùng.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowCreateForm(true)}
+          className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-md shadow-primary/20 transition hover:bg-primary/90"
+        >
+          <Plus className="h-4 w-4" />
+          Tạo FAQ
+        </button>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card className="border-0 shadow-[0_8px_30px_rgba(15,23,42,0.06)]">
           <CardContent className="p-5">
             <p className="text-sm text-foreground">Tổng FAQ</p>
-            <div className="mt-3 text-3xl font-bold tabular-nums">{FAQS.length}</div>
+            <div className="mt-3 text-3xl font-bold tabular-nums">{faqs.length}</div>
           </CardContent>
         </Card>
         <Card className="border-0 shadow-[0_8px_30px_rgba(15,23,42,0.06)]">
@@ -208,7 +263,19 @@ const FAQ = () => {
             </div>
 
             <div className="divide-y">
-              {filteredFaqs.map((faq) => {
+              {isLoading && (
+                <div className="py-10 text-center text-sm text-muted-foreground">
+                  Đang tải danh sách FAQ...
+                </div>
+              )}
+
+              {!isLoading && loadMessage && (
+                <div className="py-10 text-center text-sm text-red-600">
+                  {loadMessage}
+                </div>
+              )}
+
+              {!isLoading && !loadMessage && filteredFaqs.map((faq) => {
                 const expanded = openId === faq.id;
 
                 return (
@@ -282,7 +349,7 @@ const FAQ = () => {
                 );
               })}
 
-              {filteredFaqs.length === 0 && (
+              {!isLoading && !loadMessage && filteredFaqs.length === 0 && (
                 <div className="py-10 text-center text-sm text-muted-foreground">
                   Không có FAQ phù hợp với bộ lọc đã chọn.
                 </div>
@@ -291,6 +358,151 @@ const FAQ = () => {
           </div>
         </CardContent>
       </Card>
+
+      {showCreateForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-2xl rounded-2xl bg-background shadow-[0_24px_80px_rgba(15,23,42,0.28)]">
+            <div className="flex items-start justify-between gap-4 border-b p-5">
+              <div>
+                <h2 className="text-lg font-semibold">Tạo FAQ mới</h2>
+                <p className="text-sm text-muted-foreground">
+                  Nhập nội dung câu hỏi thường gặp để hiển thị trong hệ thống.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeCreateForm}
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-muted text-muted-foreground transition hover:text-foreground"
+                aria-label="Đóng form tạo FAQ"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="space-y-5 p-5">
+              {createMessage && (
+                <div
+                  className={cn(
+                    "rounded-xl border px-4 py-3 text-sm font-medium",
+                    createMessage.includes("thành công")
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                      : "border-red-200 bg-red-50 text-red-700",
+                  )}
+                >
+                  {createMessage}
+                </div>
+              )}
+
+              <div className="grid gap-4 lg:grid-cols-2">
+                <div className="space-y-2 lg:col-span-2">
+                  <label className="text-sm font-semibold" htmlFor="faq-question">
+                    Câu hỏi
+                  </label>
+                  <input
+                    id="faq-question"
+                    type="text"
+                    value={newQuestion}
+                    onChange={(event) => {
+                      setNewQuestion(event.target.value);
+                      setCreateMessage("");
+                      setFieldErrors((currentErrors) => ({ ...currentErrors, question: "" }));
+                    }}
+                    placeholder="Nhập câu hỏi FAQ..."
+                    className={cn(
+                      "h-11 w-full rounded-xl border bg-background px-4 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20",
+                      fieldErrors.question ? "border-red-300" : "border-border",
+                    )}
+                  />
+                  {fieldErrors.question && <p className="text-xs font-medium text-red-600">{fieldErrors.question}</p>}
+                </div>
+
+                <div className="space-y-2 lg:col-span-2">
+                  <label className="text-sm font-semibold" htmlFor="faq-answer">
+                    Câu trả lời
+                  </label>
+                  <textarea
+                    id="faq-answer"
+                    rows={5}
+                    value={newAnswer}
+                    onChange={(event) => {
+                      setNewAnswer(event.target.value);
+                      setCreateMessage("");
+                      setFieldErrors((currentErrors) => ({ ...currentErrors, answer: "" }));
+                    }}
+                    placeholder="Nhập nội dung câu trả lời..."
+                    className={cn(
+                      "w-full resize-none rounded-xl border bg-background px-4 py-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20",
+                      fieldErrors.answer ? "border-red-300" : "border-border",
+                    )}
+                  />
+                  {fieldErrors.answer && <p className="text-xs font-medium text-red-600">{fieldErrors.answer}</p>}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold" htmlFor="faq-category">
+                    Danh mục
+                  </label>
+                  <input
+                    id="faq-category"
+                    type="text"
+                    list="faq-category-options"
+                    value={newCategory}
+                    onChange={(event) => {
+                      setNewCategory(event.target.value);
+                      setCreateMessage("");
+                      setFieldErrors((currentErrors) => ({ ...currentErrors, category: "" }));
+                    }}
+                    placeholder="Nhập hoặc chọn danh mục FAQ..."
+                    className={cn(
+                      "h-11 w-full rounded-xl border bg-background px-4 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20",
+                      fieldErrors.category ? "border-red-300" : "border-border",
+                    )}
+                  />
+                  {fieldErrors.category && <p className="text-xs font-medium text-red-600">{fieldErrors.category}</p>}
+                  <datalist id="faq-category-options">
+                    {categories.map((category) => (
+                      <option key={category} value={category} />
+                    ))}
+                  </datalist>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold" htmlFor="faq-status">
+                    Trạng thái
+                  </label>
+                  <select
+                    id="faq-status"
+                    value={newStatus}
+                    onChange={(event) => setNewStatus(event.target.value as FaqStatus)}
+                    className="h-11 w-full rounded-xl border border-border bg-background px-4 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  >
+                    <option value="Draft">Bản nháp</option>
+                    <option value="Published">Đã xuất bản</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 border-t pt-4">
+                <button
+                  type="button"
+                  onClick={closeCreateForm}
+                  className="h-10 rounded-xl bg-muted px-4 text-sm font-semibold text-muted-foreground transition hover:text-foreground"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCreateFaq}
+                  disabled={isCreating}
+                  className="h-10 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-md shadow-primary/20 transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {isCreating ? "Đang tạo..." : "Tạo"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
