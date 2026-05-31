@@ -13,18 +13,31 @@ const Login = () => {
   const [formData, setFormData] = useState({ identifier: '', password: '' });
   const navigate = useNavigate();
 
+  const getRoleName = (user: any) => String(user?.role || '').toLowerCase();
+
+  const redirectByRole = (user: any) => {
+    const role = getRoleName(user);
+
+    if (role === 'trainer') {
+      navigate('/trainer-join');
+      return;
+    }
+
+    const adminRoles = ['admin', 'staff', 'partner', 'gym'];
+    if (adminRoles.includes(role) || [1, 2, 3].includes(user?.role_id)) {
+      navigate('/admin');
+    } else {
+      navigate('/');
+    }
+  };
+
   // Kiểm tra nếu đã đăng nhập rồi thì chuyển hướng
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
     if (savedUser) {
       try {
         const user = JSON.parse(savedUser);
-        const rolesForAdmin = ['Admin', 'Staff', 'Partner', 'Gym'];
-        if (rolesForAdmin.includes(user?.role) || [1, 2, 3].includes(user?.role_id)) {
-          navigate('/admin');
-        } else {
-          navigate('/');
-        }
+        redirectByRole(user);
       } catch {
         localStorage.removeItem('user');
       }
@@ -54,12 +67,7 @@ const Login = () => {
       notify.success(`Chào mừng ${user.full_name || 'bạn'} quay trở lại!`);
 
       // Kiểm tra vai trò từ backend để chuyển hướng
-      const rolesForAdmin = ['Admin', 'Staff', 'Partner', 'Gym'];
-      if (rolesForAdmin.includes(user?.role) || [1, 2, 3].includes(user?.role_id)) {
-        navigate('/admin');
-      } else {
-        navigate('/');
-      }
+      redirectByRole(user);
     } catch (err: any) {
       const msg = err.response?.data?.message || 'Email hoặc mật khẩu không đúng';
       setError(msg);
@@ -81,12 +89,7 @@ const Login = () => {
 
       notify.success("Đăng nhập Google thành công!");
 
-      const rolesForAdmin = ['Admin', 'Staff', 'Partner', 'Gym'];
-      if (rolesForAdmin.includes(user?.role) || [1, 2, 3].includes(user?.role_id)) {
-        navigate('/admin');
-      } else {
-        navigate('/');
-      }
+      redirectByRole(user);
     } catch (err: any) {
       const msg = err.response?.data?.message || 'Đăng nhập Google thất bại. Vui lòng thử lại.';
       setError(msg);

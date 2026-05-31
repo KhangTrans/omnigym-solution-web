@@ -4,6 +4,7 @@ import Login from '../pages/pubblic/Login';
 import ForgotPassword from '../pages/pubblic/ForgotPassword';
 import ChangePassword from '../pages/customers/ChangePassword';
 import Home from '../pages/pubblic/Home';
+import TrainerJoin from '../pages/pubblic/TrainerJoin';
 import AuthLayout from '../layouts/AuthLayout';
 import AdminLayout from '../layouts/AdminLayout';
 import CustomerLayout from '../layouts/CustomerLayout';
@@ -28,14 +29,14 @@ const DashboardRedirect = () => {
   if (userData) {
     try {
       const user = JSON.parse(userData);
+      const role = String(user?.role || '').toLowerCase();
+
+      if (role === 'trainer') {
+        return <Navigate to="/trainer-join" replace />;
+      }
+
       // Admin, Staff, and Partner all use the /admin dashboard route now
-      if (
-        user?.role === 'Admin' || 
-        user?.role === 'Staff' || 
-        user?.role === 'Partner' || 
-        user?.role === 'Gym' ||
-        [1, 2, 3].includes(user?.role_id)
-      ) {
+      if (['admin', 'staff', 'partner', 'gym'].includes(role) || [1, 2, 3].includes(user?.role_id)) {
         return <Navigate to="/admin" replace />;
       }
     } catch (e) {
@@ -50,6 +51,10 @@ export const routesConfig = [
   {
     path: '/',
     element: <Home />,
+  },
+  {
+    path: '/trainer-join',
+    element: <TrainerJoin />,
   },
   {
     element: <CustomerLayout />,
