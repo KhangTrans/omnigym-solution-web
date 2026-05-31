@@ -1,9 +1,10 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Mail, 
   Lock, 
   User, 
   ShieldCheck, 
+  Dumbbell,
   Loader2,
   AlertCircle,
   Eye,
@@ -89,6 +90,7 @@ const Register = () => {
     identifier: '',
     otp: '',
     password: '',
+    role: 'customer' as 'customer' | 'trainer',
   });
 
   useEffect(() => {
@@ -146,6 +148,7 @@ const Register = () => {
         identifier: formData.identifier,
         otp: formData.otp,
         password: encryptedPassword,
+        role_id: formData.role === 'trainer' ? 5 : 3,
         personalInfo: {
           full_name: `${formData.firstName} ${formData.lastName}`.trim(),
         }
@@ -160,6 +163,7 @@ const Register = () => {
         identifier: '',
         otp: '',
         password: '',
+        role: 'customer',
       });
       setOtpSent(false);
       setCountdown(0);
@@ -183,11 +187,42 @@ const Register = () => {
           Tạo tài khoản mới
         </h3>
         <p className="text-sm text-slate-500 mt-2">
-            Thử nghiệm 7 ngày miễn phí. Hủy bất cứ lúc nào.
+            Chọn đúng vai trò để OmniGym thiết lập trải nghiệm phù hợp.
         </p>
       </div>
 
       <form onSubmit={handleRegister} className="space-y-4">
+        <div className="space-y-2 text-left">
+          <label className="block text-xs font-semibold text-slate-700">Bạn đăng ký với vai trò</label>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setFormData({ ...formData, role: 'customer' })}
+              className={`rounded-xl border p-3 text-left transition-all ${formData.role === 'customer' ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-500/10' : 'border-slate-200 bg-white hover:bg-slate-50'}`}
+            >
+              <span className="flex items-center gap-2 text-sm font-bold text-slate-900">
+                <User className="h-4 w-4 text-emerald-600" /> Hội viên
+              </span>
+              <span className="mt-1 block text-[11px] leading-snug text-slate-500">Tập luyện, đặt lịch PT và quản lý gói tập.</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setFormData({ ...formData, role: 'trainer' })}
+              className={`rounded-xl border p-3 text-left transition-all ${formData.role === 'trainer' ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-500/10' : 'border-slate-200 bg-white hover:bg-slate-50'}`}
+            >
+              <span className="flex items-center gap-2 text-sm font-bold text-slate-900">
+                <Dumbbell className="h-4 w-4 text-emerald-600" /> Trainer
+              </span>
+              <span className="mt-1 block text-[11px] leading-snug text-slate-500">Tạo hồ sơ PT, chờ duyệt và nhận lịch dạy.</span>
+            </button>
+          </div>
+          {formData.role === 'trainer' && (
+            <div className="rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-700">
+              Tài khoản trainer sẽ cần cập nhật thêm chứng chỉ/kinh nghiệm trong hồ sơ và có thể được OmniGym kiểm duyệt trước khi hiển thị công khai.
+            </div>
+          )}
+        </div>
+
         <div className="grid grid-cols-2 gap-4">
           <MotionField 
             id="firstName" label="Họ" type="text" placeholder="Nguyễn"
