@@ -33,6 +33,8 @@ export type StaffTrainer = {
   /** Sessions delivered this month (mocked). */
   monthlySessions: number;
   active: boolean;
+  approved?: boolean;
+  pendingUserId?: string | number;
   createdAt: string;
 };
 
