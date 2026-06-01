@@ -24,6 +24,7 @@ import FAQ from '../pages/admin/FAQ';
 import CustomerProfile from '../pages/customers/Profile';
 import BranchList from '../pages/admin/branch-management/BranchList';
 import CreateBranch from '../pages/admin/branch-management/CreateBranch';
+import MembershipPackage from '@/pages/admin/MembershipPackage';
 
 const DashboardRedirect = () => {
   const userData = localStorage.getItem('user');
@@ -138,6 +139,10 @@ export const routesConfig = [
       {
         path: 'profile',
         element: <AdminProfile />,
+      },
+      {
+        path: 'membership-packages',
+        element: <MembershipPackage />,
       },
     ],
   },
