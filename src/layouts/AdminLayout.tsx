@@ -53,6 +53,12 @@ const NAV: NavItem[] = [
     group: "Operations",
   },
   {
+    to: "/admin/membership-packages",
+    label: "Gói thành viên",
+    icon: Dumbbell,
+    group: "Operations",
+  },
+  {
     to: "/admin/branch-management",
     label: "Chi nhánh",
     icon: Building2,
