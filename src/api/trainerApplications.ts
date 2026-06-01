@@ -1,6 +1,10 @@
 import api from "./axios";
 
 export const trainerApplicationAPI = {
+  saveDraft: (payload: any) => {
+    return api.post("/trainer-applications/draft", payload);
+  },
+
   submit: (payload: any) => {
     return api.post("/trainer-applications", payload);
   },

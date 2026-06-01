@@ -68,6 +68,7 @@ export default function TrainerJoin() {
     null,
   );
   const [checkingApplication, setCheckingApplication] = useState(true);
+  const [savingDraft, setSavingDraft] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const brand = brands.find((b) => b.id === "omnigym") ?? brands[0] ?? null;
@@ -202,6 +203,47 @@ export default function TrainerJoin() {
     }));
   }
 
+  function buildDraftPayload() {
+    return {
+      bio: form.bio.trim(),
+      specialization: form.specialization.trim(),
+      avatar_url: form.avatar_url || undefined,
+      phone_number: form.phone_number.trim(),
+      address: form.address.trim(),
+      years_experience: Number(form.years_experience) || 0,
+      hourly_rate: Number(form.hourly_rate) || 0,
+      identity_number: form.identity_number.trim(),
+      identity_image_url: form.identity_image_url || undefined,
+      certificates: form.certificates.map((cert) => ({
+        cert_name: cert.cert_name.trim(),
+        issued_by: cert.issued_by.trim(),
+        certificate_number: cert.certificate_number.trim(),
+        image_url: cert.image_url || undefined,
+        issued_at: cert.issued_at || null,
+        expires_at: cert.expires_at || null,
+      })),
+    };
+  }
+
+  async function saveDraft() {
+    if (savingDraft || submitting) return;
+
+    if (!user) return toast.error("Please sign in to save draft.");
+
+    try {
+      setSavingDraft(true);
+      const response = await trainerApplicationAPI.saveDraft(buildDraftPayload());
+      setApplication(response.data.data);
+      toast.success("Draft saved.");
+    } catch (error: any) {
+      const message =
+        error.response?.data?.message || "Could not save trainer draft.";
+      toast.error(message);
+    } finally {
+      setSavingDraft(false);
+    }
+  }
+
   async function submit() {
     if (submitting) return;
 
@@ -288,7 +330,7 @@ export default function TrainerJoin() {
         </Link>
 
         <div className="text-center">
-          <div className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-gradient-primary text-primary-foreground">
+          <div className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-foreground text-background">
             <Dumbbell className="h-6 w-6" />
           </div>
           <h1 className="mt-4 text-3xl font-bold tracking-tight">
@@ -316,7 +358,7 @@ export default function TrainerJoin() {
                 </Button>
                 <Button
                   asChild
-                  className="bg-gradient-primary text-primary-foreground"
+                  className="bg-foreground text-background hover:bg-foreground hover:text-background"
                 >
                   <Link to="/register">Create account</Link>
                 </Button>
@@ -637,9 +679,18 @@ export default function TrainerJoin() {
 
               <div className="flex justify-end gap-2">
                 <Button
+                  type="button"
+                  variant="outline"
+                  onClick={saveDraft}
+                  disabled={savingDraft || submitting}
+                  className="bg-background text-foreground hover:bg-background hover:text-foreground hover:border-input"
+                >
+                  {savingDraft ? "Saving draft..." : "Save draft"}
+                </Button>
+                <Button
                   onClick={submit}
-                  disabled={submitting}
-                  className="bg-gradient-primary text-primary-foreground"
+                  disabled={submitting || savingDraft}
+                  className="bg-foreground text-background hover:bg-foreground hover:text-background"
                 >
                   {submitting
                     ? "Submitting..."
