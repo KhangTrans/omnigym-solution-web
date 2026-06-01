@@ -29,6 +29,10 @@ export const branchesApi = {
   create: (data: CreateBranchRequest) => {
     return api.post('/branches', data);
   },
+
+  update: (id: string | number, data: Partial<CreateBranchRequest>) => {
+    return api.put(`/branches/${id}`, data);
+  },
   
   getAll: () => {
     return api.get('/branches');

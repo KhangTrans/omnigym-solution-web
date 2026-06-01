@@ -310,7 +310,7 @@ export default function CreateBranch() {
                         />
                       )}
                       <div className="relative">
-                        <Button variant="outline" type="button" disabled={isUploading} className="relative">
+                        <Button variant="outline" type="button" disabled={!!isUploading} className="relative">
                           {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
                           Upload ảnh
                           <input
@@ -362,7 +362,7 @@ export default function CreateBranch() {
                           />
                         )}
                         <div className="relative flex-1">
-                          <Button variant="outline" size="sm" type="button" disabled={isUploading} className="w-full">
+                          <Button variant="outline" size="sm" type="button" disabled={!!isUploading} className="w-full">
                             {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Chọn ảnh"}
                             <input
                               type="file"
