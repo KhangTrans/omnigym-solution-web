@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -5,6 +6,7 @@ import {
   DollarSign,
   Dumbbell,
   Library,
+  FileText,
   Building2,
   RefreshCcw,
   ShieldAlert,
@@ -12,15 +14,18 @@ import {
   Banknote,
   UserCog,
   LogOut,
+  Loader2,
   CircleHelp,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { cn } from "../utils/cn";
 import { toast } from "sonner";
+import { authApi } from "../api/auth";
 
 type NavItem = {
   to: string;
   label: string;
-  icon: any;
+  icon: LucideIcon;
   exact?: boolean;
   group: "Insights" | "Operations" | "Content" | "Account";
 };
@@ -89,6 +94,12 @@ const NAV: NavItem[] = [
     group: "Content",
   },
   {
+    to: "/admin/blogs",
+    label: "Bài viết",
+    icon: FileText,
+    group: "Content",
+  },
+  {
     to: "/admin/faq",
     label: "FAQ",
     icon: CircleHelp,
@@ -120,6 +131,7 @@ const AdminLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const pathname = location.pathname;
+  const [verifying, setVerifying] = useState(true);
 
   const userData = localStorage.getItem('user');
   let user = null;
@@ -131,11 +143,32 @@ const AdminLayout = () => {
   
   const isPartner = user?.role === 'Partner' || user?.role === 'Gym' || user?.role_id === 3;
 
-  const handleLogout = () => {
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
-    toast.success("Đã đăng xuất thành công");
-    navigate('/login');
+  useEffect(() => {
+    const verifySession = async () => {
+      try {
+        await authApi.getMe();
+        setVerifying(false);
+      } catch (error) {
+        console.error("Session verification failed", error);
+        localStorage.removeItem('user');
+        navigate('/login');
+      }
+    };
+
+    verifySession();
+  }, [navigate]);
+
+  const handleLogout = async () => {
+    try {
+      await authApi.logout();
+    } catch (error) {
+      console.error("Logout failed", error);
+    } finally {
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
+      toast.success("Đã đăng xuất thành công");
+      navigate('/login');
+    }
   };
 
   const filteredNav = NAV; // Partner now sees everything like logic requested
@@ -145,6 +178,17 @@ const AdminLayout = () => {
     role: isPartner ? "Đối tác" : (user?.role === "Admin" ? "Quản trị hệ thống" : "Nhân viên"),
     avatar: user?.avatar_url || "https://github.com/shadcn.png",
   };
+
+  if (verifying) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm font-medium text-slate-500">Đang xác thực phiên đăng nhập...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground">
