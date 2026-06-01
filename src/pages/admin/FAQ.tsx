@@ -3,7 +3,7 @@ import api from "../../api/axios";
 import { Badge } from "../../components/ui/badge";
 import { Card, CardContent } from "../../components/ui/card";
 import { cn } from "../../utils/cn";
-import { ChevronDown, Edit3, Eye, Plus, Save, X } from "lucide-react";
+import { ChevronDown, Edit3, Eye, Plus, Save, Trash2, X } from "lucide-react";
 
 type FaqStatus = "Published" | "Draft";
 
@@ -124,6 +124,9 @@ const FAQ = () => {
     answer: "",
     category: "",
   });
+  const [deleteMessage, setDeleteMessage] = useState("");
+  const [deletingFaqId, setDeletingFaqId] = useState<string | null>(null);
+  const [pendingDeleteFaq, setPendingDeleteFaq] = useState<FaqItem | null>(null);
 
   useEffect(() => {
     const fetchFaqs = async () => {
@@ -141,6 +144,18 @@ const FAQ = () => {
 
     fetchFaqs();
   }, []);
+
+  useEffect(() => {
+    if (!deleteMessage) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setDeleteMessage("");
+    }, 750);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [deleteMessage]);
 
   const filteredFaqs = useMemo(() => {
     return faqs.filter((faq) => {
@@ -250,6 +265,40 @@ const FAQ = () => {
     }
   };
 
+  const openDeleteConfirm = (faq: FaqItem) => {
+    setPendingDeleteFaq(faq);
+    setDeleteMessage("");
+  };
+
+  const closeDeleteConfirm = () => {
+    if (deletingFaqId) {
+      return;
+    }
+
+    setPendingDeleteFaq(null);
+  };
+
+  const handleDeleteFaq = async () => {
+    if (!pendingDeleteFaq) {
+      return;
+    }
+
+    setDeletingFaqId(pendingDeleteFaq.id);
+    setDeleteMessage("");
+
+    try {
+      await api.delete(`/faqs/${pendingDeleteFaq.id}`);
+      setFaqs((currentFaqs) => currentFaqs.filter((currentFaq) => currentFaq.id !== pendingDeleteFaq.id));
+      setOpenId((currentOpenId) => (currentOpenId === pendingDeleteFaq.id ? null : currentOpenId));
+      setDeleteMessage("Xóa FAQ thành công.");
+      setPendingDeleteFaq(null);
+    } catch (error: unknown) {
+      setDeleteMessage(getApiErrorMessage(error, "Không thể xóa FAQ. Vui lòng thử lại."));
+    } finally {
+      setDeletingFaqId(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -297,6 +346,11 @@ const FAQ = () => {
 
       <Card className="border-0 shadow-[0_8px_30px_rgba(15,23,42,0.06)]">
         <CardContent className="space-y-6 p-5">
+          {deleteMessage && !deleteMessage.includes("thành công") && (
+            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+              {deleteMessage}
+            </div>
+          )}
           <div className="rounded-2xl bg-muted/30 p-4">
             <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-4">
               <div className="min-w-0 space-y-2">
@@ -337,11 +391,11 @@ const FAQ = () => {
 
           <div className="overflow-hidden rounded-md">
             <div className="grid grid-cols-12 border-b px-2 py-3 text-sm font-semibold">
-              <div className="col-span-12 lg:col-span-7">Câu hỏi</div>
-              <div className="hidden text-center lg:col-span-1 lg:block">Trạng thái</div>
-              <div className="hidden text-center lg:col-span-1 lg:block">Danh mục</div>
-              <div className="hidden lg:col-span-2 lg:block">Tác giả</div>
-              <div className="hidden text-right lg:col-span-1 lg:block">Thao tác</div>
+              <div className="col-span-12 lg:col-span-6">Câu hỏi</div>
+              <div className="hidden translate-x-6 text-center lg:col-span-1 lg:block">Trạng thái</div>
+              <div className="hidden translate-x-6 text-center lg:col-span-1 lg:block">Danh mục</div>
+              <div className="hidden translate-x-6 lg:col-span-2 lg:block">Tác giả</div>
+              <div className="hidden text-center lg:col-span-2 lg:block">Thao tác</div>
             </div>
 
             <div className="divide-y">
@@ -366,7 +420,7 @@ const FAQ = () => {
                       <button
                         type="button"
                         onClick={() => setOpenId(expanded ? null : faq.id)}
-                        className="col-span-12 min-w-0 text-left lg:col-span-7"
+                        className="col-span-12 min-w-0 text-left lg:col-span-6"
                       >
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="font-semibold leading-tight">{faq.question}</span>
@@ -377,7 +431,7 @@ const FAQ = () => {
                         <p className="mt-1 truncate text-sm text-muted-foreground">{faq.answer}</p>
                       </button>
 
-                      <div className="col-span-6 flex items-start justify-start lg:col-span-1 lg:justify-center">
+                      <div className="col-span-6 flex items-start justify-start lg:col-span-1 lg:translate-x-6 lg:justify-center">
                         <Badge
                           className={cn(
                             "inline-flex w-24 justify-center rounded-full border-0 px-3 py-1 text-xs",
@@ -390,18 +444,18 @@ const FAQ = () => {
                         </Badge>
                       </div>
 
-                      <div className="col-span-6 flex items-start justify-end lg:col-span-1 lg:justify-center">
+                      <div className="col-span-6 flex items-start justify-end lg:col-span-1 lg:translate-x-6 lg:justify-center">
                         <Badge variant="secondary" className="rounded-full bg-background shadow-sm">
                           {faq.category}
                         </Badge>
                       </div>
 
-                      <div className="col-span-8 text-sm lg:col-span-2">
+                      <div className="col-span-8 text-sm lg:col-span-2 lg:translate-x-6">
                         <div className="font-semibold">{faq.author.name}</div>
                         <div className="text-xs text-muted-foreground">{faq.author.email}</div>
                       </div>
 
-                      <div className="col-span-4 flex justify-end lg:col-span-1">
+                      <div className="col-span-4 flex flex-nowrap justify-end gap-2 lg:col-span-2 lg:justify-center">
                         <button
                           type="button"
                           onClick={() => openUpdateForm(faq)}
@@ -409,6 +463,15 @@ const FAQ = () => {
                         >
                           <Edit3 className="h-3.5 w-3.5" />
                           Sửa
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openDeleteConfirm(faq)}
+                          disabled={deletingFaqId === faq.id}
+                          className="inline-flex h-9 items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 text-xs font-semibold text-red-600 shadow-sm transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-70"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          {deletingFaqId === faq.id ? "Đang xóa" : "Xóa"}
                         </button>
                       </div>
                     </div>
@@ -588,6 +651,83 @@ const FAQ = () => {
                 >
                   <Save className="h-4 w-4" />
                   {isSubmitting ? (isUpdateMode ? "Đang cập nhật..." : "Đang tạo...") : isUpdateMode ? "Lưu cập nhật" : "Tạo"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pendingDeleteFaq && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md overflow-hidden rounded-3xl bg-background shadow-[0_24px_80px_rgba(15,23,42,0.28)]">
+            <div className="border-b bg-red-50 p-6">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="inline-flex rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700">
+                    Xác nhận xóa
+                  </div>
+                  <h2 className="mt-3 text-xl font-bold text-foreground">Xóa FAQ này?</h2>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                    FAQ này sẽ bị xóa khỏi hệ thống. Hành động này không thể hoàn tác.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeDeleteConfirm}
+                  disabled={Boolean(deletingFaqId)}
+                  className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-background/80 text-muted-foreground shadow-sm transition hover:text-foreground disabled:cursor-not-allowed disabled:opacity-70"
+                  aria-label="Đóng xác nhận xóa FAQ"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 p-6">
+              <button
+                type="button"
+                onClick={closeDeleteConfirm}
+                disabled={Boolean(deletingFaqId)}
+                className="h-10 rounded-xl bg-muted px-4 text-sm font-semibold text-muted-foreground transition hover:text-foreground disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteFaq}
+                disabled={Boolean(deletingFaqId)}
+                className="inline-flex h-10 items-center gap-2 rounded-xl bg-red-600 px-4 text-sm font-semibold text-white shadow-md shadow-red-600/20 transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                <Trash2 className="h-4 w-4" />
+                {deletingFaqId ? "Đang xóa..." : "Xóa FAQ"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteMessage.includes("thành công") && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md overflow-hidden rounded-3xl bg-background shadow-[0_24px_80px_rgba(15,23,42,0.28)]">
+            <div className="border-b bg-emerald-50 p-6">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="inline-flex rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
+                    Thành công
+                  </div>
+                  <h2 className="mt-3 text-xl font-bold text-foreground">Xóa FAQ thành công</h2>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                    FAQ đã được xóa khỏi hệ thống.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setDeleteMessage("")}
+                  className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-background/80 text-muted-foreground shadow-sm transition hover:text-foreground"
+                  aria-label="Đóng thông báo xóa FAQ thành công"
+                >
+                  <X className="h-4 w-4" />
                 </button>
               </div>
             </div>
