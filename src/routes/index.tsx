@@ -19,7 +19,7 @@ import Refunds from '../pages/admin/Refunds';
 import Moderation from '../pages/admin/Moderation';
 import Exercises from '../pages/admin/Exercises';
 import Library from '../pages/admin/Library';
-import Blogs from '../pages/admin/Blogs';
+import PostManagement from '../pages/admin/post_management';
 import FAQ from '../pages/admin/FAQ';
 import CustomerProfile from '../pages/customers/Profile';
 import BranchList from '../pages/admin/branch-management/BranchList';
@@ -130,7 +130,7 @@ export const routesConfig = [
       },
       {
         path: 'blogs',
-        element: <Blogs />,
+        element: <PostManagement />,
       },
       {
         path: 'faq',
