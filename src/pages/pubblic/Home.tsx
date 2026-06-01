@@ -4,6 +4,7 @@ import { About } from "../../components/site/About";
 import { Plans } from "../../components/site/Plans";
 import { Testimonials } from "../../components/site/Testimonials";
 import { FinalCTA } from "../../components/site/FinalCTA";
+import { FAQSection } from "../../components/site/FAQSection";
 import { Footer } from "../../components/site/Footer";
 
 export default function Home() {
@@ -15,6 +16,7 @@ export default function Home() {
         <About />
         <Plans />
         <Testimonials />
+        <FAQSection />
         <FinalCTA />
       </main>
       <Footer />

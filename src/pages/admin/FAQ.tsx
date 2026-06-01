@@ -157,6 +157,18 @@ const FAQ = () => {
     return () => window.clearTimeout(timeoutId);
   }, [deleteMessage]);
 
+  useEffect(() => {
+    if (!formMessage.includes("thành công")) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setFormMessage("");
+    }, 1000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [formMessage]);
+
   const filteredFaqs = useMemo(() => {
     return faqs.filter((faq) => {
       const matchesStatus = statusFilter === "Tất cả" || faq.status === statusFilter;
@@ -252,7 +264,6 @@ const FAQ = () => {
         return [savedFaq, ...currentFaqs];
       });
 
-      setOpenId(savedFaq.id);
       setFormMessage(isUpdateMode ? "Cập nhật FAQ thành công." : "Tạo FAQ thành công.");
 
       if (!isUpdateMode) {

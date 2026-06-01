@@ -13,6 +13,7 @@ const useLang = () => ({
       "nav.pricing": "Bảng giá",
       "nav.contact": "Liên hệ",
       "nav.gyms": "Phòng tập",
+      "nav.faq": "FAQ",
       "nav.signin": "Đăng nhập",
       "nav.join": "Tham gia ngay",
       "nav.signout": "Đăng xuất",
@@ -86,6 +87,7 @@ export function Navbar() {
     { label: t("nav.home"), href: "#home" },
     { label: t("nav.pricing"), href: "#pricing" },
     { label: t("nav.contact"), href: "#contact" },
+    { label: t("nav.faq"), href: "#faq" },
   ];
 
   return (
