@@ -86,7 +86,7 @@ export function ImageUpload({
         </div>
         <div className="flex-1 space-y-1">
           <label className={cn(
-            "inline-flex cursor-pointer items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm hover:bg-accent transition-colors",
+            "inline-flex cursor-pointer items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm transition-colors hover:bg-background hover:text-foreground hover:border-input",
             isUploading && "opacity-50 cursor-not-allowed"
           )}>
             {isUploading ? (
