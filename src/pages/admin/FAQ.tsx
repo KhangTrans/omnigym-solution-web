@@ -3,7 +3,7 @@ import api from "../../api/axios";
 import { Badge } from "../../components/ui/badge";
 import { Card, CardContent } from "../../components/ui/card";
 import { cn } from "../../utils/cn";
-import { ChevronDown, Eye, Plus, X } from "lucide-react";
+import { ChevronDown, Edit3, Eye, Plus, Save, X } from "lucide-react";
 
 type FaqStatus = "Published" | "Draft";
 
@@ -29,10 +29,27 @@ type DbFaq = {
   view_count?: number;
   is_published: boolean;
   created_at?: string;
+  updated_at?: string;
   creator?: {
     full_name?: string;
     email?: string;
   };
+};
+
+type FaqFormMode = "create" | "update";
+
+type FaqFormState = {
+  question: string;
+  answer: string;
+  category: string;
+  status: FaqStatus;
+};
+
+const emptyForm: FaqFormState = {
+  question: "",
+  answer: "",
+  category: "",
+  status: "Draft",
 };
 
 const mapDbFaqToFaqItem = (faq: DbFaq): FaqItem => ({
@@ -46,12 +63,47 @@ const mapDbFaqToFaqItem = (faq: DbFaq): FaqItem => ({
     name: faq.creator?.full_name ?? "Admin System",
     email: faq.creator?.email ?? "",
   },
-  updatedAt: faq.created_at ? new Date(faq.created_at).toISOString().slice(0, 10) : "",
+  updatedAt: faq.updated_at
+    ? new Intl.DateTimeFormat("vi-VN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(new Date(faq.updated_at))
+    : faq.created_at
+      ? new Intl.DateTimeFormat("vi-VN", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        }).format(new Date(faq.created_at))
+      : "",
 });
 
 const STATUS_LABELS: Record<FaqStatus, string> = {
   Published: "Đã xuất bản",
   Draft: "Bản nháp",
+};
+
+const getApiErrorMessage = (error: unknown, fallback: string) => {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "response" in error &&
+    typeof error.response === "object" &&
+    error.response !== null &&
+    "data" in error.response &&
+    typeof error.response.data === "object" &&
+    error.response.data !== null &&
+    "message" in error.response.data &&
+    typeof error.response.data.message === "string"
+  ) {
+    return error.response.data.message;
+  }
+
+  return fallback;
 };
 
 const FAQ = () => {
@@ -61,13 +113,12 @@ const FAQ = () => {
   const [faqs, setFaqs] = useState<FaqItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadMessage, setLoadMessage] = useState("");
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [newQuestion, setNewQuestion] = useState("");
-  const [newAnswer, setNewAnswer] = useState("");
-  const [newCategory, setNewCategory] = useState("");
-  const [newStatus, setNewStatus] = useState<FaqStatus>("Draft");
-  const [createMessage, setCreateMessage] = useState("");
-  const [isCreating, setIsCreating] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [formMode, setFormMode] = useState<FaqFormMode>("create");
+  const [editingFaqId, setEditingFaqId] = useState<string | null>(null);
+  const [form, setForm] = useState<FaqFormState>(emptyForm);
+  const [formMessage, setFormMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({
     question: "",
     answer: "",
@@ -105,26 +156,54 @@ const FAQ = () => {
   const totalViews = faqs.reduce((sum, faq) => sum + faq.views, 0);
   const categories = Array.from(new Set(faqs.map((faq) => faq.category)));
   const statusOptions: Array<"Tất cả" | FaqStatus> = ["Tất cả", "Published", "Draft"];
+  const isUpdateMode = formMode === "update";
 
-  const resetCreateForm = () => {
-    setNewQuestion("");
-    setNewAnswer("");
-    setNewCategory("");
-    setNewStatus("Draft");
-    setCreateMessage("");
+  const resetForm = () => {
+    setForm(emptyForm);
+    setEditingFaqId(null);
+    setFormMessage("");
     setFieldErrors({ question: "", answer: "", category: "" });
   };
 
-  const closeCreateForm = () => {
-    setShowCreateForm(false);
-    resetCreateForm();
+  const openCreateForm = () => {
+    resetForm();
+    setFormMode("create");
+    setShowForm(true);
   };
 
-  const handleCreateFaq = async () => {
+  const openUpdateForm = (faq: FaqItem) => {
+    setFormMode("update");
+    setEditingFaqId(faq.id);
+    setForm({
+      question: faq.question,
+      answer: faq.answer,
+      category: faq.category,
+      status: faq.status,
+    });
+    setFormMessage("");
+    setFieldErrors({ question: "", answer: "", category: "" });
+    setShowForm(true);
+  };
+
+  const closeForm = () => {
+    setShowForm(false);
+    resetForm();
+  };
+
+  const updateFormField = <K extends keyof FaqFormState>(field: K, value: FaqFormState[K]) => {
+    setForm((currentForm) => ({ ...currentForm, [field]: value }));
+    setFormMessage("");
+
+    if (field === "question" || field === "answer" || field === "category") {
+      setFieldErrors((currentErrors) => ({ ...currentErrors, [field]: "" }));
+    }
+  };
+
+  const handleSubmitFaq = async () => {
     const errors = {
-      question: newQuestion.trim() ? "" : "Vui lòng nhập câu hỏi.",
-      answer: newAnswer.trim() ? "" : "Vui lòng nhập câu trả lời.",
-      category: newCategory.trim() ? "" : "Vui lòng nhập hoặc chọn danh mục.",
+      question: form.question.trim() ? "" : "Vui lòng nhập câu hỏi.",
+      answer: form.answer.trim() ? "" : "Vui lòng nhập câu trả lời.",
+      category: form.category.trim() ? "" : "Vui lòng nhập hoặc chọn danh mục.",
     };
 
     setFieldErrors(errors);
@@ -133,39 +212,41 @@ const FAQ = () => {
       return;
     }
 
-    setIsCreating(true);
-    setCreateMessage("");
+    setIsSubmitting(true);
+    setFormMessage("");
+
+    const payload = {
+      title: form.question.trim(),
+      content: form.answer.trim(),
+      category: form.category.trim(),
+      is_published: form.status === "Published",
+    };
 
     try {
-      const response = await api.post("/faqs", {
-        title: newQuestion.trim(),
-        content: newAnswer.trim(),
-        category: newCategory.trim(),
-        is_published: newStatus === "Published",
+      const response = isUpdateMode && editingFaqId
+        ? await api.put<DbFaq>(`/faqs/${editingFaqId}`, payload)
+        : await api.post<DbFaq>("/faqs", payload);
+
+      const savedFaq = mapDbFaqToFaqItem(response.data);
+
+      setFaqs((currentFaqs) => {
+        if (isUpdateMode) {
+          return currentFaqs.map((faq) => (faq.id === savedFaq.id ? savedFaq : faq));
+        }
+
+        return [savedFaq, ...currentFaqs];
       });
 
-      const createdFaq = response.data as DbFaq;
-      setFaqs((currentFaqs) => [mapDbFaqToFaqItem(createdFaq), ...currentFaqs]);
-      resetCreateForm();
-      setCreateMessage("Tạo FAQ thành công.");
-    } catch (error: unknown) {
-      const message =
-        typeof error === "object" &&
-        error !== null &&
-        "response" in error &&
-        typeof error.response === "object" &&
-        error.response !== null &&
-        "data" in error.response &&
-        typeof error.response.data === "object" &&
-        error.response.data !== null &&
-        "message" in error.response.data &&
-        typeof error.response.data.message === "string"
-          ? error.response.data.message
-          : "Không thể tạo FAQ. Vui lòng thử lại.";
+      setOpenId(savedFaq.id);
+      setFormMessage(isUpdateMode ? "Cập nhật FAQ thành công." : "Tạo FAQ thành công.");
 
-      setCreateMessage(message);
+      if (!isUpdateMode) {
+        setForm(emptyForm);
+      }
+    } catch (error: unknown) {
+      setFormMessage(getApiErrorMessage(error, isUpdateMode ? "Không thể cập nhật FAQ. Vui lòng thử lại." : "Không thể tạo FAQ. Vui lòng thử lại."));
     } finally {
-      setIsCreating(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -180,7 +261,7 @@ const FAQ = () => {
         </div>
         <button
           type="button"
-          onClick={() => setShowCreateForm(true)}
+          onClick={openCreateForm}
           className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-md shadow-primary/20 transition hover:bg-primary/90"
         >
           <Plus className="h-4 w-4" />
@@ -256,10 +337,11 @@ const FAQ = () => {
 
           <div className="overflow-hidden rounded-md">
             <div className="grid grid-cols-12 border-b px-2 py-3 text-sm font-semibold">
-              <div className="col-span-12 lg:col-span-8">Câu hỏi</div>
+              <div className="col-span-12 lg:col-span-7">Câu hỏi</div>
               <div className="hidden text-center lg:col-span-1 lg:block">Trạng thái</div>
               <div className="hidden text-center lg:col-span-1 lg:block">Danh mục</div>
               <div className="hidden lg:col-span-2 lg:block">Tác giả</div>
+              <div className="hidden text-right lg:col-span-1 lg:block">Thao tác</div>
             </div>
 
             <div className="divide-y">
@@ -280,12 +362,12 @@ const FAQ = () => {
 
                 return (
                   <div key={faq.id}>
-                    <button
-                      type="button"
-                      onClick={() => setOpenId(expanded ? null : faq.id)}
-                      className="grid w-full grid-cols-12 gap-4 px-2 py-4 text-left transition-colors hover:bg-muted/40"
-                    >
-                      <div className="col-span-12 min-w-0 lg:col-span-8">
+                    <div className="grid w-full grid-cols-12 gap-4 px-2 py-4 transition-colors hover:bg-muted/40">
+                      <button
+                        type="button"
+                        onClick={() => setOpenId(expanded ? null : faq.id)}
+                        className="col-span-12 min-w-0 text-left lg:col-span-7"
+                      >
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="font-semibold leading-tight">{faq.question}</span>
                           <ChevronDown
@@ -293,9 +375,9 @@ const FAQ = () => {
                           />
                         </div>
                         <p className="mt-1 truncate text-sm text-muted-foreground">{faq.answer}</p>
-                      </div>
+                      </button>
 
-                      <div className="col-span-6 flex items-start justify-center lg:col-span-1">
+                      <div className="col-span-6 flex items-start justify-start lg:col-span-1 lg:justify-center">
                         <Badge
                           className={cn(
                             "inline-flex w-24 justify-center rounded-full border-0 px-3 py-1 text-xs",
@@ -308,38 +390,49 @@ const FAQ = () => {
                         </Badge>
                       </div>
 
-                      <div className="col-span-6 flex items-start justify-center lg:col-span-1">
+                      <div className="col-span-6 flex items-start justify-end lg:col-span-1 lg:justify-center">
                         <Badge variant="secondary" className="rounded-full bg-background shadow-sm">
                           {faq.category}
                         </Badge>
                       </div>
 
-                      <div className="col-span-12 text-sm lg:col-span-2">
+                      <div className="col-span-8 text-sm lg:col-span-2">
                         <div className="font-semibold">{faq.author.name}</div>
                         <div className="text-xs text-muted-foreground">{faq.author.email}</div>
                       </div>
-                    </button>
+
+                      <div className="col-span-4 flex justify-end lg:col-span-1">
+                        <button
+                          type="button"
+                          onClick={() => openUpdateForm(faq)}
+                          className="inline-flex h-9 items-center gap-2 rounded-xl border border-border bg-background px-3 text-xs font-semibold text-foreground shadow-sm transition hover:bg-muted"
+                        >
+                          <Edit3 className="h-3.5 w-3.5" />
+                          Sửa
+                        </button>
+                      </div>
+                    </div>
 
                     {expanded && (
-                      <div className="grid gap-4 bg-muted/30 px-4 pb-5 pt-1 text-sm lg:grid-cols-[1fr_220px]">
+                      <div className="grid gap-4 bg-muted/30 px-4 pb-5 pt-1 text-sm lg:grid-cols-[minmax(0,1fr)_280px]">
                         <div className="rounded-lg bg-background p-4 shadow-sm">
                           <div className="mb-2 font-semibold">Chi tiết câu trả lời</div>
-                          <p className="leading-7 text-muted-foreground">{faq.answer}</p>
+                          <p className="whitespace-pre-line leading-7 text-muted-foreground">{faq.answer}</p>
                         </div>
                         <div className="rounded-lg bg-background p-4 shadow-sm">
                           <div className="font-semibold">Thông tin</div>
                           <dl className="mt-3 space-y-2 text-muted-foreground">
-                            <div className="flex justify-between gap-3">
-                              <dt>Lượt xem</dt>
-                              <dd className="font-medium text-foreground">{faq.views}</dd>
+                            <div className="grid grid-cols-[92px_minmax(0,1fr)] items-start gap-3">
+                              <dt className="whitespace-nowrap">Lượt xem</dt>
+                              <dd className="text-right font-medium text-foreground">{faq.views}</dd>
                             </div>
-                            <div className="flex justify-between gap-3">
-                              <dt>Cập nhật</dt>
-                              <dd className="font-medium text-foreground">{faq.updatedAt}</dd>
+                            <div className="grid grid-cols-[92px_minmax(0,1fr)] items-start gap-3">
+                              <dt className="whitespace-nowrap">Cập nhật</dt>
+                              <dd className="text-right font-medium text-foreground">{faq.updatedAt}</dd>
                             </div>
-                            <div className="flex justify-between gap-3">
-                              <dt>Trạng thái</dt>
-                              <dd className="font-medium text-foreground">{STATUS_LABELS[faq.status]}</dd>
+                            <div className="grid grid-cols-[92px_minmax(0,1fr)] items-start gap-3">
+                              <dt className="whitespace-nowrap">Trạng thái</dt>
+                              <dd className="text-right font-medium text-foreground">{STATUS_LABELS[faq.status]}</dd>
                             </div>
                           </dl>
                         </div>
@@ -359,37 +452,46 @@ const FAQ = () => {
         </CardContent>
       </Card>
 
-      {showCreateForm && (
+      {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-2xl rounded-2xl bg-background shadow-[0_24px_80px_rgba(15,23,42,0.28)]">
-            <div className="flex items-start justify-between gap-4 border-b p-5">
-              <div>
-                <h2 className="text-lg font-semibold">Tạo FAQ mới</h2>
-                <p className="text-sm text-muted-foreground">
-                  Nhập nội dung câu hỏi thường gặp để hiển thị trong hệ thống.
-                </p>
+          <div className="w-full max-w-3xl overflow-hidden rounded-3xl bg-background shadow-[0_24px_80px_rgba(15,23,42,0.28)]">
+            <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-6">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="inline-flex rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+                    {isUpdateMode ? "Cập nhật nội dung" : "Nội dung mới"}
+                  </div>
+                  <h2 className="mt-3 text-xl font-bold">
+                    {isUpdateMode ? "Cập nhật FAQ" : "Tạo FAQ mới"}
+                  </h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {isUpdateMode
+                      ? "Chỉnh sửa câu hỏi, câu trả lời, danh mục và trạng thái xuất bản."
+                      : "Nhập nội dung câu hỏi thường gặp để hiển thị trong hệ thống."}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeForm}
+                  className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-background/80 text-muted-foreground shadow-sm transition hover:text-foreground"
+                  aria-label="Đóng form FAQ"
+                >
+                  <X className="h-4 w-4" />
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={closeCreateForm}
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-muted text-muted-foreground transition hover:text-foreground"
-                aria-label="Đóng form tạo FAQ"
-              >
-                <X className="h-4 w-4" />
-              </button>
             </div>
 
-            <div className="space-y-5 p-5">
-              {createMessage && (
+            <div className="space-y-5 p-6">
+              {formMessage && (
                 <div
                   className={cn(
                     "rounded-xl border px-4 py-3 text-sm font-medium",
-                    createMessage.includes("thành công")
+                    formMessage.includes("thành công")
                       ? "border-emerald-200 bg-emerald-50 text-emerald-700"
                       : "border-red-200 bg-red-50 text-red-700",
                   )}
                 >
-                  {createMessage}
+                  {formMessage}
                 </div>
               )}
 
@@ -401,12 +503,8 @@ const FAQ = () => {
                   <input
                     id="faq-question"
                     type="text"
-                    value={newQuestion}
-                    onChange={(event) => {
-                      setNewQuestion(event.target.value);
-                      setCreateMessage("");
-                      setFieldErrors((currentErrors) => ({ ...currentErrors, question: "" }));
-                    }}
+                    value={form.question}
+                    onChange={(event) => updateFormField("question", event.target.value)}
                     placeholder="Nhập câu hỏi FAQ..."
                     className={cn(
                       "h-11 w-full rounded-xl border bg-background px-4 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20",
@@ -422,13 +520,9 @@ const FAQ = () => {
                   </label>
                   <textarea
                     id="faq-answer"
-                    rows={5}
-                    value={newAnswer}
-                    onChange={(event) => {
-                      setNewAnswer(event.target.value);
-                      setCreateMessage("");
-                      setFieldErrors((currentErrors) => ({ ...currentErrors, answer: "" }));
-                    }}
+                    rows={7}
+                    value={form.answer}
+                    onChange={(event) => updateFormField("answer", event.target.value)}
                     placeholder="Nhập nội dung câu trả lời..."
                     className={cn(
                       "w-full resize-none rounded-xl border bg-background px-4 py-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20",
@@ -446,12 +540,8 @@ const FAQ = () => {
                     id="faq-category"
                     type="text"
                     list="faq-category-options"
-                    value={newCategory}
-                    onChange={(event) => {
-                      setNewCategory(event.target.value);
-                      setCreateMessage("");
-                      setFieldErrors((currentErrors) => ({ ...currentErrors, category: "" }));
-                    }}
+                    value={form.category}
+                    onChange={(event) => updateFormField("category", event.target.value)}
                     placeholder="Nhập hoặc chọn danh mục FAQ..."
                     className={cn(
                       "h-11 w-full rounded-xl border bg-background px-4 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20",
@@ -472,8 +562,8 @@ const FAQ = () => {
                   </label>
                   <select
                     id="faq-status"
-                    value={newStatus}
-                    onChange={(event) => setNewStatus(event.target.value as FaqStatus)}
+                    value={form.status}
+                    onChange={(event) => updateFormField("status", event.target.value as FaqStatus)}
                     className="h-11 w-full rounded-xl border border-border bg-background px-4 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
                   >
                     <option value="Draft">Bản nháp</option>
@@ -482,21 +572,22 @@ const FAQ = () => {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3 border-t pt-4">
+              <div className="flex flex-wrap justify-end gap-3 border-t pt-4">
                 <button
                   type="button"
-                  onClick={closeCreateForm}
+                  onClick={closeForm}
                   className="h-10 rounded-xl bg-muted px-4 text-sm font-semibold text-muted-foreground transition hover:text-foreground"
                 >
                   Hủy
                 </button>
                 <button
                   type="button"
-                  onClick={handleCreateFaq}
-                  disabled={isCreating}
-                  className="h-10 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-md shadow-primary/20 transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-70"
+                  onClick={handleSubmitFaq}
+                  disabled={isSubmitting}
+                  className="inline-flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-md shadow-primary/20 transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-70"
                 >
-                  {isCreating ? "Đang tạo..." : "Tạo"}
+                  <Save className="h-4 w-4" />
+                  {isSubmitting ? (isUpdateMode ? "Đang cập nhật..." : "Đang tạo...") : isUpdateMode ? "Lưu cập nhật" : "Tạo"}
                 </button>
               </div>
             </div>
