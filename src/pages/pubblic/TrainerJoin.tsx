@@ -330,7 +330,7 @@ export default function TrainerJoin() {
         </Link>
 
         <div className="text-center">
-          <div className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-foreground text-background">
+          <div className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-primary text-primary-foreground">
             <Dumbbell className="h-6 w-6" />
           </div>
           <h1 className="mt-4 text-3xl font-bold tracking-tight">
@@ -358,7 +358,7 @@ export default function TrainerJoin() {
                 </Button>
                 <Button
                   asChild
-                  className="bg-foreground text-background hover:bg-foreground hover:text-background"
+                  className="bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground"
                 >
                   <Link to="/register">Create account</Link>
                 </Button>
@@ -690,7 +690,7 @@ export default function TrainerJoin() {
                 <Button
                   onClick={submit}
                   disabled={submitting || savingDraft}
-                  className="bg-foreground text-background hover:bg-foreground hover:text-background"
+                  className="bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground"
                 >
                   {submitting
                     ? "Submitting..."

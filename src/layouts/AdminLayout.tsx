@@ -16,6 +16,7 @@ import {
   LogOut,
   Loader2,
   CircleHelp,
+  ClipboardCheck,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "../utils/cn";
@@ -67,6 +68,12 @@ const NAV: NavItem[] = [
     to: "/admin/branch-management",
     label: "Chi nhánh",
     icon: Building2,
+    group: "Operations",
+  },
+  {
+    to: "/admin/trainer-applications",
+    label: "Duyệt Trainer",
+    icon: ClipboardCheck,
     group: "Operations",
   },
   {
