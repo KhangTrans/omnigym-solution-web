@@ -1,5 +1,5 @@
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AxiosError } from "axios";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,21 +24,59 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Lock, Unlock } from "lucide-react";
-import { usersApi, type ApiUser, type UserStatus } from "@/api/users";
+import {
+  usersApi,
+  type ApiUser,
+  type UserStatus,
+  type PaginationMeta,
+} from "@/api/users";
 import { toast } from "sonner";
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+const PAGE_LIMIT = 15;
+
+type RoleFilter = "all" | "Customer" | "Trainer" | "Staff";
+type StatusFilter = "all" | "active" | "locked";
 
 const normalizeStatus = (status?: string): UserStatus =>
   String(status || "").toLowerCase() === "active" ? "active" : "locked";
 
+// ─── Component ────────────────────────────────────────────────────────────────
 function UsersPage() {
   const navigate = useNavigate();
+
+  // ── Data state ──
   const [users, setUsers] = useState<ApiUser[]>([]);
-  const [query, setQuery] = useState("");
+  const [pagination, setPagination] = useState<PaginationMeta>({
+    total: 0,
+    page: 1,
+    limit: PAGE_LIMIT,
+    totalPages: 1,
+  });
   const [loading, setLoading] = useState(false);
+
+  // ── Filter + search state ──
+  const [query, setQuery] = useState("");
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // ── Lock/Unlock state ──
   const [pendingIds, setPendingIds] = useState<Set<number>>(new Set());
   const [confirmUser, setConfirmUser] = useState<ApiUser | null>(null);
 
+  // Ref to the card top — used for scroll-to-top on page change
+  const tableTopRef = useRef<HTMLDivElement>(null);
+
+  // ─── Error handler ────────────────────────────────────────────────────────
   const handleApiError = useCallback(
     (error: unknown, options?: { onNotFound?: () => void }) => {
       const axiosError = error as AxiosError<{ message?: string }>;
@@ -53,18 +91,15 @@ function UsersPage() {
         navigate("/login");
         return;
       }
-
       if (status === 403) {
         toast.error("Bạn không có quyền thực hiện thao tác này");
         return;
       }
-
       if (status === 404) {
         toast.error(axiosError.response.data?.message || "Không tìm thấy người dùng");
         options?.onNotFound?.();
         return;
       }
-
       if (status >= 500) {
         toast.error("Lỗi máy chủ. Vui lòng thử lại sau.");
         return;
@@ -75,38 +110,59 @@ function UsersPage() {
     [navigate],
   );
 
-  const fetchUsers = useCallback(async () => {
-    try {
-      setLoading(true);
-      const response = await usersApi.list();
-      setUsers(response.data || []);
-    } catch (error) {
-      handleApiError(error);
-    } finally {
-      setLoading(false);
-    }
-  }, [handleApiError]);
+  // ─── Fetch (gọi BE với đầy đủ params) ─────────────────────────────────────
+  const fetchUsers = useCallback(
+    async (page: number, role: RoleFilter, status: StatusFilter, search: string) => {
+      try {
+        setLoading(true);
 
-  useEffect(() => {
-    void fetchUsers();
-  }, [fetchUsers]);
+        const params: Record<string, string | number> = {
+          page,
+          limit: PAGE_LIMIT,
+        };
 
-  const filtered = useMemo(() => {
-    const q = query.toLowerCase().trim();
-    if (!q) return users;
-    return users.filter((u) => {
-      const name = u.full_name || u.email || u.phone_number || "";
-      const role = u.role?.role_name || "";
-      const status = normalizeStatus(u.status);
-      return [name, u.email || "", role, status].some((v) => v.toLowerCase().includes(q));
-    });
-  }, [users, query]);
+        // Truyền role filter lên BE (nếu "all" thì không truyền → BE tự exclude Admin/Partner)
+        if (role !== "all") params.role = role;
 
-  const activeCount = useMemo(
-    () => users.filter((u) => normalizeStatus(u.status) === "active").length,
-    [users],
+        // Truyền status filter lên BE
+        if (status !== "all") params.status = status;
+
+        // Search query truyền lên BE (nếu API hỗ trợ) — hiện tại lọc thêm ở FE
+        if (search.trim()) params.search = search.trim();
+
+        const response = await usersApi.list(params);
+        const { data, pagination: meta } = response.data;
+
+        setUsers(data);
+        setPagination(meta);
+      } catch (error) {
+        handleApiError(error);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [handleApiError],
   );
 
+  // ─── Fetch khi bất kỳ filter / trang thay đổi ─────────────────────────────
+  useEffect(() => {
+    void fetchUsers(currentPage, roleFilter, statusFilter, query);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, roleFilter, statusFilter]);
+
+  // Khi search/filter thay đổi → reset về trang 1 rồi fetch
+  // Dùng timeout nhỏ để debounce ô search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setCurrentPage(1);
+      void fetchUsers(1, roleFilter, statusFilter, query);
+    }, 300);
+
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query]);
+
+  // ─── Lock / Unlock ─────────────────────────────────────────────────────────
   const setPending = (userId: number, pending: boolean) => {
     setPendingIds((prev) => {
       const next = new Set(prev);
@@ -123,14 +179,17 @@ function UsersPage() {
     try {
       setPending(user.id, true);
       await usersApi.updateStatus(user.id, nextStatus);
+
+      // Cập nhật local state, không refetch toàn bộ trang
       setUsers((prev) =>
         prev.map((u) => (u.id === user.id ? { ...u, status: nextStatus } : u)),
       );
-      toast.success(
-        nextStatus === "locked" ? "Đã khóa tài khoản" : "Đã mở khóa tài khoản",
-      );
+
+      toast.success(nextStatus === "locked" ? "Đã khóa tài khoản" : "Đã mở khóa tài khoản");
     } catch (error) {
-      handleApiError(error, { onNotFound: () => void fetchUsers() });
+      handleApiError(error, {
+        onNotFound: () => void fetchUsers(currentPage, roleFilter, statusFilter, query),
+      });
     } finally {
       setPending(user.id, false);
     }
@@ -142,28 +201,85 @@ function UsersPage() {
       : "Bạn có chắc muốn mở khóa tài khoản này không?"
     : "";
 
+  // ─── Pagination helpers ────────────────────────────────────────────────────
+  const goToPage = (page: number) => {
+    if (page < 1 || page > pagination.totalPages) return;
+    setCurrentPage(page);
+    // Scroll về đầu bảng — chỉ khi user bấm chuyển trang
+    tableTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const startItem = (pagination.page - 1) * pagination.limit + 1;
+  const endItem = Math.min(pagination.page * pagination.limit, pagination.total);
+
+  // ─── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Users</h1>
           <p className="text-sm text-muted-foreground">
-            {users.length} accounts · {activeCount} active
+            {pagination.total} accounts
           </p>
         </div>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Members & staff</CardTitle>
+          <CardTitle className="text-base">Members &amp; staff</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Input
-            placeholder="Search by name, email, role…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-          <div className="rounded-md bg-card shadow-[0_2px_10px_rgba(15,23,42,0.10)]">
+
+          {/* ── Toolbar: Search + Role filter + Status filter ── */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              id="users-search"
+              placeholder="Search by name, email…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="min-w-[180px] flex-1"
+            />
+
+            {/* Filter theo Role */}
+            <Select
+              value={roleFilter}
+              onValueChange={(v) => {
+                setRoleFilter(v as RoleFilter);
+                setCurrentPage(1);
+              }}
+            >
+              <SelectTrigger id="users-role-filter" className="w-[140px]">
+                <SelectValue placeholder="Role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All roles</SelectItem>
+                <SelectItem value="Customer">Customer</SelectItem>
+                <SelectItem value="Trainer">Trainer</SelectItem>
+                <SelectItem value="Staff">Staff</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Filter theo Status */}
+            <Select
+              value={statusFilter}
+              onValueChange={(v) => {
+                setStatusFilter(v as StatusFilter);
+                setCurrentPage(1);
+              }}
+            >
+              <SelectTrigger id="users-status-filter" className="w-[140px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All statuses</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="locked">Locked</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* ── Table ── */}
+          <div ref={tableTopRef} className="rounded-md bg-card shadow-[0_2px_10px_rgba(15,23,42,0.10)]">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -182,8 +298,8 @@ function UsersPage() {
                       Đang tải...
                     </TableCell>
                   </TableRow>
-                ) : (
-                  filtered.map((u) => {
+                ) : users.length > 0 ? (
+                  users.map((u) => {
                     const name = u.full_name || u.email || u.phone_number || "Unknown";
                     const roleName = u.role?.role_name || "Unknown";
                     const status = normalizeStatus(u.status);
@@ -223,20 +339,63 @@ function UsersPage() {
                       </TableRow>
                     );
                   })
-                )}
-                {!loading && filtered.length === 0 && (
+                ) : (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-8">
-                      No users found.
+                    <TableCell
+                      colSpan={6}
+                      className="text-center text-sm text-muted-foreground py-10"
+                    >
+                      {roleFilter !== "all" || statusFilter !== "all" || query
+                        ? "Không tìm thấy người dùng phù hợp với bộ lọc hiện tại."
+                        : "Chưa có người dùng nào."}
                     </TableCell>
                   </TableRow>
                 )}
               </TableBody>
             </Table>
           </div>
+
+          {/* ── Pagination — chỉ hiển thị khi có hơn 1 trang ── */}
+          {!loading && pagination.total > PAGE_LIMIT && (
+            <div className="flex items-center justify-between gap-2 pt-1">
+              <p className="text-sm text-muted-foreground">
+                Hiển thị{" "}
+                <span className="font-medium">
+                  {pagination.total === 0 ? 0 : startItem}–{endItem}
+                </span>{" "}
+                trong tổng số{" "}
+                <span className="font-medium">{pagination.total}</span> tài khoản
+              </p>
+              <div className="flex items-center gap-1">
+                <Button
+                  id="users-page-prev"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => goToPage(currentPage - 1)}
+                  disabled={currentPage === 1 || loading}
+                >
+                  Trước
+                </Button>
+                <span className="min-w-[90px] text-center text-sm tabular-nums">
+                  Trang {pagination.page} / {pagination.totalPages}
+                </span>
+                <Button
+                  id="users-page-next"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => goToPage(currentPage + 1)}
+                  disabled={currentPage === pagination.totalPages || loading}
+                >
+                  Sau
+                </Button>
+              </div>
+            </div>
+          )}
+
         </CardContent>
       </Card>
 
+      {/* ── Confirm Lock/Unlock dialog ── */}
       <AlertDialog
         open={Boolean(confirmUser)}
         onOpenChange={(open) => {
