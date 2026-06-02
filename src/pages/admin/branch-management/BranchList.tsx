@@ -9,6 +9,8 @@ import {
   Plus,
   Search,
   Phone,
+  Trash2,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,6 +59,19 @@ type BranchRecord = {
   image_url?: string | null;
 };
 
+type BranchImageDraft = {
+  image_url: string;
+  is_cover?: boolean;
+  sort_order?: number;
+};
+
+type BranchFacilityDraft = {
+  facility_name: string;
+  description?: string;
+  icon_url?: string;
+  images: BranchImageDraft[];
+};
+
 type BranchDraft = {
   partner_id: number;
   branch_name: string;
@@ -66,6 +81,8 @@ type BranchDraft = {
   hotline: string;
   opening_house: string;
   image_url: string;
+  images: BranchImageDraft[];
+  facilities: BranchFacilityDraft[];
 };
 
 const emptyDraft = (partnerId = 1): BranchDraft => ({
@@ -77,6 +94,8 @@ const emptyDraft = (partnerId = 1): BranchDraft => ({
   hotline: "",
   opening_house: "06:00 - 22:00",
   image_url: "",
+  images: [],
+  facilities: [],
 });
 
 export default function BranchList() {
@@ -160,19 +179,34 @@ export default function BranchList() {
     setOpen(true);
   }
 
-  function startEdit(branch: BranchRecord) {
-    setEditingId(branch.id);
-    setDraft({
-      partner_id: partnerId,
-      branch_name: branch.branch_name ?? "",
-      address: branch.address ?? "",
-      province: branch.province ?? "",
-      district: branch.district ?? "",
-      hotline: branch.hotline ?? "",
-      opening_house: branch.opening_house ?? "06:00 - 22:00",
-      image_url: branch.image_url ?? "",
-    });
-    setOpen(true);
+  async function startEdit(branch: BranchRecord) {
+    try {
+      setEditingId(branch.id);
+      setDraft(emptyDraft(partnerId));
+      setOpen(true);
+
+      const response = await branchesApi.getById(branch.id);
+      const fullBranch = response.data?.data ?? response.data;
+
+      if (fullBranch) {
+        setDraft({
+          partner_id: Number(fullBranch.partner_id || partnerId),
+          branch_name: fullBranch.branch_name ?? "",
+          address: fullBranch.address ?? "",
+          province: fullBranch.province ?? "",
+          district: fullBranch.district ?? "",
+          hotline: fullBranch.hotline ?? "",
+          opening_house: fullBranch.opening_house ?? "06:00 - 22:00",
+          image_url: fullBranch.image_url ?? "",
+          images: fullBranch.images ?? [],
+          facilities: fullBranch.facilities ?? [],
+        });
+      }
+    } catch (error) {
+      console.error("Failed to load branch details for editing", error);
+      toast.error("Không thể tải chi tiết chi nhánh để chỉnh sửa");
+      setOpen(false);
+    }
   }
 
   async function openDetail(id: number | string) {
@@ -219,6 +253,8 @@ export default function BranchList() {
         hotline: draft.hotline.trim() || undefined,
         opening_house: draft.opening_house.trim(),
         image_url: draft.image_url.trim(),
+        images: draft.images,
+        facilities: draft.facilities,
       };
 
       if (editingId !== null) {
@@ -239,17 +275,124 @@ export default function BranchList() {
     }
   }
 
-  async function handleImageSelect(file: File | null | undefined) {
+  async function handleImageSelect(file: File | null | undefined, index?: number) {
     if (!file) return;
 
     try {
       setUploadingImage(true);
       const imageUrl = await uploadImageToCloudinary(file);
-      setDraft((prev) => ({ ...prev, image_url: imageUrl }));
+      if (index !== undefined) {
+        setDraft((prev) => {
+          const newImages = [...prev.images];
+          newImages[index] = { ...newImages[index], image_url: imageUrl };
+          return { ...prev, images: newImages };
+        });
+      } else {
+        setDraft((prev) => ({ ...prev, image_url: imageUrl }));
+      }
       toast.success("Upload ảnh thành công");
     } catch (error) {
       console.error("Failed to upload image", error);
       toast.error("Upload ảnh thất bại");
+    } finally {
+      setUploadingImage(false);
+    }
+  }
+
+  const addImage = () => {
+    setDraft((prev) => ({
+      ...prev,
+      images: [...prev.images, { image_url: "", is_cover: false, sort_order: prev.images.length + 1 }]
+    }));
+  };
+
+  const removeImage = (index: number) => {
+    setDraft((prev) => ({
+      ...prev,
+      images: prev.images.filter((_, i) => i !== index)
+    }));
+  };
+
+  const toggleCover = (index: number) => {
+    setDraft((prev) => {
+      const newImages = prev.images.map((img, i) => ({
+        ...img,
+        is_cover: i === index ? !img.is_cover : false
+      }));
+      return { ...prev, images: newImages };
+    });
+  };
+
+  const addFacility = () => {
+    setDraft((prev) => ({
+      ...prev,
+      facilities: [...prev.facilities, { facility_name: "", description: "", images: [] }]
+    }));
+  };
+
+  const removeFacility = (index: number) => {
+    setDraft((prev) => ({
+      ...prev,
+      facilities: prev.facilities.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateFacility = (index: number, field: 'facility_name' | 'description', value: string) => {
+    setDraft((prev) => {
+      const newFacilities = [...prev.facilities];
+      newFacilities[index] = { ...newFacilities[index], [field]: value };
+      return { ...prev, facilities: newFacilities };
+    });
+  };
+
+  const addFacilityImage = (facilityIndex: number) => {
+    setDraft((prev) => {
+      const newFacilities = [...prev.facilities];
+      const fac = newFacilities[facilityIndex];
+      fac.images = [...(fac.images || []), { image_url: "", is_cover: false, sort_order: (fac.images || []).length + 1 }];
+      return { ...prev, facilities: newFacilities };
+    });
+  };
+
+  const removeFacilityImage = (facilityIndex: number, imageIndex: number) => {
+    setDraft((prev) => {
+      const newFacilities = [...prev.facilities];
+      const fac = newFacilities[facilityIndex];
+      fac.images = fac.images.filter((_, i) => i !== imageIndex);
+      return { ...prev, facilities: newFacilities };
+    });
+  };
+
+  const toggleFacilityCover = (facilityIndex: number, imageIndex: number) => {
+    setDraft((prev) => {
+      const newFacilities = [...prev.facilities];
+      const fac = newFacilities[facilityIndex];
+      fac.images = fac.images.map((img, i) => ({
+        ...img,
+        is_cover: i === imageIndex ? !img.is_cover : false
+      }));
+      return { ...prev, facilities: newFacilities };
+    });
+  };
+
+  async function handleFacilityImageSelect(file: File | null | undefined, facilityIndex: number, imageIndex: number) {
+    if (!file) return;
+
+    try {
+      setUploadingImage(true);
+      const imageUrl = await uploadImageToCloudinary(file);
+      setDraft((prev) => {
+        const newFacilities = [...prev.facilities];
+        const fac = newFacilities[facilityIndex];
+        const newImages = [...(fac.images || [])];
+        newImages[imageIndex] = { ...newImages[imageIndex], image_url: imageUrl };
+        fac.images = newImages;
+        return { ...prev, facilities: newFacilities };
+      });
+      toast.success("Upload ảnh tiện ích thành công");
+    } catch (error) {
+      console.error("Failed to upload facility image", error);
+      toast.error("Upload ảnh tiện ích thất bại");
     } finally {
       setUploadingImage(false);
     }
@@ -446,7 +589,7 @@ export default function BranchList() {
             </DialogHeader>
           </div>
 
-          <div className="grid gap-4 px-6 py-5">
+          <div className="grid gap-4 px-6 py-5 overflow-y-auto max-h-[55vh] [&::-webkit-scrollbar]:w-0 [scrollbar-width:none] [-ms-overflow-style:none]">
             <div className="grid gap-2">
               <Label>Tên chi nhánh</Label>
               <Input
@@ -571,6 +714,212 @@ export default function BranchList() {
                 </div>
               </div>
             </div>
+
+            {/* Thư viện ảnh chi tiết */}
+            <div className="mt-2 border-t pt-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-semibold">Thư viện ảnh chi nhánh</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addImage}
+                >
+                  <Plus className="mr-2 h-3.5 w-3.5" /> Thêm ảnh chi tiết
+                </Button>
+              </div>
+
+              {draft.images.length === 0 ? (
+                <p className="text-xs text-muted-foreground italic">Chưa có hình ảnh chi tiết nào.</p>
+              ) : (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {draft.images.map((img, idx) => (
+                    <div key={idx} className="relative rounded-md border p-3 space-y-2 bg-card">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-2 top-2 h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => removeImage(idx)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+
+                      <div className="flex items-center gap-3 pr-6">
+                        {img.image_url ? (
+                          <img
+                            src={img.image_url}
+                            alt=""
+                            className="h-12 w-16 rounded object-cover border"
+                          />
+                        ) : (
+                          <div className="flex h-12 w-16 items-center justify-center rounded border bg-muted text-muted-foreground">
+                            <ImageIcon className="h-4 w-4" />
+                          </div>
+                        )}
+                        <div className="relative flex-1">
+                          <Button variant="outline" size="sm" type="button" className="w-full relative">
+                            {uploadingImage ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : "Chọn ảnh"}
+                            <input
+                              type="file"
+                              className="absolute inset-0 cursor-pointer opacity-0"
+                              accept="image/*"
+                              onChange={(e) => void handleImageSelect(e.target.files?.[0], idx)}
+                              disabled={uploadingImage}
+                            />
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id={`cover-${idx}`}
+                          checked={img.is_cover || false}
+                          onChange={() => toggleCover(idx)}
+                          className="h-4 w-4 rounded border-gray-300 accent-primary"
+                        />
+                        <label htmlFor={`cover-${idx}`} className="text-xs select-none">
+                          Đặt làm ảnh bìa thư viện
+                        </label>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Tiện ích chi nhánh */}
+            <div className="mt-2 border-t pt-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-semibold">Tiện ích chi nhánh</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addFacility}
+                >
+                  <Plus className="mr-2 h-3.5 w-3.5" /> Thêm tiện ích
+                </Button>
+              </div>
+
+              {draft.facilities.length === 0 ? (
+                <p className="text-xs text-muted-foreground italic">Chưa có tiện ích nào được thêm.</p>
+              ) : (
+                <div className="space-y-3">
+                  {draft.facilities.map((fac, idx) => (
+                    <div key={idx} className="flex flex-col gap-3 rounded-md border p-3 bg-card relative">
+                      {/* Tiện ích Info */}
+                      <div className="flex gap-2 items-start">
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 flex-1">
+                          <div className="space-y-1">
+                            <Label className="text-[10px] text-muted-foreground uppercase">Tên tiện ích*</Label>
+                            <Input
+                              placeholder="Ví dụ: Bể bơi, Wifi..."
+                              value={fac.facility_name}
+                              onChange={(e) => updateFacility(idx, 'facility_name', e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-[10px] text-muted-foreground uppercase">Mô tả ngắn</Label>
+                            <Input
+                              placeholder="Ví dụ: Bể bơi bốn mùa..."
+                              value={fac.description || ""}
+                              onChange={(e) => updateFacility(idx, 'description', e.target.value)}
+                            />
+                          </div>
+                        </div>
+
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0 h-9 w-9 mt-5"
+                          onClick={() => removeFacility(idx)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+
+                      {/* Hình ảnh tiện ích */}
+                      <div className="border-t pt-2 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-semibold text-muted-foreground">Hình ảnh của tiện ích này</span>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-6 text-[10px] px-2"
+                            onClick={() => addFacilityImage(idx)}
+                          >
+                            <Plus className="mr-1 h-3 w-3" /> Thêm ảnh tiện ích
+                          </Button>
+                        </div>
+
+                        {(!fac.images || fac.images.length === 0) ? (
+                          <p className="text-[10px] text-muted-foreground italic pl-1">Chưa có ảnh tiện ích nào.</p>
+                        ) : (
+                          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                            {fac.images.map((img, imgIdx) => (
+                              <div key={imgIdx} className="relative rounded border p-2 bg-background space-y-1">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="absolute right-1 top-1 h-5 w-5 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  onClick={() => removeFacilityImage(idx, imgIdx)}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+
+                                <div className="flex items-center gap-2 pr-6">
+                                  {img.image_url ? (
+                                    <img
+                                      src={img.image_url}
+                                      alt=""
+                                      className="h-8 w-12 rounded object-cover border"
+                                    />
+                                  ) : (
+                                    <div className="flex h-8 w-12 items-center justify-center rounded border bg-muted text-muted-foreground">
+                                      <ImageIcon className="h-3.5 w-3.5" />
+                                    </div>
+                                  )}
+                                  <div className="relative flex-1">
+                                    <Button variant="outline" size="sm" type="button" className="w-full h-7 text-[10px] px-2 relative">
+                                      {uploadingImage ? <Loader2 className="mr-1 h-2.5 w-2.5 animate-spin" /> : "Chọn ảnh"}
+                                      <input
+                                        type="file"
+                                        className="absolute inset-0 cursor-pointer opacity-0"
+                                        accept="image/*"
+                                        onChange={(e) => void handleFacilityImageSelect(e.target.files?.[0], idx, imgIdx)}
+                                        disabled={uploadingImage}
+                                      />
+                                    </Button>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-1.5 pl-0.5">
+                                  <input
+                                    type="checkbox"
+                                    id={`fac-cover-${idx}-${imgIdx}`}
+                                    checked={img.is_cover || false}
+                                    onChange={() => toggleFacilityCover(idx, imgIdx)}
+                                    className="h-3 w-3 rounded border-gray-300 accent-primary"
+                                  />
+                                  <label htmlFor={`fac-cover-${idx}-${imgIdx}`} className="text-[10px] select-none">
+                                    Ảnh bìa tiện ích
+                                  </label>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           <DialogFooter className="border-t bg-muted/30 px-6 py-3">
@@ -634,7 +983,7 @@ export default function BranchList() {
               Đang tải chi tiết...
             </div>
           ) : detailBranch ? (
-            <div className="grid gap-5 px-6 pb-6 pt-4">
+            <div className="grid gap-5 px-6 pb-6 pt-4 overflow-y-auto max-h-[60vh] [&::-webkit-scrollbar]:w-0 [scrollbar-width:none] [-ms-overflow-style:none]">
               <div className="grid gap-3 sm:grid-cols-3">
                 <div>
                   <div className="text-xs uppercase tracking-wide text-muted-foreground">
@@ -670,7 +1019,7 @@ export default function BranchList() {
 
               <div className="space-y-2">
                 <div className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                  Description
+                  Địa chỉ cụ thể
                 </div>
                 <div className="text-base leading-7 text-foreground">
                   {detailBranch.address}
@@ -679,7 +1028,7 @@ export default function BranchList() {
 
               <div className="space-y-3">
                 <div className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                  Location
+                  Khu vực
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Badge variant="secondary" className="rounded-full px-3 py-1 text-xs">
@@ -690,6 +1039,74 @@ export default function BranchList() {
                   </Badge>
                 </div>
               </div>
+
+              {/* Thư viện ảnh chi nhánh */}
+              {(detailBranch as any).images && (detailBranch as any).images.length > 0 && (
+                <div className="space-y-3 border-t pt-4">
+                  <div className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                    Thư viện ảnh chi nhánh
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {(detailBranch as any).images.map((img: any, idx: number) => (
+                      <div key={idx} className="relative aspect-video rounded-md overflow-hidden border bg-muted">
+                        <img
+                          src={img.image_url}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                        {img.is_cover && (
+                          <Badge className="absolute left-1.5 top-1.5 text-[9px] px-1.5 py-0" variant="default">
+                            Bìa
+                          </Badge>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Tiện ích chi nhánh */}
+              {(detailBranch as any).facilities && (detailBranch as any).facilities.length > 0 && (
+                <div className="space-y-3 border-t pt-4">
+                  <div className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                    Tiện ích chi nhánh
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {(detailBranch as any).facilities.map((fac: any, idx: number) => (
+                      <div key={idx} className="rounded-md border p-3 bg-muted/30 space-y-3">
+                        <div>
+                          <div className="font-semibold text-sm text-foreground">{fac.facility_name}</div>
+                          {fac.description && (
+                            <div className="text-xs text-muted-foreground mt-0.5">{fac.description}</div>
+                          )}
+                        </div>
+
+                        {fac.images && fac.images.length > 0 && (
+                          <div className="space-y-1.5">
+                            <div className="text-[10px] text-muted-foreground uppercase font-medium">Ảnh tiện ích:</div>
+                            <div className="grid grid-cols-3 gap-1">
+                              {fac.images.map((img: any, imgIdx: number) => (
+                                <div key={imgIdx} className="relative aspect-video rounded overflow-hidden border bg-muted">
+                                  <img
+                                    src={img.image_url}
+                                    alt=""
+                                    className="h-full w-full object-cover"
+                                  />
+                                  {img.is_cover && (
+                                    <span className="absolute left-1 top-1 bg-primary text-[8px] text-primary-foreground px-1 py-0 rounded">
+                                      Bìa
+                                    </span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* <div className="space-y-3">
                 <div className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
