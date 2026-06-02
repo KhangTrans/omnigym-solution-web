@@ -469,23 +469,6 @@ function MembershipPackage() {
               </div>
             </div>
           )}
-          <DialogFooter className="flex gap-2">
-
-            <Button variant="ghost" onClick={() => setDetailOpen(false)}>
-              Close
-            </Button>
-            <Button
-              onClick={() => {
-                if (selectedPackage) {
-                  startEdit(selectedPackage);
-                  setDetailOpen(false);
-                }
-              }}
-            >
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

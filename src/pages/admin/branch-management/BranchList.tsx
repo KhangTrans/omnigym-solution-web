@@ -602,7 +602,7 @@ export default function BranchList() {
             <div className="absolute bottom-3 left-6 right-6 flex items-end justify-between gap-3">
               <div className="min-w-0">
                 <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
-                  Branch detail
+                  Chi tiết chi nhánh
                 </div>
                 <div className="truncate text-lg font-semibold">
                   {detailBranch?.branch_name || "Chi tiết chi nhánh"}
@@ -626,9 +626,6 @@ export default function BranchList() {
           <div className="px-6 pt-5">
             <DialogHeader className="space-y-1">
               <DialogTitle>Chi tiết chi nhánh</DialogTitle>
-              <DialogDescription>
-                Thông tin đọc từ API chi tiết branch.
-              </DialogDescription>
             </DialogHeader>
           </div>
 

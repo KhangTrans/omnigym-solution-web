@@ -1,5 +1,19 @@
 import api from './axios';
 
+export type PostStatus =
+  | 'Draft'
+  | 'Pending'
+  | 'Approved'
+  | 'Rejected'
+  | 'Published'
+  | 'Public'
+  | 'draft'
+  | 'pending'
+  | 'approved'
+  | 'rejected'
+  | 'published'
+  | 'public';
+
 export type PostImage = {
   id: number;
   image_url: string;
@@ -8,16 +22,21 @@ export type PostImage = {
 export type Post = {
   id: number;
   user_id: number;
-  title: string;
-  content: string;
-  is_published: boolean;
+  title?: string;
+  content?: string;
+  status: PostStatus;
+  /** Backward compatibility for old API responses */
+  is_published?: boolean;
   created_at: string;
   updated_at: string;
   images: PostImage[];
   user?: {
+    id?: number;
     full_name?: string;
+    avatar_url?: string;
     role?: {
       name: string;
+      role_name?: string;
     }
   }
 };
@@ -25,7 +44,7 @@ export type Post = {
 export type CreatePostPayload = {
   title: string;
   content: string;
-  is_published?: boolean;
+  status?: PostStatus;
   images?: string[];
 };
 
@@ -54,6 +73,14 @@ export const postsApi = {
   },
   approve: async (id: number) => {
     const response = await api.patch(`/posts/${id}/approve`);
+    return response.data;
+  },
+  reject: async (id: number, payload?: { note?: string; reason?: string }) => {
+    const response = await api.patch(`/posts/${id}/reject`, payload ?? {});
+    return response.data;
+  },
+  submit: async (id: number) => {
+    const response = await api.patch(`/posts/${id}/submit`);
     return response.data;
   },
 };
