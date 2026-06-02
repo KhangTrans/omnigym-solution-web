@@ -12,8 +12,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { Loader2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Loader2, Send, Save } from "lucide-react";
 import { type Post } from "@/api/posts";
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
@@ -27,8 +27,9 @@ interface PostDialogProps {
   onOpenChange: (open: boolean) => void;
   mode: PostDialogMode;
   post: Post | null;
-  onSubmit: (data: { title: string; content: string; is_published: boolean }) => Promise<void>;
+  onSubmit: (data: { title: string; content: string }, action: "draft" | "submit" | "publish") => Promise<void>;
   isSubmitting: boolean;
+  canPublishDirectly?: boolean;
 }
 
 export function PostDialog({
@@ -38,10 +39,11 @@ export function PostDialog({
   post,
   onSubmit,
   isSubmitting,
+  canPublishDirectly = false,
 }: PostDialogProps) {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [isPublished, setIsPublished] = useState(false);
+  const [publishNow, setPublishNow] = useState(false);
   const quillRef = useRef<ReactQuill>(null);
 
   useEffect(() => {
@@ -49,11 +51,11 @@ export function PostDialog({
       if (post && (mode === "edit" || mode === "view")) {
         setTitle(post.title || "");
         setContent(post.content || "");
-        setIsPublished(post.is_published);
+        setPublishNow(String(post.status || "").toLowerCase() === "approved" || post.is_published === true);
       } else {
         setTitle("");
         setContent("");
-        setIsPublished(false);
+        setPublishNow(false);
       }
     }
   }, [open, post, mode]);
@@ -102,12 +104,28 @@ export function PostDialog({
     }
   }), [imageHandler]);
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (action: "draft" | "submit" | "publish") => {
     if (mode === "view") {
       onOpenChange(false);
       return;
     }
-    await onSubmit({ title, content, is_published: isPublished });
+    await onSubmit({ title, content }, action);
+  };
+
+  const getStatusLabel = () => {
+    const status = String(post?.status || "Draft").toLowerCase();
+    if (status === "approved") return "Đã duyệt";
+    if (status === "pending") return "Chờ duyệt";
+    if (status === "rejected") return "Từ chối";
+    return "Bản nháp";
+  };
+
+  const getStatusClass = () => {
+    const status = String(post?.status || "Draft").toLowerCase();
+    if (status === "approved") return "bg-emerald-100 text-emerald-700";
+    if (status === "pending") return "bg-amber-100 text-amber-700";
+    if (status === "rejected") return "bg-red-100 text-red-700";
+    return "bg-slate-100 text-slate-700";
   };
 
   const getDialogTitle = () => {
@@ -126,8 +144,8 @@ export function PostDialog({
           <DialogTitle className="text-2xl font-bold flex items-center gap-2">
             {getDialogTitle()}
             {mode === "view" && (
-              <Badge variant={isPublished ? "outline" : "secondary"} className={isPublished ? "text-emerald-600 border-emerald-600" : ""}>
-                 {isPublished ? "Công khai" : "Chờ duyệt"}
+              <Badge variant="secondary" className={getStatusClass()}>
+                 {getStatusLabel()}
               </Badge>
             )}
           </DialogTitle>
@@ -183,15 +201,28 @@ export function PostDialog({
           </div>
 
           {mode !== "view" && (
-            <div className="flex items-center space-x-2 border rounded-lg p-4 bg-muted/20">
-              <Switch
-                id="is-published"
-                checked={isPublished}
-                onCheckedChange={setIsPublished}
+            <div className="rounded-lg border bg-muted/20 p-4 text-sm text-muted-foreground">
+              {canPublishDirectly
+                ? "Chọn Public nếu muốn bài viết hiển thị công khai ngay, hoặc bỏ chọn để lưu không public."
+                : "Lưu nháp để tiếp tục chỉnh sửa, hoặc gửi duyệt để Admin kiểm tra trước khi hiển thị công khai."}
+            </div>
+          )}
+
+          {mode !== "view" && canPublishDirectly && (
+            <div className="flex items-start gap-3 rounded-lg border p-4">
+              <Checkbox
+                id="publish-now"
+                checked={publishNow}
+                onCheckedChange={(checked) => setPublishNow(Boolean(checked))}
+                disabled={isSubmitting}
               />
-              <div className="grid gap-1">
-                <Label htmlFor="is-published" className="cursor-pointer font-medium">Công khai bài viết</Label>
-                <p className="text-xs text-muted-foreground">Bật để hiển thị bài viết này trên trang chủ.</p>
+              <div className="grid gap-1.5 leading-none">
+                <Label htmlFor="publish-now" className="cursor-pointer font-semibold">
+                  Public bài viết
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Bật lựa chọn này để bài viết được public/đã duyệt ngay sau khi lưu.
+                </p>
               </div>
             </div>
           )}
@@ -207,13 +238,22 @@ export function PostDialog({
               <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
                 Hủy
               </Button>
-              <Button onClick={handleSubmit} disabled={isSubmitting} className="min-w-[120px]">
+              <Button variant="outline" onClick={() => handleSubmit(canPublishDirectly && publishNow ? "publish" : "draft")} disabled={isSubmitting} className="min-w-[120px]">
                 {isSubmitting ? (
                   <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Đang xử lý</>
                 ) : (
-                  mode === "edit" ? "Lưu thay đổi" : "Tạo bài viết"
+                  <><Save className="mr-2 h-4 w-4" /> {canPublishDirectly ? "Lưu bài viết" : "Lưu nháp"}</>
                 )}
               </Button>
+              {!canPublishDirectly && (
+                <Button onClick={() => handleSubmit("submit")} disabled={isSubmitting} className="min-w-[140px]">
+                  {isSubmitting ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Đang xử lý</>
+                  ) : (
+                    <><Send className="mr-2 h-4 w-4" /> Gửi duyệt</>
+                  )}
+                </Button>
+                )}
             </>
           )}
         </DialogFooter>
