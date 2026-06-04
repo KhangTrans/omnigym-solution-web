@@ -1,6 +1,8 @@
-﻿import { Outlet } from "react-router-dom";
+import { Outlet } from "react-router-dom";
 import { Dumbbell } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Card, CardContent } from "../components/ui/card";
+import { Badge } from "../components/ui/badge";
 import heroImg from "../assets/hero-gym.jpg";
 
 export default function AuthLayout() {
@@ -59,7 +61,11 @@ export default function AuthLayout() {
         <div className="absolute inset-0 bg-grid-animated bg-grid-fade opacity-30" />
 
         <div className="absolute inset-0 flex flex-col justify-end p-20 text-primary-foreground z-20">
-          <div className="max-w-xl text-left">
+          <Card className="max-w-xl border-white/10 bg-background/10 text-primary-foreground shadow-2xl backdrop-blur-md">
+            <CardContent className="p-8 text-left">
+              <Badge variant="secondary" className="mb-4 bg-white/15 text-primary-foreground hover:bg-white/15">
+                Hệ sinh thái tập luyện toàn diện
+              </Badge>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -97,7 +103,8 @@ export default function AuthLayout() {
                 </div>
               ))}
             </motion.div>
-          </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

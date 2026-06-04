@@ -1,142 +1,212 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, Play } from "lucide-react";
-import heroImage from "../../assets/hero-gym.jpg";
+import { ArrowRight, Sparkles } from "lucide-react";
 
-const WORDS = ["mạnh mẽ hơn.", "khỏe mạnh hơn.", "không giới hạn."];
+const WORDS = ["mạnh mẽ hơn.", "khỏe hơn mỗi ngày.", "không giới hạn."];
+
+function AppStoreIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-4 w-4 text-white"
+      fill="currentColor"
+      aria-hidden
+    >
+      <path d="M16.2 12.1c0-2.2 1.8-3.3 1.9-3.4-1-1.5-2.7-1.7-3.3-1.7-1.4-.1-2.8.8-3.5.8-.7 0-1.8-.8-3-.8-1.5 0-2.9.9-3.7 2.2-1.6 2.8-.4 6.9 1.1 9.1.7 1.1 1.6 2.3 2.8 2.2 1.1 0 1.6-.7 3-.7 1.4 0 1.8.7 3 .7 1.2 0 2-1.1 2.7-2.2.8-1.2 1.1-2.4 1.1-2.4-.1 0-3.1-1.2-3.1-3.8Zm-2.3-6.6c.6-.8 1-1.9.9-3-.9 0-2 .6-2.7 1.3-.6.7-1.1 1.8-1 2.9 1 .1 2-.5 2.8-1.2Z" />
+    </svg>
+  );
+}
+
+function PlayStoreIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden>
+      <path
+        fill="#34A853"
+        d="M3.6 2.9c-.3.3-.6.9-.6 1.7v14.8c0 .8.3 1.4.6 1.7l.1.1 8.4-8.4v-.2L3.7 2.8l-.1.1Z"
+      />
+      <path
+        fill="#FBBC04"
+        d="m14.8 9.8-2.7 2.7v.2l2.7 2.7.1-.1 3.2-1.8c.9-.5.9-1.3 0-1.8l-3.2-1.8-.1-.1Z"
+      />
+      <path
+        fill="#EA4335"
+        d="m14 16.1-2.8-2.8-8.4 8.4c.4.4 1 .4 1.8 0l9.4-5.4Z"
+      />
+      <path
+        fill="#4285F4"
+        d="M4.6 2.1c-.8-.4-1.4-.4-1.8 0l8.4 8.4L14 7.7 4.6 2.1Z"
+      />
+    </svg>
+  );
+}
+const fadeBlurUp = {
+  initial: { opacity: 0, y: 16, filter: "blur(14px)" },
+  animate: { opacity: 1, y: 0, filter: "blur(0px)" },
+};
+
+const smoothEase = [0.16, 1, 0.3, 1] as const;
 
 export function Hero() {
   const [i, setI] = useState(0);
+
   useEffect(() => {
     const id = setInterval(() => setI((v) => (v + 1) % WORDS.length), 2200);
     return () => clearInterval(id);
   }, []);
 
   return (
-    <section id="home" className="relative overflow-hidden bg-background">
-      <div className="absolute inset-0 bg-grid-animated bg-grid-fade opacity-60" aria-hidden />
-      <div className="absolute -top-32 -right-32 h-96 w-96 rounded-full bg-primary opacity-20 blur-3xl" aria-hidden />
+    <section
+      id="home"
+      className="relative overflow-hidden bg-background text-foreground"
+    >
+      <div
+        className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(79,138,116,0.12)_0%,rgba(79,138,116,0.05)_24%,rgba(255,255,255,0)_58%)]"
+        aria-hidden
+      />
+      <motion.div
+        aria-hidden
+        initial={{
+          opacity: 0,
+          y: -170,
+          x: -80,
+          rotate: -16,
+          filter: "blur(34px)",
+        }}
+        animate={{
+          opacity: [0, 0.2, 0.14],
+          y: [-170, -30, 20],
+          x: [-80, -10, 20],
+          filter: "blur(42px)",
+        }}
+        transition={{ duration: 2.4, ease: "easeOut" }}
+        className="pointer-events-none absolute -left-20 -top-28 h-[720px] w-[520px] bg-[linear-gradient(120deg,rgba(79,138,116,0.22)_0%,rgba(79,138,116,0.11)_34%,rgba(79,138,116,0.04)_58%,transparent_76%)]"
+      />
+      <motion.div
+        aria-hidden
+        initial={{ opacity: 0, y: -90 }}
+        animate={{ opacity: [0, 0.12, 0.08], y: [-90, 0, 18] }}
+        transition={{ duration: 2.8, ease: "easeOut", delay: 0.15 }}
+        className="pointer-events-none absolute left-1/2 top-0 h-[430px] w-[820px] -translate-x-1/2 bg-[radial-gradient(ellipse_at_top,rgba(79,138,116,0.16),rgba(79,138,116,0.06)_38%,transparent_72%)] blur-3xl"
+      />
+      <div
+        className="absolute inset-0 bg-grid-animated bg-grid-fade opacity-60"
+        aria-hidden
+      />
 
-      <div className="relative mx-auto grid max-w-7xl grid-cols-1 items-center gap-12 px-4 py-20 sm:px-6 lg:grid-cols-2 lg:gap-16 lg:py-28 lg:px-8">
-        <div>
+      <div className="relative mx-auto flex min-h-[calc(100vh-4rem)] max-w-7xl items-center justify-center px-4 py-20 text-center sm:px-6 lg:px-8 lg:py-28">
+        <div className="mx-auto max-w-6xl">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-primary"
+            {...fadeBlurUp}
+            transition={{ duration: 0.7, delay: 0.05, ease: smoothEase }}
+            className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-4 py-2 text-xs font-medium tracking-wide text-primary shadow-sm backdrop-blur-md"
           >
-            <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-            Mùa mới · Gói chỉ từ $19
+            <span className="rounded-full bg-primary px-2 py-1 text-[8px] font-medium text-primary-foreground">
+              New
+            </span>
+            <span>48 thành viên đang hoạt động lúc này</span>
           </motion.div>
 
           <motion.h1
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.1 }}
-            className="mt-6 text-6xl font-black leading-[1.05] tracking-tighter text-foreground sm:text-7xl lg:text-8xl"
+            {...fadeBlurUp}
+            transition={{ duration: 0.86, delay: 0.12, ease: smoothEase }}
+            className="mt-8 text-4xl font-semibold leading-[1.14] tracking-[-0.04em] text-foreground sm:text-5xl sm:leading-[1.12] md:text-6xl lg:text-[4.9rem] xl:text-[5.35rem]"
           >
-            Tập luyện hết mình.<br />
-            Sống{" "}
-            <span className="relative inline-block align-baseline">
-              <AnimatePresence mode="wait">
-                <motion.span
-                  key={WORDS[i]}
-                  initial={{ opacity: 0, y: 20, filter: "blur(16px)" }}
-                  animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                  exit={{ opacity: 0, y: -20, filter: "blur(16px)" }}
-                  transition={{ duration: 0.6, ease: "easeOut" }}
-                  className="inline-block text-primary pb-2"
+            <span className="block">Chạm tới phiên bản</span>
+            <span className="block">tốt hơn của bạn</span>
+            <span className="mt-2 flex flex-nowrap items-baseline justify-center gap-x-[0.18em] whitespace-nowrap text-foreground">
+              <span>cùng OmniGym</span>
+              <span className="relative inline-grid min-h-[1.08em] min-w-[6.9em] place-items-start align-baseline text-left text-primary">
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.span
+                    key={WORDS[i]}
+                    initial={{ opacity: 0, y: 10, filter: "blur(10px)" }}
+                    animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                    exit={{ opacity: 0, y: -10, filter: "blur(10px)" }}
+                    transition={{ duration: 0.46, ease: smoothEase }}
+                    className="absolute inset-0 inline-flex items-baseline justify-start whitespace-nowrap leading-none will-change-transform"
+                  >
+                    {WORDS[i]}
+                  </motion.span>
+                </AnimatePresence>
+                <span
+                  className="invisible whitespace-nowrap leading-none"
+                  aria-hidden
                 >
-                  {WORDS[i]}
-                </motion.span>
-              </AnimatePresence>
+                  khỏe hơn mỗi ngày.
+                </span>
+              </span>
             </span>
           </motion.h1>
 
           <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-            className="mt-6 max-w-xl text-lg text-muted-foreground"
+            {...fadeBlurUp}
+            transition={{ duration: 0.7, delay: 0.19, ease: smoothEase }}
+            className="mx-auto mt-7 max-w-3xl text-sm font-normal leading-relaxed text-muted-foreground sm:text-base md:text-lg"
           >
-            Phòng tập hiện đại được xây dựng dựa trên mục tiêu của bạn. Huấn luyện viên chuyên gia, thiết bị đẳng cấp thế giới,
-            và một cộng đồng thúc đẩy bạn tiến lên — mở cửa 24/7.
+            Ứng dụng và hệ sinh thái tập luyện giúp bạn quản lý gói tập, đặt
+            lịch PT, theo dõi tiến trình và duy trì động lực mỗi ngày — trong
+            một trải nghiệm gọn, hiện đại và tập trung.
           </motion.p>
 
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.45 }}
-            className="mt-8 flex flex-wrap items-center gap-4"
+            {...fadeBlurUp}
+            transition={{ duration: 0.7, delay: 0.26, ease: smoothEase }}
+            className="mt-10 flex flex-wrap items-center justify-center gap-4"
           >
             <a
               href="#pricing"
-              className="group inline-flex items-center gap-2 rounded-full bg-[var(--primary)] px-7 py-3.5 text-sm font-semibold text-[var(--primary-foreground)] shadow-glow transition-transform hover:scale-[1.03]"
+              className="inline-flex min-w-[220px] items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-4 text-sm font-semibold text-primary-foreground shadow-glow transition-all hover:-translate-y-0.5"
             >
-              Tham gia ngay
-              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+              Bắt đầu ngay
+              <ArrowRight className="h-4 w-4" />
             </a>
             <a
-              href="#pricing"
-              className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-6 py-3.5 text-sm font-semibold text-foreground transition-colors hover:bg-muted"
+              href="#about"
+              className="inline-flex min-w-[220px] items-center justify-center gap-2 rounded-2xl border border-border bg-background px-6 py-4 text-sm font-medium text-foreground backdrop-blur-md transition-all hover:bg-muted"
             >
-              <Play className="h-4 w-4 text-primary" />
-              Xem gói tập
+              <Sparkles className="h-4 w-4" />
+              Khám phá thêm
             </a>
           </motion.div>
 
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.7 }}
-            className="mt-12 flex items-center gap-8"
+            {...fadeBlurUp}
+            transition={{ duration: 0.72, delay: 0.34, ease: smoothEase }}
+            className="mt-10 flex flex-col items-center justify-center gap-2 sm:flex-row sm:gap-4"
           >
-            {[
-              { k: "12k+", v: "Thành viên tích cực" },
-              { k: "50+", v: "Lớp học hàng tuần" },
-              { k: "4.9★", v: "Đánh giá thành viên" },
-            ].map((s) => (
-              <div key={s.v}>
-                <div className="text-2xl font-bold text-foreground">{s.k}</div>
-                <div className="text-xs text-muted-foreground">{s.v}</div>
-              </div>
-            ))}
+            <a
+              href="#"
+              className="inline-flex min-w-[132px] items-center justify-center gap-1.5 rounded-md border border-white/20 bg-black px-2.5 py-1.5 text-white shadow-[0_8px_18px_rgba(0,0,0,0.16)] ring-1 ring-black/10 transition-all hover:-translate-y-0.5 hover:bg-zinc-900"
+              aria-label="Download on the App Store"
+            >
+              <AppStoreIcon />
+              <span className="text-left leading-none">
+                <span className="block text-[7px] font-medium tracking-tight text-white">
+                  Download on the
+                </span>
+                <span className="mt-0.5 block text-[15px] font-semibold tracking-[-0.04em] text-white">
+                  App Store
+                </span>
+              </span>
+            </a>
+            {/* <span className="text-sm font-medium text-muted-foreground">hoặc</span> */}
+            <a
+              href="#"
+              className="inline-flex min-w-[145px] items-center justify-center gap-1.5 rounded-md border border-white/20 bg-black px-2.5 py-1.5 text-white shadow-[0_8px_18px_rgba(0,0,0,0.16)] ring-1 ring-black/10 transition-all hover:-translate-y-0.5 hover:bg-zinc-900"
+              aria-label="Get it on Google Play"
+            >
+              <PlayStoreIcon />
+              <span className="text-left leading-none">
+                <span className="block text-[8px] font-medium uppercase tracking-wide text-white">
+                  Get it on
+                </span>
+                <span className="mt-0.5 block text-[15px] font-semibold tracking-[-0.04em] text-white">
+                  Google Play
+                </span>
+              </span>
+            </a>
           </motion.div>
         </div>
-
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.8, delay: 0.2 }}
-          className="relative"
-        >
-          <div className="absolute -inset-4 rounded-3xl bg-primary opacity-30 blur-2xl" aria-hidden />
-          <div className="relative overflow-hidden rounded-3xl border border-border bg-card shadow-glow">
-            <img
-              src={heroImage}
-              alt="Vận động viên tập luyện với tạ tay tại phòng tập OmniGym"
-              width={1280}
-              height={1280}
-              className="h-full w-full object-cover aspect-[4/5]"
-            />
-          </div>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.9 }}
-            className="absolute -bottom-6 -left-6 hidden sm:flex items-center gap-3 rounded-2xl border border-border bg-background px-5 py-4 shadow-card"
-          >
-            <div className="flex -space-x-2">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-9 w-9 rounded-full border-2 border-background bg-primary" />
-              ))}
-            </div>
-            <div className="text-sm">
-              <div className="font-semibold text-foreground">Đang hoạt động</div>
-              <div className="text-muted-foreground text-xs">48 thành viên đang tập luyện</div>
-            </div>
-          </motion.div>
-        </motion.div>
       </div>
     </section>
   );
