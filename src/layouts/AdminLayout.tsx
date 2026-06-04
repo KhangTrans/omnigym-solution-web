@@ -209,22 +209,22 @@ const AdminLayout = () => {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div
-        className="grid min-h-screen w-full transition-[grid-template-columns] duration-300 ease-out lg:grid-cols-[88px_1fr]"
-        style={{ gridTemplateColumns: sidebarOpen ? "300px minmax(0,1fr)" : "88px minmax(0,1fr)" }}
+        className="grid min-h-screen w-full transition-[grid-template-columns] duration-300 ease-out lg:grid-cols-[96px_1fr]"
+        style={{ gridTemplateColumns: sidebarOpen ? "300px minmax(0,1fr)" : "96px minmax(0,1fr)" }}
       >
         <aside
           className={cn(
-            "group/sidebar sticky top-24 mx-4 mb-6 mt-24 hidden h-[calc(100vh-120px)] overflow-hidden bg-card shadow-[0_18px_50px_rgba(15,23,42,0.12)] transition-[border-radius] duration-200 lg:flex lg:flex-col",
-            sidebarOpen ? "rounded-[30px]" : "rounded-[20px]"
+            "group/sidebar sticky top-24 mx-3 mb-6 mt-24 hidden h-[calc(100vh-120px)] overflow-hidden bg-card shadow-[0_18px_50px_rgba(15,23,42,0.12)] transition-[border-radius] duration-200 lg:flex lg:flex-col",
+            sidebarOpen ? "rounded-[30px]" : "rounded-[24px]"
           )}
         >
-          <nav className={cn("flex-1 overflow-y-auto overflow-x-hidden py-8 custom-scrollbar transition-[padding] duration-300", sidebarOpen ? "space-y-7 px-4" : "space-y-8 px-3")}>
+          <nav className={cn("flex-1 overflow-y-auto overflow-x-hidden py-8 transition-[padding] duration-300 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden", sidebarOpen ? "space-y-7 px-4" : "space-y-8 px-3")}>
             {GROUPS.map((group) => {
               const groupItems = filteredNav.filter((n) => n.group === group);
               if (groupItems.length === 0) return null;
               
               return (
-                <div key={group} className={cn("space-y-2", !sidebarOpen && "pt-1 first:pt-0")}>
+                <div key={group} className={cn("space-y-2", !sidebarOpen && "pt-0")}>
                   <div
                     className={cn(
                       "mx-auto my-4 flex h-4 w-full shrink-0 flex-col items-center justify-center gap-1 transition-all duration-200",
@@ -253,11 +253,11 @@ const AdminLayout = () => {
                         to={item.to}
                         title={item.label}
                         className={cn(
-                          "flex h-12 w-full items-center overflow-hidden rounded-2xl text-base font-bold transition-all duration-200",
+                          "flex h-12 w-full items-center overflow-hidden rounded-xl text-base font-bold transition-all duration-200",
                           sidebarOpen ? "justify-start gap-4 px-3" : "justify-center px-0",
                           sidebarOpen
                             ? active
-                              ? "bg-primary/15 text-primary shadow-sm shadow-primary/10"
+                              ? "bg-primary/10 text-primary shadow-sm shadow-primary/5"
                               : "text-foreground hover:bg-muted hover:text-foreground"
                             : active
                               ? "text-primary"
@@ -293,7 +293,7 @@ const AdminLayout = () => {
               onClick={handleLogout}
               title="Đăng xuất"
               className={cn(
-                "flex h-12 w-full items-center overflow-hidden rounded-2xl text-base font-bold text-red-500 transition-all duration-200 hover:bg-red-50",
+                "flex h-12 w-full items-center overflow-hidden rounded-xl text-base font-bold text-red-500 transition-all duration-200 hover:bg-red-50",
                 sidebarOpen ? "justify-start gap-4 px-3" : "justify-center px-0"
               )}
             >
