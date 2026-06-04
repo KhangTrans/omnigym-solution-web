@@ -17,6 +17,8 @@ import {
   Loader2,
   CircleHelp,
   ClipboardCheck,
+  PanelLeft,
+  ChevronDown,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "../utils/cn";
@@ -145,6 +147,7 @@ const AdminLayout = () => {
   const navigate = useNavigate();
   const pathname = location.pathname;
   const [verifying, setVerifying] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const userData = localStorage.getItem('user');
   let user = null;
@@ -205,29 +208,37 @@ const AdminLayout = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <div className="grid min-h-screen w-full lg:grid-cols-[260px_1fr]">
-        <aside className="hidden bg-card shadow-[2px_0_14px_rgba(15,23,42,0.08)] lg:flex lg:flex-col">
-          <div className="flex h-16 items-center gap-2 px-6 shadow-[0_1px_8px_rgba(15,23,42,0.08)]">
-            <div className="grid h-8 w-8 place-items-center rounded-md bg-primary text-primary-foreground font-bold shadow-lg shadow-primary/20">
-              O
-            </div>
-            <div className="leading-tight">
-              <div className="text-sm font-bold text-foreground uppercase tracking-tight">
-                {isPartner ? "OmniGym Partner" : "OmniGym Admin"}
-              </div>
-              <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
-                Platform
-              </div>
-            </div>
-          </div>
-          <nav className="flex-1 space-y-6 overflow-y-auto p-4 custom-scrollbar">
+      <div
+        className="grid min-h-screen w-full transition-[grid-template-columns] duration-300 ease-out lg:grid-cols-[88px_1fr]"
+        style={{ gridTemplateColumns: sidebarOpen ? "300px minmax(0,1fr)" : "88px minmax(0,1fr)" }}
+      >
+        <aside
+          className={cn(
+            "group/sidebar sticky top-24 mx-4 mb-6 mt-24 hidden h-[calc(100vh-120px)] overflow-hidden bg-card shadow-[0_18px_50px_rgba(15,23,42,0.12)] transition-[border-radius] duration-200 lg:flex lg:flex-col",
+            sidebarOpen ? "rounded-[30px]" : "rounded-[20px]"
+          )}
+        >
+          <nav className={cn("flex-1 overflow-y-auto overflow-x-hidden py-8 custom-scrollbar transition-[padding] duration-300", sidebarOpen ? "space-y-7 px-4" : "space-y-8 px-3")}>
             {GROUPS.map((group) => {
               const groupItems = filteredNav.filter((n) => n.group === group);
               if (groupItems.length === 0) return null;
               
               return (
-                <div key={group} className="space-y-1.5">
-                  <div className="px-3 pb-1 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/70">
+                <div key={group} className={cn("space-y-2", !sidebarOpen && "pt-1 first:pt-0")}>
+                  <div
+                    className={cn(
+                      "mx-auto my-4 flex h-4 w-full shrink-0 flex-col items-center justify-center gap-1 transition-all duration-200",
+                      sidebarOpen ? "h-0 overflow-hidden opacity-0" : "opacity-100"
+                    )}
+                    aria-hidden="true"
+                  >
+                    <span className="block h-px w-9 rounded-full bg-slate-300/80" />
+                    <span className="block h-px w-6 rounded-full bg-slate-300/50" />
+                  </div>
+                  <div className={cn(
+                    "overflow-hidden px-3 text-[11px] font-black uppercase tracking-[0.28em] text-muted-foreground/80 transition-all duration-200",
+                    sidebarOpen ? "h-7 opacity-100" : "h-0 opacity-0"
+                  )}>
                     {GROUPS_LABELS[group]}
                   </div>
                   {groupItems.map((item) => {
@@ -240,22 +251,35 @@ const AdminLayout = () => {
                       <Link
                         key={item.to}
                         to={item.to}
+                        title={item.label}
                         className={cn(
-                          "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition-all duration-200",
-                          active
-                            ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
-                            : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                          "flex h-12 w-full items-center overflow-hidden rounded-2xl text-base font-bold transition-all duration-200",
+                          sidebarOpen ? "justify-start gap-4 px-3" : "justify-center px-0",
+                          sidebarOpen
+                            ? active
+                              ? "bg-primary/15 text-primary shadow-sm shadow-primary/10"
+                              : "text-foreground hover:bg-muted hover:text-foreground"
+                            : active
+                              ? "text-primary"
+                              : "text-foreground hover:text-primary"
                         )}
                       >
-                        <Icon
-                          className={cn(
-                            "h-4 w-4",
-                            active
-                              ? "text-primary-foreground"
-                              : "text-muted-foreground"
-                          )}
-                        />
-                        {item.label}
+                        <span className="grid h-7 w-7 shrink-0 place-items-center">
+                          <Icon
+                            className={cn(
+                              "h-5 w-5 shrink-0",
+                              active
+                                ? "text-primary"
+                                : "text-foreground"
+                            )}
+                          />
+                        </span>
+                        <span className={cn(
+                          "overflow-hidden whitespace-nowrap transition-all duration-200",
+                          sidebarOpen ? "w-auto opacity-100" : "w-0 opacity-0"
+                        )}>
+                          {item.label}
+                        </span>
                       </Link>
                     )
                   })}
@@ -264,19 +288,30 @@ const AdminLayout = () => {
             })}
           </nav>
 
-          <div className="border-t p-4">
+          <div className={cn("border-t transition-[padding] duration-300", sidebarOpen ? "p-4" : "p-3")}>
             <button
               onClick={handleLogout}
-              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold text-red-500 transition-all duration-200 hover:bg-red-50"
+              title="Đăng xuất"
+              className={cn(
+                "flex h-12 w-full items-center overflow-hidden rounded-2xl text-base font-bold text-red-500 transition-all duration-200 hover:bg-red-50",
+                sidebarOpen ? "justify-start gap-4 px-3" : "justify-center px-0"
+              )}
             >
-              <LogOut className="h-4 w-4" />
-              Đăng xuất
+              <span className="grid h-7 w-7 shrink-0 place-items-center">
+                <LogOut className="h-5 w-5 shrink-0" />
+              </span>
+              <span className={cn(
+                "overflow-hidden whitespace-nowrap transition-all duration-200",
+                sidebarOpen ? "w-auto opacity-100" : "w-0 opacity-0"
+              )}>
+                Đăng xuất
+              </span>
             </button>
           </div>
-      </aside>
+        </aside>
 
         <div className="flex min-w-0 flex-col">
-          <header className="flex h-16 items-center justify-between bg-card/60 shadow-[0_1px_8px_rgba(15,23,42,0.08)] px-4 backdrop-blur lg:px-8">
+          <header className="fixed left-0 right-0 top-0 z-30 flex h-20 items-center justify-between bg-card/80 shadow-[0_1px_8px_rgba(15,23,42,0.08)] px-4 backdrop-blur lg:px-8">
             <div className="flex items-center gap-3 overflow-x-auto lg:hidden">
               {NAV.map((item) => {
                 const active = item.exact
@@ -304,8 +339,31 @@ const AdminLayout = () => {
                 Đăng xuất
               </button>
             </div>
-            <div className="hidden text-sm text-muted-foreground lg:block">
-              OmniGym Solution Platform · Quản trị viên
+            <div className="hidden items-center gap-4 lg:flex">
+              <button
+                type="button"
+                onClick={() => setSidebarOpen((open) => !open)}
+                className="flex h-11 items-center gap-2 rounded-xl border border-slate-200 bg-slate-100/80 px-3 text-slate-700 transition-colors hover:bg-slate-200"
+                aria-label={sidebarOpen ? "Thu gọn sidebar" : "Mở rộng sidebar"}
+                title={sidebarOpen ? "Thu gọn sidebar" : "Mở rộng sidebar"}
+              >
+                <PanelLeft className="h-5 w-5" />
+                <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", sidebarOpen ? "rotate-180" : "rotate-0")} />
+              </button>
+              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-primary text-xl font-black text-primary-foreground shadow-lg shadow-primary/25">
+                O
+              </div>
+              <div className="leading-tight">
+                <div className="text-xl font-black uppercase tracking-tight text-foreground">
+                  {isPartner ? "OmniGym Partner" : "OmniGym Admin"}
+                </div>
+                <div className="text-[11px] font-black uppercase tracking-[0.34em] text-foreground">
+                  Platform
+                </div>
+              </div>
+              <div className="ml-4 text-sm text-muted-foreground">
+                OmniGym Solution Platform · Quản trị viên
+              </div>
             </div>
             <Link
               to="/admin/profile"
@@ -325,7 +383,7 @@ const AdminLayout = () => {
             </Link>
           </header>
 
-          <main className="flex-1 p-4 lg:p-8">
+          <main className="flex-1 p-4 pt-24 lg:p-8 lg:pt-28">
             <Outlet />
           </main>
         </div>
