@@ -160,31 +160,31 @@ const CustomerProfile = () => {
     .substring(0, 2) || 'U';
 
   return (
-    <div className="bg-white">
-      <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+    <div>
+      <main className="mx-auto max-w-4xl px-4 py-8 sm:px-8 lg:px-10">
         <div className="space-y-8">
           {/* Profile Hero Card */}
-          <div className="flex flex-col items-center gap-6 p-2 text-center sm:flex-row sm:text-left border-b pb-8">
+          <div className="relative overflow-hidden rounded-[1.75rem] border border-primary/10 bg-primary/5 p-6 text-center sm:flex sm:items-center sm:gap-6 sm:text-left">
             <div className="relative group">
               {profile.avatar_url ? (
                 <img 
                   src={profile.avatar_url} 
                   alt={profile.full_name} 
                   referrerPolicy="no-referrer"
-                  className="h-24 w-24 rounded-full border-4 border-background object-cover ring-2 ring-border shadow-md"
+                  className="h-24 w-24 rounded-full border-4 border-background object-cover ring-2 ring-primary/15 shadow-card"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
                     target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.full_name || 'User')}&background=4F8A74&color=fff`;
                   }}
                 />
               ) : (
-                <div className="grid h-24 w-24 place-items-center rounded-full bg-slate-100 text-2xl font-bold text-slate-700 ring-2 ring-border ring-offset-4 ring-offset-background group-hover:bg-slate-200 transition-all">
+                <div className="grid h-24 w-24 place-items-center rounded-full bg-white text-2xl font-bold text-primary ring-2 ring-primary/15 ring-offset-4 ring-offset-background shadow-card transition-all group-hover:bg-primary/5">
                   {initials}
                 </div>
               )}
               <button 
                 onClick={() => document.getElementById('avatar-upload')?.click()}
-                className="absolute bottom-0 right-0 p-1.5 bg-white rounded-full border border-border shadow-sm text-foreground hover:text-primary transition-all hover:scale-110"
+                className="absolute bottom-0 right-0 rounded-full border border-primary/15 bg-white p-1.5 text-foreground shadow-sm transition-all hover:scale-110 hover:text-primary"
               >
                 <Camera className="h-4 w-4" />
               </button>
@@ -199,7 +199,7 @@ const CustomerProfile = () => {
 
             <div className="flex-1">
               <Badge variant="secondary" className="mb-2">Hội viên</Badge>
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900">{profile.full_name}</h1>
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground">{profile.full_name}</h1>
               <p className="mt-1 inline-flex items-center gap-1.5 text-sm text-muted-foreground">
                 <Mail className="h-4 w-4" /> {profile.email || 'Không có email'}
               </p>
@@ -208,37 +208,37 @@ const CustomerProfile = () => {
 
           <div className="grid gap-8">
             <section className="space-y-6">
-              <h2 className="text-lg font-bold flex items-center gap-2 text-slate-900 border-l-4 border-[var(--primary)] pl-3">
+              <h2 className="flex items-center gap-2 border-l-4 border-primary pl-3 text-lg font-semibold text-foreground">
                 Thông tin cá nhân
               </h2>
               <div className="grid gap-6 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Họ và tên</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Họ và tên</label>
                   <input 
                     type="text" 
                     value={profile.full_name} 
                     onChange={e => setProfile({...profile, full_name: e.target.value})}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                    className="w-full rounded-xl border border-border bg-background/70 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:border-primary focus:ring-primary/20 transition-all"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Số điện thoại</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Số điện thoại</label>
                   <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <input 
                       type="tel" 
                       value={profile.phone_number} 
                       onChange={e => setProfile({...profile, phone_number: e.target.value})}
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                      className="w-full rounded-xl border border-border bg-background/70 pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:border-primary focus:ring-primary/20 transition-all"
                     />
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Giới tính</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Giới tính</label>
                   <select 
                     value={profile.gender}
                     onChange={e => setProfile({...profile, gender: e.target.value})}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                    className="w-full rounded-xl border border-border bg-background/70 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:border-primary focus:ring-primary/20 transition-all"
                   >
                     <option value="Male">Nam</option>
                     <option value="Female">Nữ</option>
@@ -246,14 +246,14 @@ const CustomerProfile = () => {
                   </select>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Ngày sinh</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Ngày sinh</label>
                   <div className="relative">
-                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <input 
                       type="date" 
                       value={profile.dob} 
                       onChange={e => setProfile({...profile, dob: e.target.value})}
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                      className="w-full rounded-xl border border-border bg-background/70 pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:border-primary focus:ring-primary/20 transition-all"
                     />
                   </div>
                 </div>
@@ -261,63 +261,63 @@ const CustomerProfile = () => {
             </section>
 
             <section className="space-y-6">
-              <h2 className="text-lg font-bold flex items-center gap-2 text-slate-900 border-l-4 border-[var(--primary)] pl-3">
+              <h2 className="flex items-center gap-2 border-l-4 border-primary pl-3 text-lg font-semibold text-foreground">
                 Chỉ số hình thể
               </h2>
               <div className="space-y-6">
                 <div className="grid gap-6 sm:grid-cols-2">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Chiều cao (cm)</label>
+                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Chiều cao (cm)</label>
                     <div className="relative">
-                      <Ruler className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      <Ruler className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <input 
                         type="number" 
                         value={profile.height} 
                         onChange={e => setProfile({...profile, height: e.target.value})}
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                        className="w-full rounded-xl border border-border bg-background/70 pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:border-primary focus:ring-primary/20 transition-all"
                         placeholder="0"
                       />
                     </div>
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Cân nặng (kg)</label>
+                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Cân nặng (kg)</label>
                     <div className="relative">
-                      <Weight className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      <Weight className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <input 
                         type="number" 
                         value={profile.weight} 
                         onChange={e => setProfile({...profile, weight: e.target.value})}
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                        className="w-full rounded-xl border border-border bg-background/70 pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:border-primary focus:ring-primary/20 transition-all"
                         placeholder="0"
                       />
                     </div>
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Mục tiêu tập luyện</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Mục tiêu tập luyện</label>
                   <textarea 
                     rows={2}
                     value={profile.workout_goal}
                     onChange={e => setProfile({...profile, workout_goal: e.target.value})}
                     placeholder="Bạn đang hướng tới mục tiêu gì?"
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none"
+                    className="w-full rounded-xl border border-border bg-background/70 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:border-primary focus:ring-primary/20 transition-all resize-none"
                   />
                 </div>
               </div>
             </section>
 
             <section className="space-y-6">
-              <h2 className="text-lg font-bold flex items-center gap-2 text-slate-900 border-l-4 border-[var(--primary)] pl-3">
+              <h2 className="flex items-center gap-2 border-l-4 border-primary pl-3 text-lg font-semibold text-foreground">
                 Thông tin sức khỏe
               </h2>
               <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Tiền sử bệnh lý</label>
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Tiền sử bệnh lý</label>
                 <textarea 
                   rows={3}
                   value={profile.medical_history}
                   onChange={e => setProfile({...profile, medical_history: e.target.value})}
                   placeholder="Bất kỳ tình trạng hoặc chấn thương nào chúng tôi cần biết?"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none"
+                  className="w-full rounded-xl border border-border bg-background/70 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:border-primary focus:ring-primary/20 transition-all resize-none"
                 />
               </div>
             </section>
@@ -326,7 +326,7 @@ const CustomerProfile = () => {
           <div className="flex items-center justify-end gap-3 pt-8 pb-10">
             <button 
               onClick={() => navigate(-1)}
-              className="px-6 py-2.5 text-sm font-semibold text-slate-500 hover:bg-slate-50 rounded-xl transition-colors"
+              className="rounded-2xl px-6 py-3 text-sm font-semibold text-muted-foreground transition-colors hover:bg-primary/5 hover:text-primary"
             >
               Hủy
             </button>
@@ -334,7 +334,7 @@ const CustomerProfile = () => {
               onClick={handleSave}
               disabled={isSaving}
               className={cn(
-                "group relative flex items-center gap-2 px-8 py-2.5 bg-primary text-primary-foreground text-sm font-bold rounded-xl transition-all shadow-lg active:scale-95 disabled:opacity-70",
+                "group relative flex items-center gap-2 rounded-2xl bg-primary px-8 py-3 text-sm font-semibold text-primary-foreground shadow-glow transition-all hover:-translate-y-0.5 active:scale-95 disabled:opacity-70",
                 success && "bg-emerald-600 hover:bg-emerald-600 shadow-emerald-200"
               )}
             >

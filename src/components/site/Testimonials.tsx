@@ -27,10 +27,10 @@ export function Testimonials() {
     <section className="relative py-24 bg-muted/30">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 18 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
+          transition={{ duration: 0.58, ease: [0.16, 1, 0.3, 1] }}
           className="mx-auto max-w-2xl text-center"
         >
           <p className="text-sm font-semibold uppercase tracking-wider text-primary">Đánh giá</p>
@@ -41,10 +41,10 @@ export function Testimonials() {
           {reviews.map((r, i) => (
             <motion.figure
               key={r.name}
-              initial={{ opacity: 0, y: 30 }}
+              initial={{ opacity: 0, y: 18 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-80px" }}
-              transition={{ duration: 0.5, delay: i * 0.1 }}
+              transition={{ duration: 0.52, delay: i * 0.06, ease: [0.16, 1, 0.3, 1] }}
               className="rounded-2xl border border-border bg-card p-7 shadow-md"
             >
               <div className="flex gap-1 text-primary">

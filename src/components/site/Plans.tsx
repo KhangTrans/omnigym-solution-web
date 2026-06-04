@@ -33,10 +33,10 @@ export function Plans() {
            aria-hidden />
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 18 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
+          transition={{ duration: 0.58, ease: [0.16, 1, 0.3, 1] }}
           className="mx-auto max-w-2xl text-center"
         >
           <p className="text-sm font-semibold uppercase tracking-wider text-primary">Gói hội viên</p>
@@ -44,17 +44,17 @@ export function Plans() {
           <p className="mt-4 text-lg text-muted-foreground">Không hợp đồng ràng buộc. Hủy bất cứ lúc nào. Tất cả các gói đều bao gồm 7 ngày dùng thử miễn phí.</p>
         </motion.div>
 
-        <div className="mt-14 grid gap-6 md:grid-cols-3">
+        <div className="mt-14 grid items-stretch gap-6 md:grid-cols-3">
           {plans.map((p, i) => (
             <motion.div
               key={p.name}
-              initial={{ opacity: 0, y: 30 }}
+              initial={{ opacity: 0, y: 18 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-80px" }}
-              transition={{ duration: 0.5, delay: i * 0.1 }}
-              className={`relative rounded-3xl border bg-card p-8 transition-transform hover:-translate-y-1 ${
+              transition={{ duration: 0.52, delay: i * 0.06, ease: [0.16, 1, 0.3, 1] }}
+              className={`relative flex h-full min-h-[520px] flex-col rounded-3xl border bg-card p-8 transition-transform hover:-translate-y-1 ${
                 p.featured
-                  ? "border-primary shadow-lg lg:scale-[1.04]"
+                  ? "border-primary shadow-lg"
                   : "border-border shadow-md"
               }`}
             >
@@ -69,7 +69,7 @@ export function Plans() {
                 <span className="text-5xl font-extrabold tracking-tight text-foreground">${p.price}</span>
                 <span className="text-muted-foreground">/tháng</span>
               </div>
-              <ul className="mt-6 space-y-3">
+              <ul className="mt-6 flex-1 space-y-3">
                 {p.features.map((f) => (
                   <li key={f} className="flex items-center gap-3 text-sm text-foreground/80">
                     <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -81,7 +81,7 @@ export function Plans() {
               </ul>
               <a
                 href="#contact"
-                className={`mt-8 inline-flex w-full items-center justify-center rounded-full px-5 py-3 text-sm font-semibold transition-transform hover:scale-[1.02] ${
+                className={`mt-auto inline-flex w-full items-center justify-center rounded-full px-5 py-3 text-sm font-semibold transition-transform hover:scale-[1.02] ${
                   p.featured
                     ? "bg-primary text-primary-foreground shadow-md"
                     : "border border-border bg-background text-foreground hover:bg-muted"

@@ -73,14 +73,16 @@ export default function CustomerLayout() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="relative min-h-screen overflow-hidden bg-background text-foreground flex flex-col">
+      <div className="absolute inset-0 bg-grid-animated bg-grid-fade opacity-35" aria-hidden />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(79,138,116,0.10),transparent_55%)]" aria-hidden />
       <Navbar />
 
-      <div className="flex flex-1 max-w-7xl w-full mx-auto sm:px-6 lg:px-8 py-8 gap-8">
+      <div className="relative flex flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 gap-8">
         {/* Sidebar */}
         <aside className="hidden md:block w-64 flex-shrink-0">
-          <nav className="space-y-1 sticky top-24">
-            <div className="px-3 mb-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+          <nav className="sticky top-24 space-y-2 rounded-[1.75rem] border border-primary/10 bg-white/70 p-3 shadow-card backdrop-blur-xl">
+            <div className="px-3 pb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Cài đặt tài khoản
             </div>
             {navItems.map((item) => (
@@ -88,22 +90,22 @@ export default function CustomerLayout() {
                 key={item.path}
                 to={item.path}
                 className={cn(
-                  "flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all",
+                  "flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all",
                   location.pathname === item.path
-                    ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
-                    : "text-slate-600 hover:bg-white hover:text-primary hover:shadow-sm"
+                    ? "bg-primary text-primary-foreground shadow-glow"
+                    : "text-muted-foreground hover:bg-primary/5 hover:text-primary"
                 )}
               >
-                <item.icon size={18} className={cn(location.pathname === item.path ? "text-primary-foreground" : "text-slate-400")} />
+                <item.icon size={18} className={cn(location.pathname === item.path ? "text-primary-foreground" : "text-muted-foreground")} />
                 {item.label}
               </Link>
             ))}
             
-            <hr className="my-4 border-slate-200" />
+            <hr className="my-3 border-border/70" />
             
             <button
               onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 rounded-xl transition-all"
+              className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-red-500 transition-all hover:bg-red-50 hover:text-red-600"
             >
               <LogOut size={18} />
               Đăng xuất
@@ -132,7 +134,7 @@ export default function CustomerLayout() {
             ))}
           </div>
 
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden min-h-[600px]">
+          <div className="overflow-hidden rounded-[2rem] border border-primary/10 bg-white/75 shadow-card backdrop-blur-xl min-h-[600px]">
             <Outlet />
           </div>
         </main>

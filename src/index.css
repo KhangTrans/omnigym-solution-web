@@ -116,8 +116,25 @@
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
-}
+  .navbar-blur-in {
+    animation: navbar-blur-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
 
+  @keyframes navbar-blur-in {
+    from {
+      opacity: 0;
+      filter: blur(14px);
+    }
+
+    to {
+      opacity: 1;
+      filter: blur(0);
+    }
+  }
+
+
+
+}
 :root {
   --text: #6b6375;
   --text-h: #08060d;
