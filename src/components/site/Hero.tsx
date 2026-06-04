@@ -4,21 +4,40 @@ import { ArrowRight, Sparkles } from "lucide-react";
 
 const WORDS = ["mạnh mẽ hơn.", "khỏe hơn mỗi ngày.", "không giới hạn."];
 
-
 function AppStoreIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5 text-primary" fill="currentColor" aria-hidden>
-      <path d="M16.2 12.1c0-2.2 1.8-3.3 1.9-3.4-1-1.5-2.7-1.7-3.3-1.7-1.4-.1-2.8.8-3.5.8-.7 0-1.8-.8-3-.8-1.5 0-2.9.9-3.7 2.2-1.6 2.8-.4 6.9 1.1 9.1.7 1.1 1.6 2.3 2.8 2.2 1.1 0 1.6-.7 3-.7 1.4 0 1.8.7 3 .7 1.2 0 2-1.1 2.7-2.2.8-1.2 1.1-2.4 1.1-2.4-.1 0-3.1-1.2-3.1-3.8Zm-2.3-6.6c.6-.8 1-1.9.9-3-.9 0-2 .6-2.7 1.3-.6.7-1.1 1.8-1 2.9 1 .1 2-.5 2.8-1.2Z"/>
+    <svg
+      viewBox="0 0 24 24"
+      className="h-4 w-4 text-white"
+      fill="currentColor"
+      aria-hidden
+    >
+      <path d="M16.2 12.1c0-2.2 1.8-3.3 1.9-3.4-1-1.5-2.7-1.7-3.3-1.7-1.4-.1-2.8.8-3.5.8-.7 0-1.8-.8-3-.8-1.5 0-2.9.9-3.7 2.2-1.6 2.8-.4 6.9 1.1 9.1.7 1.1 1.6 2.3 2.8 2.2 1.1 0 1.6-.7 3-.7 1.4 0 1.8.7 3 .7 1.2 0 2-1.1 2.7-2.2.8-1.2 1.1-2.4 1.1-2.4-.1 0-3.1-1.2-3.1-3.8Zm-2.3-6.6c.6-.8 1-1.9.9-3-.9 0-2 .6-2.7 1.3-.6.7-1.1 1.8-1 2.9 1 .1 2-.5 2.8-1.2Z" />
     </svg>
-  )
+  );
 }
 
 function PlayStoreIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5 text-primary" fill="currentColor" aria-hidden>
-      <path d="M3.6 2.9c-.3.3-.6.9-.6 1.7v14.8c0 .8.3 1.4.6 1.7l.1.1 8.3-8.3v-.2L3.7 2.8l-.1.1Zm11.2 6.9-2.7 2.7v.2l2.7 2.7.1-.1 3.2-1.8c.9-.5.9-1.3 0-1.8l-3.2-1.8-.1-.1Zm-.8 6.3-2.8-2.8-8.4 8.4c.4.4 1 .4 1.8 0l9.4-5.4Zm-9.4-14c-.8-.4-1.4-.4-1.8 0l8.4 8.4 2.8-2.8-9.4-5.6Z"/>
+    <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden>
+      <path
+        fill="#34A853"
+        d="M3.6 2.9c-.3.3-.6.9-.6 1.7v14.8c0 .8.3 1.4.6 1.7l.1.1 8.4-8.4v-.2L3.7 2.8l-.1.1Z"
+      />
+      <path
+        fill="#FBBC04"
+        d="m14.8 9.8-2.7 2.7v.2l2.7 2.7.1-.1 3.2-1.8c.9-.5.9-1.3 0-1.8l-3.2-1.8-.1-.1Z"
+      />
+      <path
+        fill="#EA4335"
+        d="m14 16.1-2.8-2.8-8.4 8.4c.4.4 1 .4 1.8 0l9.4-5.4Z"
+      />
+      <path
+        fill="#4285F4"
+        d="M4.6 2.1c-.8-.4-1.4-.4-1.8 0l8.4 8.4L14 7.7 4.6 2.1Z"
+      />
     </svg>
-  )
+  );
 }
 const fadeBlurUp = {
   initial: { opacity: 0, y: 16, filter: "blur(14px)" },
@@ -36,12 +55,29 @@ export function Hero() {
   }, []);
 
   return (
-    <section id="home" className="relative overflow-hidden bg-background text-foreground">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(79,138,116,0.12)_0%,rgba(79,138,116,0.05)_24%,rgba(255,255,255,0)_58%)]" aria-hidden />
+    <section
+      id="home"
+      className="relative overflow-hidden bg-background text-foreground"
+    >
+      <div
+        className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(79,138,116,0.12)_0%,rgba(79,138,116,0.05)_24%,rgba(255,255,255,0)_58%)]"
+        aria-hidden
+      />
       <motion.div
         aria-hidden
-        initial={{ opacity: 0, y: -170, x: -80, rotate: -16, filter: "blur(34px)" }}
-        animate={{ opacity: [0, 0.2, 0.14], y: [-170, -30, 20], x: [-80, -10, 20], filter: "blur(42px)" }}
+        initial={{
+          opacity: 0,
+          y: -170,
+          x: -80,
+          rotate: -16,
+          filter: "blur(34px)",
+        }}
+        animate={{
+          opacity: [0, 0.2, 0.14],
+          y: [-170, -30, 20],
+          x: [-80, -10, 20],
+          filter: "blur(42px)",
+        }}
         transition={{ duration: 2.4, ease: "easeOut" }}
         className="pointer-events-none absolute -left-20 -top-28 h-[720px] w-[520px] bg-[linear-gradient(120deg,rgba(79,138,116,0.22)_0%,rgba(79,138,116,0.11)_34%,rgba(79,138,116,0.04)_58%,transparent_76%)]"
       />
@@ -52,7 +88,10 @@ export function Hero() {
         transition={{ duration: 2.8, ease: "easeOut", delay: 0.15 }}
         className="pointer-events-none absolute left-1/2 top-0 h-[430px] w-[820px] -translate-x-1/2 bg-[radial-gradient(ellipse_at_top,rgba(79,138,116,0.16),rgba(79,138,116,0.06)_38%,transparent_72%)] blur-3xl"
       />
-      <div className="absolute inset-0 bg-grid-animated bg-grid-fade opacity-60" aria-hidden />
+      <div
+        className="absolute inset-0 bg-grid-animated bg-grid-fade opacity-60"
+        aria-hidden
+      />
 
       <div className="relative mx-auto flex min-h-[calc(100vh-4rem)] max-w-7xl items-center justify-center px-4 py-20 text-center sm:px-6 lg:px-8 lg:py-28">
         <div className="mx-auto max-w-6xl">
@@ -61,7 +100,9 @@ export function Hero() {
             transition={{ duration: 0.7, delay: 0.05, ease: smoothEase }}
             className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-4 py-2 text-xs font-medium tracking-wide text-primary shadow-sm backdrop-blur-md"
           >
-            <span className="rounded-full bg-primary px-2 py-1 text-[11px] font-medium text-primary-foreground">New</span>
+            <span className="rounded-full bg-primary px-2 py-1 text-[8px] font-medium text-primary-foreground">
+              New
+            </span>
             <span>48 thành viên đang hoạt động lúc này</span>
           </motion.div>
 
@@ -87,20 +128,24 @@ export function Hero() {
                     {WORDS[i]}
                   </motion.span>
                 </AnimatePresence>
-                <span className="invisible whitespace-nowrap leading-none" aria-hidden>
+                <span
+                  className="invisible whitespace-nowrap leading-none"
+                  aria-hidden
+                >
                   khỏe hơn mỗi ngày.
                 </span>
               </span>
             </span>
           </motion.h1>
 
-
           <motion.p
             {...fadeBlurUp}
             transition={{ duration: 0.7, delay: 0.19, ease: smoothEase }}
             className="mx-auto mt-7 max-w-3xl text-sm font-normal leading-relaxed text-muted-foreground sm:text-base md:text-lg"
           >
-            Ứng dụng và hệ sinh thái tập luyện giúp bạn quản lý gói tập, đặt lịch PT, theo dõi tiến trình và duy trì động lực mỗi ngày — trong một trải nghiệm gọn, hiện đại và tập trung.
+            Ứng dụng và hệ sinh thái tập luyện giúp bạn quản lý gói tập, đặt
+            lịch PT, theo dõi tiến trình và duy trì động lực mỗi ngày — trong
+            một trải nghiệm gọn, hiện đại và tập trung.
           </motion.p>
 
           <motion.div
@@ -127,27 +172,37 @@ export function Hero() {
           <motion.div
             {...fadeBlurUp}
             transition={{ duration: 0.72, delay: 0.34, ease: smoothEase }}
-            className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-5"
+            className="mt-10 flex flex-col items-center justify-center gap-2 sm:flex-row sm:gap-4"
           >
             <a
               href="#"
-              className="inline-flex min-w-[175px] items-center justify-center gap-3 rounded-2xl border border-primary/25 bg-white/55 px-4 py-2.5 text-foreground shadow-sm backdrop-blur-xl transition-all hover:-translate-y-0.5 hover:border-primary/45 hover:bg-primary/5"
+              className="inline-flex min-w-[132px] items-center justify-center gap-1.5 rounded-md border border-white/20 bg-black px-2.5 py-1.5 text-white shadow-[0_8px_18px_rgba(0,0,0,0.16)] ring-1 ring-black/10 transition-all hover:-translate-y-0.5 hover:bg-zinc-900"
+              aria-label="Download on the App Store"
             >
               <AppStoreIcon />
-              <span className="text-left leading-tight">
-                <span className="block text-[10px] uppercase tracking-[0.2em] text-primary/70">Download on</span>
-                <span className="text-[15px] font-semibold">App Store</span>
+              <span className="text-left leading-none">
+                <span className="block text-[7px] font-medium tracking-tight text-white">
+                  Download on the
+                </span>
+                <span className="mt-0.5 block text-[15px] font-semibold tracking-[-0.04em] text-white">
+                  App Store
+                </span>
               </span>
             </a>
-            <span className="text-sm font-medium text-muted-foreground">hoặc</span>
+            {/* <span className="text-sm font-medium text-muted-foreground">hoặc</span> */}
             <a
               href="#"
-              className="inline-flex min-w-[175px] items-center justify-center gap-3 rounded-2xl border border-primary/25 bg-white/55 px-4 py-2.5 text-foreground shadow-sm backdrop-blur-xl transition-all hover:-translate-y-0.5 hover:border-primary/45 hover:bg-primary/5"
+              className="inline-flex min-w-[145px] items-center justify-center gap-1.5 rounded-md border border-white/20 bg-black px-2.5 py-1.5 text-white shadow-[0_8px_18px_rgba(0,0,0,0.16)] ring-1 ring-black/10 transition-all hover:-translate-y-0.5 hover:bg-zinc-900"
+              aria-label="Get it on Google Play"
             >
               <PlayStoreIcon />
-              <span className="text-left leading-tight">
-                <span className="block text-[10px] uppercase tracking-[0.2em] text-primary/70">Get it on</span>
-                <span className="text-[15px] font-semibold">Play Store</span>
+              <span className="text-left leading-none">
+                <span className="block text-[8px] font-medium uppercase tracking-wide text-white">
+                  Get it on
+                </span>
+                <span className="mt-0.5 block text-[15px] font-semibold tracking-[-0.04em] text-white">
+                  Google Play
+                </span>
               </span>
             </a>
           </motion.div>
