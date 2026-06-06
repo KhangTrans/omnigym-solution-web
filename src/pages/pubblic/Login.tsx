@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Mail, Lock, Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
@@ -23,7 +23,7 @@ const Login = () => {
       return;
     }
 
-    const adminRoles = ['admin', 'staff', 'partner', 'gym'];
+    const adminRoles = ['admin', 'staff', 'branchmanager', 'gym'];
     if (adminRoles.includes(role) || [1, 2, 3].includes(user?.role_id)) {
       navigate('/admin');
     } else {

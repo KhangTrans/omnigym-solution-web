@@ -25,7 +25,7 @@ function AdminOverview() {
 
   const userData = localStorage.getItem('user');
   const user = userData ? JSON.parse(userData) : null;
-  const isPartner = user?.role === 'Partner' || user?.role === 'Gym' || user?.role_id === 3;
+  const isPartner = user?.role === 'BranchManager' || user?.role === 'Gym' || user?.role_id === 3;
 
   const stats = useMemo(() => {
     // If partner, filter revenue and users (this is a mock, usually would call different API or pass user ID)
@@ -77,7 +77,7 @@ function AdminOverview() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Dashboard Overview</h1>
           <p className="text-sm text-muted-foreground">
-            {isPartner ? "Số liệu thống kê dành cho đối tác phòng tập." : "Snapshot of revenue, members and exercise packs."}
+            {isPartner ? "Số liệu thống kê dành cho quản lý phòng tập." : "Snapshot of revenue, members and exercise packs."}
           </p>
         </div>
         <Badge variant="secondary" className="gap-1">

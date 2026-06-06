@@ -80,7 +80,7 @@ const NAV: NavItem[] = [
   },
   {
     to: "/admin/payouts",
-    label: "Thanh toán đối tác",
+    label: "Thanh toán chi nhánh",
     icon: Banknote,
     group: "Operations",
   },
@@ -157,7 +157,7 @@ const AdminLayout = () => {
     console.error("Failed to parse user data from localStorage", e);
   }
   
-  const isPartner = user?.role === 'Partner' || user?.role === 'Gym' || user?.role_id === 3;
+  const isPartner = user?.role === 'BranchManager' || user?.role === 'Gym' || user?.role_id === 3;
 
   useEffect(() => {
     const verifySession = async () => {
@@ -191,7 +191,7 @@ const AdminLayout = () => {
 
   const profile = {
     name: user?.full_name || "Quản trị viên",
-    role: isPartner ? "Đối tác" : (user?.role === "Admin" ? "Quản trị hệ thống" : "Nhân viên"),
+    role: isPartner ? "Quản lý chi nhánh" : (user?.role === "Admin" ? "Quản trị hệ thống" : "Nhân viên"),
     avatar: user?.avatar_url || "https://github.com/shadcn.png",
   };
 
@@ -355,7 +355,7 @@ const AdminLayout = () => {
               </div>
               <div className="leading-tight">
                 <div className="text-xl font-black uppercase tracking-tight text-foreground">
-                  {isPartner ? "OmniGym Partner" : "OmniGym Admin"}
+                  {isPartner ? "OmniGym Branch Manager" : "OmniGym Admin"}
                 </div>
                 <div className="text-[11px] font-black uppercase tracking-[0.34em] text-foreground">
                   Platform

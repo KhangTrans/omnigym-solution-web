@@ -38,9 +38,9 @@ const DashboardRedirect = () => {
         return <Navigate to="/trainer-join" replace />;
       }
 
-      // Admin, Staff, and Partner all use the /admin dashboard route now
+      // Admin, Staff, and BranchManager all use the /admin dashboard route now
       if (
-        ["admin", "staff", "partner", "gym"].includes(role) ||
+        ["admin", "staff", "branchmanager", "gym"].includes(role) ||
         [1, 2, 3].includes(user?.role_id)
       ) {
         return <Navigate to="/admin" replace />;
