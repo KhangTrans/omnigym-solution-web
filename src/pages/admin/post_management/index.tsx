@@ -89,7 +89,7 @@ export default function PostManagement() {
   const currentUser = useCurrentUser();
   const currentRole = String(currentUser?.role || "").toLowerCase();
   const currentRoleName = String(currentUser?.role?.role_name || currentUser?.role?.name || currentUser?.role || "").toLowerCase();
-  const isAdminLike = [currentRole, currentRoleName].some((role) => role === "admin" || role === "partner" || role === "parnet") || [1, 3].includes(Number(currentUser?.role_id));
+  const isAdminLike = [currentRole, currentRoleName].some((role) => role === "admin" || role === "branchmanager") || [1, 3].includes(Number(currentUser?.role_id));
 
   const [tab, setTab] = useState<StatusKey | "all">(isAdminLike ? "all" : "draft");
   const [posts, setPosts] = useState<Post[]>([]);

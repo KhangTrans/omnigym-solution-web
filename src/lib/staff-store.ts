@@ -60,7 +60,7 @@ export type TrainerStatus = "active" | "waiting";
 
 /**
  * A trainer profile is considered "complete" once the PT themself has filled
- * in every professional / safety field the Partner cannot reasonably know.
+ * in every professional / safety field the Branch Manager cannot reasonably know.
  */
 export function isTrainerProfileComplete(t: StaffTrainer): boolean {
   return Boolean(
@@ -79,7 +79,7 @@ export function isTrainerProfileComplete(t: StaffTrainer): boolean {
 
 /**
  * Status reflects only whether the PT has completed their professional
- * information. The Partner's enable/disable toggle (`t.active`) only suspends
+ * information. The Branch Manager's enable/disable toggle (`t.active`) only suspends
  * sign-in / activity and does NOT change this status.
  */
 export function getTrainerStatus(t: StaffTrainer): TrainerStatus {
