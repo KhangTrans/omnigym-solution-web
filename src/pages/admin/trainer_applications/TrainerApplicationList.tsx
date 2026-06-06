@@ -1,18 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   BadgeCheck,
-  CalendarDays,
-  CheckCircle2,
   Clock,
   Eye,
-  FileBadge,
   Loader2,
-  Mail,
-  Phone,
   RefreshCw,
   Search,
-  ShieldCheck,
-  User,
   XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -20,21 +13,14 @@ import { trainerApplicationAPI } from "@/api/trainerApplications";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { ApplicationDetailDialog } from "./components/ApplicationDetailDialog";
+import { ApplicationRejectDialog } from "./components/ApplicationRejectDialog";
 
 const STATUSES = ["pending", "approved", "rejected", "all"] as const;
 type StatusFilter = (typeof STATUSES)[number];
-type ApplicationStatus = "draft" | "pending" | "approved" | "rejected";
+export type ApplicationStatus = "draft" | "pending" | "approved" | "rejected";
 
-type ApplicationCertificate = {
+export type ApplicationCertificate = {
   id?: number;
   cert_name?: string | null;
   issued_by?: string | null;
@@ -44,7 +30,7 @@ type ApplicationCertificate = {
   expires_at?: string | null;
   status?: string | null;
 };
-type ApplicationUser = {
+export type ApplicationUser = {
   id?: number;
   full_name?: string | null;
   firstName?: string | null;
@@ -53,7 +39,7 @@ type ApplicationUser = {
   phone_number?: string | null;
   avatar_url?: string | null;
 };
-type TrainerApplication = {
+export type TrainerApplication = {
   id: number;
   user_id: number;
   status: ApplicationStatus;
@@ -73,21 +59,21 @@ type TrainerApplication = {
   certificates?: ApplicationCertificate[];
 };
 
-const statusLabel: Record<ApplicationStatus | "all", string> = {
+export const statusLabel: Record<ApplicationStatus | "all", string> = {
   all: "Tất cả",
   draft: "Nháp",
   pending: "Chờ duyệt",
   approved: "Đã duyệt",
   rejected: "Từ chối",
 };
-const statusClass: Record<ApplicationStatus, string> = {
+export const statusClass: Record<ApplicationStatus, string> = {
   draft: "bg-slate-100 text-slate-700 border-slate-200",
   pending: "bg-amber-50 text-amber-700 border-amber-200",
   approved: "bg-emerald-50 text-emerald-700 border-emerald-200",
   rejected: "bg-red-50 text-red-700 border-red-200",
 };
 
-function applicantName(app: TrainerApplication) {
+export function applicantName(app: TrainerApplication) {
   const user = app.user;
   return (
     user?.full_name ||
@@ -96,10 +82,10 @@ function applicantName(app: TrainerApplication) {
     `User #${app.user_id}`
   );
 }
-function formatDate(value?: string | null) {
+export function formatDate(value?: string | null) {
   return value ? new Date(value).toLocaleString("vi-VN") : "-";
 }
-function formatMoney(value?: number | string | null) {
+export function formatMoney(value?: number | string | null) {
   const amount = Number(value) || 0;
   return amount ? amount.toLocaleString("vi-VN") + "đ" : "-";
 }
@@ -383,44 +369,14 @@ export default function TrainerApplicationList() {
         onApprove={handleApprove}
         onRejectClick={() => setRejectOpen(true)}
       />
-      <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Từ chối hồ sơ Trainer</DialogTitle>
-            <DialogDescription>
-              Nhập lý do để người dùng biết cần bổ sung hoặc chỉnh sửa thông tin
-              nào.
-            </DialogDescription>
-          </DialogHeader>
-          <Textarea
-            value={rejectionReason}
-            onChange={(e) => setRejectionReason(e.target.value)}
-            placeholder="Ví dụ: Chứng chỉ chưa rõ ảnh, thiếu thông tin định danh..."
-            rows={5}
-          />
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setRejectOpen(false)}
-              disabled={processing}
-            >
-              Hủy
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleReject}
-              disabled={processing}
-            >
-              {processing ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <XCircle className="h-4 w-4" />
-              )}
-              Từ chối
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ApplicationRejectDialog
+        open={rejectOpen}
+        onOpenChange={setRejectOpen}
+        rejectionReason={rejectionReason}
+        setRejectionReason={setRejectionReason}
+        onSubmit={handleReject}
+        processing={processing}
+      />
     </div>
   );
 }
@@ -457,252 +413,13 @@ function SummaryCard({
     </Card>
   );
 }
-function StatusBadge({ status }: { status: ApplicationStatus }) {
+
+export function StatusBadge({ status }: { status: ApplicationStatus }) {
   return (
     <span
       className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${statusClass[status]}`}
     >
       {statusLabel[status]}
     </span>
-  );
-}
-function InfoItem({
-  icon,
-  label,
-  value,
-}: {
-  icon?: React.ReactNode;
-  label: string;
-  value?: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-lg border border-border bg-muted/20 p-3">
-      <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        {icon}
-        {label}
-      </div>
-      <div className="break-words text-sm font-medium text-foreground">
-        {value || "-"}
-      </div>
-    </div>
-  );
-}
-
-function ApplicationDetailDialog({
-  application,
-  open,
-  onOpenChange,
-  processing,
-  onApprove,
-  onRejectClick,
-}: {
-  application: TrainerApplication | null;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  processing: boolean;
-  onApprove: (id: number) => void;
-  onRejectClick: () => void;
-}) {
-  if (!application) return null;
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            Hồ sơ Trainer #{application.id}
-            <StatusBadge status={application.status} />
-          </DialogTitle>
-          <DialogDescription>
-            Kiểm tra hồ sơ, giấy tờ định danh và chứng chỉ trước khi duyệt.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-6">
-          <section className="grid gap-4 md:grid-cols-[160px_1fr]">
-            <div className="overflow-hidden rounded-xl border border-border bg-muted">
-              {application.avatar_url ? (
-                <img
-                  src={application.avatar_url}
-                  alt="Avatar"
-                  className="h-40 w-full object-cover"
-                />
-              ) : (
-                <div className="grid h-40 place-items-center text-muted-foreground">
-                  <User className="h-8 w-8" />
-                </div>
-              )}
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <InfoItem
-                icon={<User className="h-3.5 w-3.5" />}
-                label="Người gửi"
-                value={applicantName(application)}
-              />
-              <InfoItem
-                icon={<Mail className="h-3.5 w-3.5" />}
-                label="Email"
-                value={application.user?.email}
-              />
-              <InfoItem
-                icon={<Phone className="h-3.5 w-3.5" />}
-                label="Số điện thoại"
-                value={
-                  application.phone_number || application.user?.phone_number
-                }
-              />
-              <InfoItem
-                icon={<CalendarDays className="h-3.5 w-3.5" />}
-                label="Ngày gửi"
-                value={formatDate(application.submitted_at)}
-              />
-            </div>
-          </section>
-          <section>
-            <h3 className="mb-3 text-base font-semibold">
-              Thông tin chuyên môn
-            </h3>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <InfoItem label="Chuyên môn" value={application.specialization} />
-              <InfoItem
-                label="Số năm kinh nghiệm"
-                value={application.years_experience ?? "-"}
-              />
-              <InfoItem
-                label="Giá theo giờ"
-                value={formatMoney(application.hourly_rate)}
-              />
-              <InfoItem label="Địa chỉ" value={application.address} />
-              <InfoItem label="Bio" value={application.bio} />
-            </div>
-          </section>
-          <section>
-            <h3 className="mb-3 text-base font-semibold">Định danh</h3>
-            <div className="grid gap-3 md:grid-cols-2">
-              <InfoItem
-                icon={<ShieldCheck className="h-3.5 w-3.5" />}
-                label="Số định danh"
-                value={application.identity_number}
-              />
-              <div className="rounded-lg border border-border bg-muted/20 p-3">
-                <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Ảnh định danh
-                </div>
-                {application.identity_image_url ? (
-                  <a
-                    href={application.identity_image_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="block overflow-hidden rounded-lg border border-border"
-                  >
-                    <img
-                      src={application.identity_image_url}
-                      alt="Identity"
-                      className="max-h-56 w-full object-contain bg-background"
-                    />
-                  </a>
-                ) : (
-                  <div className="text-sm text-muted-foreground">
-                    Không có ảnh
-                  </div>
-                )}
-              </div>
-            </div>
-          </section>
-          <section>
-            <h3 className="mb-3 text-base font-semibold">Chứng chỉ</h3>
-            <div className="grid gap-4 md:grid-cols-2">
-              {application.certificates?.length ? (
-                application.certificates.map((cert, index) => (
-                  <div
-                    key={cert.id || index}
-                    className="rounded-xl border border-border bg-card p-4"
-                  >
-                    <div className="mb-3 flex items-center gap-2 font-semibold">
-                      <FileBadge className="h-4 w-4" />
-                      {cert.cert_name || `Certificate #${index + 1}`}
-                    </div>
-                    <div className="grid gap-2 text-sm">
-                      <InfoItem label="Đơn vị cấp" value={cert.issued_by} />
-                      <InfoItem
-                        label="Mã chứng chỉ"
-                        value={cert.certificate_number}
-                      />
-                      <InfoItem
-                        label="Ngày cấp"
-                        value={
-                          cert.issued_at
-                            ? String(cert.issued_at).slice(0, 10)
-                            : "-"
-                        }
-                      />
-                      <InfoItem
-                        label="Ngày hết hạn"
-                        value={
-                          cert.expires_at
-                            ? String(cert.expires_at).slice(0, 10)
-                            : "-"
-                        }
-                      />
-                    </div>
-                    {cert.image_url && (
-                      <a
-                        href={cert.image_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="mt-3 block overflow-hidden rounded-lg border border-border"
-                      >
-                        <img
-                          src={cert.image_url}
-                          alt={cert.cert_name || "Certificate"}
-                          className="max-h-52 w-full object-contain bg-background"
-                        />
-                      </a>
-                    )}
-                  </div>
-                ))
-              ) : (
-                <div className="rounded-lg border border-border p-4 text-sm text-muted-foreground">
-                  Không có chứng chỉ.
-                </div>
-              )}
-            </div>
-          </section>
-          {application.rejection_reason && (
-            <section className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-              <div className="font-semibold">Lý do từ chối</div>
-              <p className="mt-1">{application.rejection_reason}</p>
-            </section>
-          )}
-        </div>
-        <DialogFooter className="gap-2 sm:gap-0">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Đóng
-          </Button>
-          {application.status === "pending" && (
-            <>
-              <Button
-                variant="destructive"
-                onClick={onRejectClick}
-                disabled={processing}
-              >
-                <XCircle className="h-4 w-4" />
-                Từ chối
-              </Button>
-              <Button
-                onClick={() => onApprove(application.id)}
-                disabled={processing}
-                className="bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground"
-              >
-                {processing ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <CheckCircle2 className="h-4 w-4" />
-                )}
-                Duyệt hồ sơ
-              </Button>
-            </>
-          )}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   );
 }

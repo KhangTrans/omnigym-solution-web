@@ -6,16 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { UserConfirmDialog } from "./components/UserConfirmDialog";
 import {
   Table,
   TableBody,
@@ -195,11 +186,7 @@ function UsersPage() {
     }
   };
 
-  const confirmMessage = confirmUser
-    ? normalizeStatus(confirmUser.status) === "active"
-      ? "Bạn có chắc muốn khóa tài khoản này không?"
-      : "Bạn có chắc muốn mở khóa tài khoản này không?"
-    : "";
+
 
   // ─── Pagination helpers ────────────────────────────────────────────────────
   const goToPage = (page: number) => {
@@ -396,34 +383,14 @@ function UsersPage() {
       </Card>
 
       {/* ── Confirm Lock/Unlock dialog ── */}
-      <AlertDialog
-        open={Boolean(confirmUser)}
-        onOpenChange={(open) => {
-          if (!open) setConfirmUser(null);
+      <UserConfirmDialog
+        user={confirmUser}
+        onClose={() => setConfirmUser(null)}
+        onConfirm={(target) => {
+          setConfirmUser(null);
+          void handleToggleStatus(target);
         }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Xác nhận thao tác</AlertDialogTitle>
-            <AlertDialogDescription>{confirmMessage}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Hủy</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (confirmUser) {
-                  const target = confirmUser;
-                  setConfirmUser(null);
-                  void handleToggleStatus(target);
-                }
-              }}
-              disabled={confirmUser ? pendingIds.has(confirmUser.id) : false}
-            >
-              Xác nhận
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      />
     </div>
   );
 }
