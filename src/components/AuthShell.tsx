@@ -1,6 +1,7 @@
-import { Dumbbell } from "lucide-react";
+
 import type { ReactNode } from "react";
 import heroImg from "../assets/hero-gym.jpg";
+import logoOmnigym from "@/assets/logo-omnigym.png";
 
 interface AuthShellProps {
   title: string;
@@ -16,8 +17,8 @@ export function AuthShell({ title, subtitle, children, footer, badge }: AuthShel
       {/* Left: form */}
       <div className="flex flex-col px-6 py-10 sm:px-10 lg:px-16 overflow-y-auto">
         <div className="flex items-center gap-2 font-bold text-lg w-fit">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--gradient-primary)] text-white shadow-[var(--shadow-card)]">
-            <Dumbbell className="h-5 w-5" />
+          <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg bg-white shadow-[var(--shadow-card)]">
+            <img src={logoOmnigym} alt="OmniGym logo" className="h-full w-full object-cover" />
           </span>
           <span className="tracking-tight">OmniGym</span>
         </div>

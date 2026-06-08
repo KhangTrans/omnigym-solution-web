@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Menu, X, Dumbbell, Globe, LogOut, User as UserIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 import { authApi } from "../../api/auth";
+import logoOmnigym from "@/assets/logo-omnigym.png";
 
 const useLang = () => ({
   lang: "vi",
@@ -90,8 +91,8 @@ export function Navbar() {
     <header className="navbar-blur-in sticky top-0 z-50 w-full bg-background/80 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <a href="#home" className="flex items-center gap-2 text-lg font-semibold text-foreground">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-md">
-            <Dumbbell className="h-5 w-5" />
+          <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg bg-white shadow-md">
+            <img src={logoOmnigym} alt="OmniGym logo" className="h-full w-full object-cover" />
           </span>
           <span className="tracking-tight">OmniGym</span>
         </a>

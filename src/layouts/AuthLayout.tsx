@@ -1,9 +1,10 @@
 import { Outlet } from "react-router-dom";
-import { Dumbbell } from "lucide-react";
+
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import heroImg from "../assets/hero-gym.jpg";
+import logoOmnigym from "@/assets/logo-omnigym.png";
 
 export default function AuthLayout() {
   return (
@@ -15,8 +16,8 @@ export default function AuthLayout() {
         
         <div className="relative z-10">
           <div className="flex items-center gap-2 mb-12">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-primary text-primary-foreground shadow-card">
-              <Dumbbell className="h-5 w-5" />
+            <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg bg-white shadow-card">
+              <img src={logoOmnigym} alt="OmniGym logo" className="h-full w-full object-cover" />
             </div>
             <span className="text-xl font-bold tracking-tight text-foreground">
               OmniGym
