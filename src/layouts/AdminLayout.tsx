@@ -24,6 +24,7 @@ import type { LucideIcon } from "lucide-react";
 import { cn } from "../utils/cn";
 import { toast } from "sonner";
 import { authApi } from "../api/auth";
+import logoOmnigym from "@/assets/logo-omnigym.png";
 
 type NavItem = {
   to: string;
@@ -236,7 +237,7 @@ const AdminLayout = () => {
                     <span className="block h-px w-6 rounded-full bg-slate-300/50" />
                   </div>
                   <div className={cn(
-                    "overflow-hidden px-3 text-[11px] font-black uppercase tracking-[0.28em] text-muted-foreground/80 transition-all duration-200",
+                    "overflow-hidden px-3 text-[11px] font-semibold uppercase tracking-[0.28em] text-muted-foreground/80 transition-all duration-200",
                     sidebarOpen ? "h-7 opacity-100" : "h-0 opacity-0"
                   )}>
                     {GROUPS_LABELS[group]}
@@ -253,11 +254,11 @@ const AdminLayout = () => {
                         to={item.to}
                         title={item.label}
                         className={cn(
-                          "flex h-12 w-full items-center overflow-hidden rounded-xl text-base font-bold transition-all duration-200",
+                          "flex h-12 w-full items-center overflow-hidden rounded-lg text-base font-semibold transition-all duration-200",
                           sidebarOpen ? "justify-start gap-4 px-3" : "justify-center px-0",
                           sidebarOpen
                             ? active
-                              ? "bg-primary/10 text-primary shadow-sm shadow-primary/5"
+                              ? "bg-[#2f6b50] text-white"
                               : "text-foreground hover:bg-muted hover:text-foreground"
                             : active
                               ? "text-primary"
@@ -269,7 +270,7 @@ const AdminLayout = () => {
                             className={cn(
                               "h-5 w-5 shrink-0",
                               active
-                                ? "text-primary"
+                                ? sidebarOpen ? "text-white" : "text-[#2f6b50]"
                                 : "text-foreground"
                             )}
                           />
@@ -293,7 +294,7 @@ const AdminLayout = () => {
               onClick={handleLogout}
               title="Đăng xuất"
               className={cn(
-                "flex h-12 w-full items-center overflow-hidden rounded-xl text-base font-bold text-red-500 transition-all duration-200 hover:bg-red-50",
+                "flex h-12 w-full items-center overflow-hidden rounded-xl text-base font-semibold text-red-500 transition-all duration-200 hover:bg-red-50",
                 sidebarOpen ? "justify-start gap-4 px-3" : "justify-center px-0"
               )}
             >
@@ -350,14 +351,14 @@ const AdminLayout = () => {
                 <PanelLeft className="h-5 w-5" />
                 <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", sidebarOpen ? "rotate-180" : "rotate-0")} />
               </button>
-              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-primary text-xl font-black text-primary-foreground shadow-lg shadow-primary/25">
-                O
+              <div className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-2xl bg-white shadow-lg">
+                <img src={logoOmnigym} alt="OmniGym logo" className="h-full w-full object-cover" />
               </div>
               <div className="leading-tight">
-                <div className="text-xl font-black uppercase tracking-tight text-foreground">
+                <div className="text-xl font-semibold tracking-tight text-foreground">
                   {isPartner ? "OmniGym Branch Manager" : "OmniGym Admin"}
                 </div>
-                <div className="text-[11px] font-black uppercase tracking-[0.34em] text-foreground">
+                <div className="text-[11px] font-medium uppercase tracking-[0.28em] text-foreground">
                   Platform
                 </div>
               </div>
