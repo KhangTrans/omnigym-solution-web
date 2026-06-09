@@ -31,6 +31,9 @@ import GymDetail from "../pages/pubblic/branches/GymDetail";
 import ShiftAttendance from "../pages/staffs/ShiftAttendance";
 import BranchQrDisplay from "../pages/admin/attendance_management/BranchQrDisplay";
 import AttendanceManagement from "../pages/admin/attendance_management/AttendanceManagement";
+import Checkout from "../pages/customers/transaction/Checkout";
+import PaymentSuccess from "../pages/customers/transaction/PaymentSuccess";
+import PaymentCancel from "../pages/customers/transaction/PaymentCancel";
 
 const DashboardRedirect = () => {
   const userData = localStorage.getItem("user");
@@ -91,6 +94,18 @@ export const routesConfig = [
         element: <ChangePassword />,
       },
     ],
+  },
+  {
+    path: "/checkout/:packageId",
+    element: <Checkout />,
+  },
+  {
+    path: "/payment/success",
+    element: <PaymentSuccess />,
+  },
+  {
+    path: "/payment/cancel",
+    element: <PaymentCancel />,
   },
   {
     path: "/admin",

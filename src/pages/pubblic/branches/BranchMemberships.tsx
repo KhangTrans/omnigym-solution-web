@@ -87,14 +87,13 @@ export default function BranchMemberships({
   const goNext = () => goTo(activeIndex + 1);
 
   // Handle membership registration — redirect to login if not authenticated
-  const handleRegister = (pkgName: string) => {
+  const handleRegister = (pkg: MembershipPackage) => {
     const user = localStorage.getItem("user");
     if (!user) {
       sessionStorage.setItem("postLoginRedirect", location.pathname + location.search);
       navigate("/login");
     } else {
-      // TODO: navigate to membership checkout page when implemented
-      toast.info(`Đang xử lý đăng ký gói ${pkgName}...`);
+      navigate(`/checkout/${pkg.id}`);
     }
   };
 
@@ -273,7 +272,7 @@ export default function BranchMemberships({
 
                           <div className="pt-8">
                             <Button
-                              onClick={() => handleRegister(pkg.name)}
+                              onClick={() => handleRegister(pkg)}
                               variant={isCenter ? "emerald" : "emerald-outline"}
                               className="w-full font-bold rounded-full py-5 transition-all duration-400 hover:scale-[1.02]"
                             >
