@@ -19,6 +19,8 @@ import {
   ClipboardCheck,
   PanelLeft,
   ChevronDown,
+  QrCode,
+  Calendar,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "../utils/cn";
@@ -77,6 +79,24 @@ const NAV: NavItem[] = [
     to: "/admin/trainer-applications",
     label: "Duyệt Trainer",
     icon: ClipboardCheck,
+    group: "Operations",
+  },
+  {
+    to: "/admin/shift-attendance",
+    label: "Điểm danh ca trực",
+    icon: ClipboardCheck,
+    group: "Operations",
+  },
+  {
+    to: "/admin/attendance-management",
+    label: "Quản lý điểm danh",
+    icon: Calendar,
+    group: "Operations",
+  },
+  {
+    to: "/admin/branch-qr",
+    label: "Kiosk QR Lễ tân",
+    icon: QrCode,
     group: "Operations",
   },
   {
@@ -150,15 +170,18 @@ const AdminLayout = () => {
   const [verifying, setVerifying] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const userData = localStorage.getItem('user');
+  const userData = localStorage.getItem("user");
   let user = null;
   try {
     user = userData && userData !== "undefined" ? JSON.parse(userData) : null;
   } catch (e) {
     console.error("Failed to parse user data from localStorage", e);
   }
-  
-  const isPartner = user?.role === 'BranchManager' || user?.role === 'Gym' || user?.role_id === 3;
+
+  const isPartner =
+    user?.role === "BranchManager" ||
+    user?.role === "Gym" ||
+    user?.role_id === 3;
 
   useEffect(() => {
     const verifySession = async () => {
@@ -167,8 +190,8 @@ const AdminLayout = () => {
         setVerifying(false);
       } catch (error) {
         console.error("Session verification failed", error);
-        localStorage.removeItem('user');
-        navigate('/login');
+        localStorage.removeItem("user");
+        navigate("/login");
       }
     };
 
@@ -181,18 +204,36 @@ const AdminLayout = () => {
     } catch (error) {
       console.error("Logout failed", error);
     } finally {
-      localStorage.removeItem('user');
-      localStorage.removeItem('token');
+      localStorage.removeItem("user");
+      localStorage.removeItem("token");
       toast.success("Đã đăng xuất thành công");
-      navigate('/login');
+      navigate("/login");
     }
   };
 
-  const filteredNav = NAV; // Partner now sees everything like logic requested
+  const getRoleName = (u: any) => {
+    if (!u) return "";
+    if (typeof u.role === "object" && u.role?.role_name) {
+      return String(u.role.role_name).toLowerCase();
+    }
+    return String(u.role || "").toLowerCase();
+  };
+  const userRole = getRoleName(user);
+  const isStaff = userRole === "staff";
+  const filteredNav = NAV.filter((item) => {
+    if (item.to === "/admin/shift-attendance") {
+      return isStaff;
+    }
+    return true;
+  });
 
   const profile = {
     name: user?.full_name || "Quản trị viên",
-    role: isPartner ? "Quản lý chi nhánh" : (user?.role === "Admin" ? "Quản trị hệ thống" : "Nhân viên"),
+    role: isPartner
+      ? "Quản lý chi nhánh"
+      : user?.role === "Admin"
+        ? "Quản trị hệ thống"
+        : "Nhân viên",
     avatar: user?.avatar_url || "https://github.com/shadcn.png",
   };
 
@@ -201,7 +242,9 @@ const AdminLayout = () => {
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-sm font-medium text-slate-500">Đang xác thực phiên đăng nhập...</p>
+          <p className="text-sm font-medium text-slate-500">
+            Đang xác thực phiên đăng nhập...
+          </p>
         </div>
       </div>
     );
@@ -211,35 +254,51 @@ const AdminLayout = () => {
     <div className="min-h-screen bg-background text-foreground">
       <div
         className="grid min-h-screen w-full transition-[grid-template-columns] duration-300 ease-out lg:grid-cols-[96px_1fr]"
-        style={{ gridTemplateColumns: sidebarOpen ? "300px minmax(0,1fr)" : "96px minmax(0,1fr)" }}
+        style={{
+          gridTemplateColumns: sidebarOpen
+            ? "300px minmax(0,1fr)"
+            : "96px minmax(0,1fr)",
+        }}
       >
         <aside
           className={cn(
             "group/sidebar sticky top-24 mx-3 mb-6 mt-24 hidden h-[calc(100vh-120px)] overflow-hidden bg-card shadow-[0_18px_50px_rgba(15,23,42,0.12)] transition-[border-radius] duration-200 lg:flex lg:flex-col",
-            sidebarOpen ? "rounded-[30px]" : "rounded-[24px]"
+            sidebarOpen ? "rounded-[30px]" : "rounded-[24px]",
           )}
         >
-          <nav className={cn("flex-1 overflow-y-auto overflow-x-hidden py-8 transition-[padding] duration-300 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden", sidebarOpen ? "space-y-7 px-4" : "space-y-8 px-3")}>
+          <nav
+            className={cn(
+              "flex-1 overflow-y-auto overflow-x-hidden py-8 transition-[padding] duration-300 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+              sidebarOpen ? "space-y-7 px-4" : "space-y-8 px-3",
+            )}
+          >
             {GROUPS.map((group) => {
               const groupItems = filteredNav.filter((n) => n.group === group);
               if (groupItems.length === 0) return null;
-              
+
               return (
-                <div key={group} className={cn("space-y-2", !sidebarOpen && "pt-0")}>
+                <div
+                  key={group}
+                  className={cn("space-y-2", !sidebarOpen && "pt-0")}
+                >
                   <div
                     className={cn(
                       "mx-auto my-4 flex h-4 w-full shrink-0 flex-col items-center justify-center gap-1 transition-all duration-200",
-                      sidebarOpen ? "h-0 overflow-hidden opacity-0" : "opacity-100"
+                      sidebarOpen
+                        ? "h-0 overflow-hidden opacity-0"
+                        : "opacity-100",
                     )}
                     aria-hidden="true"
                   >
                     <span className="block h-px w-9 rounded-full bg-slate-300/80" />
                     <span className="block h-px w-6 rounded-full bg-slate-300/50" />
                   </div>
-                  <div className={cn(
-                    "overflow-hidden px-3 text-[11px] font-semibold uppercase tracking-[0.28em] text-muted-foreground/80 transition-all duration-200",
-                    sidebarOpen ? "h-7 opacity-100" : "h-0 opacity-0"
-                  )}>
+                  <div
+                    className={cn(
+                      "overflow-hidden px-3 text-[11px] font-semibold uppercase tracking-[0.28em] text-muted-foreground/80 transition-all duration-200",
+                      sidebarOpen ? "h-7 opacity-100" : "h-0 opacity-0",
+                    )}
+                  >
                     {GROUPS_LABELS[group]}
                   </div>
                   {groupItems.map((item) => {
@@ -255,14 +314,16 @@ const AdminLayout = () => {
                         title={item.label}
                         className={cn(
                           "flex h-12 w-full items-center overflow-hidden rounded-lg text-base font-semibold transition-all duration-200",
-                          sidebarOpen ? "justify-start gap-4 px-3" : "justify-center px-0",
+                          sidebarOpen
+                            ? "justify-start gap-4 px-3"
+                            : "justify-center px-0",
                           sidebarOpen
                             ? active
                               ? "bg-[#2f6b50] text-white"
                               : "text-foreground hover:bg-muted hover:text-foreground"
                             : active
                               ? "text-primary"
-                              : "text-foreground hover:text-primary"
+                              : "text-foreground hover:text-primary",
                         )}
                       >
                         <span className="grid h-7 w-7 shrink-0 place-items-center">
@@ -270,41 +331,56 @@ const AdminLayout = () => {
                             className={cn(
                               "h-5 w-5 shrink-0",
                               active
-                                ? sidebarOpen ? "text-white" : "text-[#2f6b50]"
-                                : "text-foreground"
+                                ? sidebarOpen
+                                  ? "text-white"
+                                  : "text-[#2f6b50]"
+                                : "text-foreground",
                             )}
                           />
                         </span>
-                        <span className={cn(
-                          "overflow-hidden whitespace-nowrap transition-all duration-200",
-                          sidebarOpen ? "w-auto opacity-100" : "w-0 opacity-0"
-                        )}>
+                        <span
+                          className={cn(
+                            "overflow-hidden whitespace-nowrap transition-all duration-200",
+                            sidebarOpen
+                              ? "w-auto opacity-100"
+                              : "w-0 opacity-0",
+                          )}
+                        >
                           {item.label}
                         </span>
                       </Link>
-                    )
+                    );
                   })}
                 </div>
-              )
+              );
             })}
           </nav>
 
-          <div className={cn("border-t transition-[padding] duration-300", sidebarOpen ? "p-4" : "p-3")}>
+          <div
+            className={cn(
+              "border-t transition-[padding] duration-300",
+              sidebarOpen ? "p-4" : "p-3",
+            )}
+          >
             <button
               onClick={handleLogout}
               title="Đăng xuất"
               className={cn(
                 "flex h-12 w-full items-center overflow-hidden rounded-xl text-base font-semibold text-red-500 transition-all duration-200 hover:bg-red-50",
-                sidebarOpen ? "justify-start gap-4 px-3" : "justify-center px-0"
+                sidebarOpen
+                  ? "justify-start gap-4 px-3"
+                  : "justify-center px-0",
               )}
             >
               <span className="grid h-7 w-7 shrink-0 place-items-center">
                 <LogOut className="h-5 w-5 shrink-0" />
               </span>
-              <span className={cn(
-                "overflow-hidden whitespace-nowrap transition-all duration-200",
-                sidebarOpen ? "w-auto opacity-100" : "w-0 opacity-0"
-              )}>
+              <span
+                className={cn(
+                  "overflow-hidden whitespace-nowrap transition-all duration-200",
+                  sidebarOpen ? "w-auto opacity-100" : "w-0 opacity-0",
+                )}
+              >
                 Đăng xuất
               </span>
             </button>
@@ -331,7 +407,7 @@ const AdminLayout = () => {
                   >
                     {item.label}
                   </Link>
-                )
+                );
               })}
               <button
                 onClick={handleLogout}
@@ -349,10 +425,19 @@ const AdminLayout = () => {
                 title={sidebarOpen ? "Thu gọn sidebar" : "Mở rộng sidebar"}
               >
                 <PanelLeft className="h-5 w-5" />
-                <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", sidebarOpen ? "rotate-180" : "rotate-0")} />
+                <ChevronDown
+                  className={cn(
+                    "h-4 w-4 transition-transform duration-200",
+                    sidebarOpen ? "rotate-180" : "rotate-0",
+                  )}
+                />
               </button>
               <div className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-2xl bg-white shadow-lg">
-                <img src={logoOmnigym} alt="OmniGym logo" className="h-full w-full object-cover" />
+                <img
+                  src={logoOmnigym}
+                  alt="OmniGym logo"
+                  className="h-full w-full object-cover"
+                />
               </div>
               <div className="leading-tight">
                 <div className="text-xl font-semibold tracking-tight text-foreground">

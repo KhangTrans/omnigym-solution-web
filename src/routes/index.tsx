@@ -26,6 +26,11 @@ import BranchList from "../pages/admin/branch_management/BranchList";
 import CreateBranch from "../pages/admin/branch_management/CreateBranch";
 import MembershipPackage from "@/pages/admin/membership_packages/MembershipPackage";
 import TrainerApplicationList from "@/pages/admin/trainer_applications/TrainerApplicationList";
+import Gyms from "../pages/pubblic/branches/Gyms";
+import GymDetail from "../pages/pubblic/branches/GymDetail";
+import ShiftAttendance from "../pages/staffs/ShiftAttendance";
+import BranchQrDisplay from "../pages/admin/attendance_management/BranchQrDisplay";
+import AttendanceManagement from "../pages/admin/attendance_management/AttendanceManagement";
 
 const DashboardRedirect = () => {
   const userData = localStorage.getItem("user");
@@ -61,6 +66,14 @@ export const routesConfig = [
   {
     path: "/trainer-join",
     element: <TrainerJoin />,
+  },
+  {
+    path: "/gyms",
+    element: <Gyms />,
+  },
+  {
+    path: "/gyms/:slug",
+    element: <GymDetail />,
   },
   {
     path: "/staff/trainer-applications",
@@ -155,6 +168,18 @@ export const routesConfig = [
       {
         path: "trainer-applications",
         element: <TrainerApplicationList />,
+      },
+      {
+        path: "shift-attendance",
+        element: <ShiftAttendance />,
+      },
+      {
+        path: "attendance-management",
+        element: <AttendanceManagement />,
+      },
+      {
+        path: "branch-qr",
+        element: <BranchQrDisplay />,
       },
     ],
   },

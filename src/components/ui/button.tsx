@@ -16,6 +16,10 @@ const buttonVariants = cva(
         secondary: "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
         ghost: "hover:bg-background hover:text-foreground",
         link: "text-primary underline-offset-4 hover:underline",
+        // Custom emerald variant for primary actions
+        emerald: "bg-emerald-600 text-white hover:bg-emerald-700 shadow-md",
+        // Emerald outline for secondary actions (matches non‑center button style)
+        "emerald-outline": "border border-slate-200 bg-white hover:bg-slate-50 text-slate-700",
       },
       size: {
         default: "h-9 px-4 py-2",
