@@ -34,11 +34,18 @@ export const branchesApi = {
     return api.put(`/branches/${id}`, data);
   },
   
-  getAll: () => {
-    return api.get('/branches');
+  getAll: (params?: {
+    search?: string;
+    province?: string;
+    district?: string;
+    page?: number;
+    limit?: number;
+    status?: string;
+  }) => {
+    return api.get('/branches', { params });
   },
   
-  getById: (id: string | number) => {
-    return api.get(`/branches/${id}`);
+  getById: (id: string | number, params?: { trainerPage?: number; trainerLimit?: number }) => {
+    return api.get(`/branches/${id}`, { params });
   }
 };

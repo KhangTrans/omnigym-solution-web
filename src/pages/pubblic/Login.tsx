@@ -1,45 +1,45 @@
-import React, { useState, useEffect } from 'react';
-import { Mail, Lock, Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
-import { GoogleLogin } from '@react-oauth/google';
-import { authApi } from '../../api/auth';
-import { notify } from '../../utils/notify';
-import { rsaService } from '../../utils/rsa';
+import React, { useState, useEffect } from "react";
+import { Mail, Lock, Loader2, AlertCircle, Eye, EyeOff } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { GoogleLogin } from "@react-oauth/google";
+import { authApi } from "../../api/auth";
+import { notify } from "../../utils/notify";
+import { rsaService } from "../../utils/rsa";
 
 const Login = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPwd, setShowPwd] = useState(false);
-  const [formData, setFormData] = useState({ identifier: '', password: '' });
+  const [formData, setFormData] = useState({ identifier: "", password: "" });
   const navigate = useNavigate();
 
-  const getRoleName = (user: any) => String(user?.role || '').toLowerCase();
+  const getRoleName = (user: any) => String(user?.role || "").toLowerCase();
 
   const redirectByRole = (user: any) => {
     const role = getRoleName(user);
 
-    if (role === 'trainer') {
-      navigate('/trainer-join');
+    if (role === "trainer") {
+      navigate("/trainer-join");
       return;
     }
 
-    const adminRoles = ['admin', 'staff', 'branchmanager', 'gym'];
+    const adminRoles = ["admin", "staff", "branchmanager", "gym"];
     if (adminRoles.includes(role) || [1, 2, 3].includes(user?.role_id)) {
-      navigate('/admin');
+      navigate("/admin");
     } else {
-      navigate('/');
+      navigate("/");
     }
   };
 
   // Kiểm tra nếu đã đăng nhập rồi thì chuyển hướng
   useEffect(() => {
-    const savedUser = localStorage.getItem('user');
+    const savedUser = localStorage.getItem("user");
     if (savedUser) {
       try {
         const user = JSON.parse(savedUser);
         redirectByRole(user);
       } catch {
-        localStorage.removeItem('user');
+        localStorage.removeItem("user");
       }
     }
   }, [navigate]);
@@ -54,22 +54,29 @@ const Login = () => {
 
       const response = await authApi.login({
         ...formData,
-        password: encryptedPassword
+        password: encryptedPassword,
       });
       const { user } = response.data;
-      
+
       // Lưu thông tin user vào localStorage
-      localStorage.setItem('user', JSON.stringify(user));
+      localStorage.setItem("user", JSON.stringify(user));
 
       // Phát sự kiện để Navbar cập nhật ngay lập tức
-      window.dispatchEvent(new Event('user-login'));
+      window.dispatchEvent(new Event("user-login"));
 
-      notify.success(`Chào mừng ${user.full_name || 'bạn'} quay trở lại!`);
+      notify.success(`Chào mừng ${user.full_name || "bạn"} quay trở lại!`);
 
-      // Kiểm tra vai trò từ backend để chuyển hướng
-      redirectByRole(user);
+      // Redirect: nếu có trang trước đó thì quay lại, không thì dùng role-based
+      const postLoginRedirect = sessionStorage.getItem("postLoginRedirect");
+      if (postLoginRedirect) {
+        sessionStorage.removeItem("postLoginRedirect");
+        navigate(postLoginRedirect);
+      } else {
+        redirectByRole(user);
+      }
     } catch (err: any) {
-      const msg = err.response?.data?.message || 'Email hoặc mật khẩu không đúng';
+      const msg =
+        err.response?.data?.message || "Email hoặc mật khẩu không đúng";
       setError(msg);
       notify.error(msg);
     } finally {
@@ -83,15 +90,24 @@ const Login = () => {
     try {
       const response = await authApi.googleLogin(credentialResponse.credential);
       const { user } = response.data;
-      
-      localStorage.setItem('user', JSON.stringify(user));
-      window.dispatchEvent(new Event('user-login'));
+
+      localStorage.setItem("user", JSON.stringify(user));
+      window.dispatchEvent(new Event("user-login"));
 
       notify.success("Đăng nhập Google thành công!");
 
-      redirectByRole(user);
+      // Redirect: nếu có trang trước đó thì quay lại, không thì dùng role-based
+      const postLoginRedirect = sessionStorage.getItem("postLoginRedirect");
+      if (postLoginRedirect) {
+        sessionStorage.removeItem("postLoginRedirect");
+        navigate(postLoginRedirect);
+      } else {
+        redirectByRole(user);
+      }
     } catch (err: any) {
-      const msg = err.response?.data?.message || 'Đăng nhập Google thất bại. Vui lòng thử lại.';
+      const msg =
+        err.response?.data?.message ||
+        "Đăng nhập Google thất bại. Vui lòng thử lại.";
       setError(msg);
       notify.error(msg);
     } finally {
@@ -115,7 +131,9 @@ const Login = () => {
 
       <form onSubmit={handleLogin} className="space-y-5">
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-slate-700 ml-0.5">Địa chỉ Email</label>
+          <label className="text-xs font-semibold text-slate-700 ml-0.5">
+            Địa chỉ Email
+          </label>
           <div className="relative group">
             <span className="absolute inset-y-0 left-3 flex items-center text-slate-400 group-focus-within:text-slate-600 transition-colors">
               <Mail className="h-4 w-4" />
@@ -126,15 +144,23 @@ const Login = () => {
               required
               className="w-full rounded-lg border border-slate-200 bg-white pl-10 pr-4 py-2 text-sm shadow-sm transition-all outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 placeholder:text-slate-400"
               value={formData.identifier}
-              onChange={(e) => setFormData({ ...formData, identifier: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, identifier: e.target.value })
+              }
             />
           </div>
         </div>
 
         <div className="space-y-1.5">
           <div className="flex justify-between items-center ml-0.5">
-            <label className="text-xs font-semibold text-slate-700">Mật khẩu</label>
-            <Link to="/forgot-password" intrinsic-title="Quên mật khẩu?" className="text-xs font-bold text-emerald-600 hover:underline">
+            <label className="text-xs font-semibold text-slate-700">
+              Mật khẩu
+            </label>
+            <Link
+              to="/forgot-password"
+              intrinsic-title="Quên mật khẩu?"
+              className="text-xs font-bold text-emerald-600 hover:underline"
+            >
               Quên mật khẩu?
             </Link>
           </div>
@@ -148,10 +174,20 @@ const Login = () => {
               required
               className="w-full rounded-lg border border-slate-200 bg-white pl-10 pr-10 py-2 text-sm shadow-sm transition-all outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 placeholder:text-slate-400"
               value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, password: e.target.value })
+              }
             />
-            <button type="button" onClick={() => setShowPwd(!showPwd)} className="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-slate-600">
-              {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            <button
+              type="button"
+              onClick={() => setShowPwd(!showPwd)}
+              className="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-slate-600"
+            >
+              {showPwd ? (
+                <EyeOff className="h-4 w-4" />
+              ) : (
+                <Eye className="h-4 w-4" />
+              )}
             </button>
           </div>
         </div>
@@ -167,7 +203,11 @@ const Login = () => {
           disabled={loading}
           className="w-full bg-[#4F8A74] text-white h-11 rounded-lg font-bold shadow-sm hover:bg-[#3f6e5d] transition-colors disabled:opacity-50 text-sm flex items-center justify-center gap-2 mt-2 uppercase tracking-widest"
         >
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Đăng nhập ngay"}
+          {loading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            "Đăng nhập ngay"
+          )}
         </button>
       </form>
 
@@ -176,14 +216,16 @@ const Login = () => {
           <div className="w-full border-t border-slate-100"></div>
         </div>
         <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-white px-4 text-slate-400 font-medium">Hoặc đăng nhập với</span>
+          <span className="bg-white px-4 text-slate-400 font-medium">
+            Hoặc đăng nhập với
+          </span>
         </div>
       </div>
 
       <div className="flex justify-center">
         <GoogleLogin
           onSuccess={handleGoogleSuccess}
-          onError={() => setError('Đăng nhập Google thất bại')}
+          onError={() => setError("Đăng nhập Google thất bại")}
           useOneTap
           theme="outline"
           shape="rectangular"
@@ -192,7 +234,13 @@ const Login = () => {
       </div>
 
       <div className="mt-10 text-center text-sm text-slate-500 pt-6 border-t border-slate-100">
-        Bạn chưa có tài khoản? <Link to="/register" className="text-slate-900 font-bold hover:underline">Đăng ký ngay</Link>
+        Bạn chưa có tài khoản?{" "}
+        <Link
+          to="/register"
+          className="text-slate-900 font-bold hover:underline"
+        >
+          Đăng ký ngay
+        </Link>
       </div>
     </div>
   );

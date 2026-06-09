@@ -1,0 +1,654 @@
+import { useEffect, useState } from "react";
+import { useParams, Link } from "react-router-dom";
+import { Navbar } from "@/components/site/Navbar";
+import { Footer } from "@/components/site/Footer";
+import {
+  MapPin,
+  Phone,
+  Clock,
+  Activity,
+  ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
+  Mail,
+  Award,
+  Star,
+  Check,
+  Building2,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { branchesApi } from "@/api/branches";
+import { toast } from "sonner";
+import { motion } from "framer-motion";
+import BranchMemberships from "./BranchMemberships";
+
+interface BranchImage {
+  id: number;
+  image_url: string;
+  is_cover: boolean;
+  sort_order: number;
+}
+
+interface FacilityImage {
+  id: number;
+  image_url: string;
+  is_cover: boolean;
+}
+
+interface Facility {
+  id: number;
+  facility_name: string;
+  description?: string;
+  icon_url?: string;
+  images?: FacilityImage[];
+}
+
+interface Trainer {
+  id: number;
+  bio?: string;
+  user?: {
+    full_name: string;
+    email: string;
+    avatar_url?: string;
+  };
+}
+
+interface BranchDetail {
+  id: number;
+  branch_name: string;
+  address: string;
+  province: string;
+  district: string;
+  hotline?: string;
+  opening_house?: string;
+  image_url?: string;
+  images?: BranchImage[];
+  facilities?: Facility[];
+  trainers?: Trainer[];
+  trainerMeta?: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
+const mockReviews = [
+  {
+    id: 1,
+    name: "Jordan L.",
+    date: "3 ngày trước",
+    rating: 5,
+    text: "Phòng tập yoga thật lộng lẫy, ngập tràn ánh sáng tự nhiên và vô cùng yên tĩnh. Nơi trú ẩn yêu thích của tôi sau giờ làm việc căng thẳng.",
+  },
+  {
+    id: 2,
+    name: "Ava T.",
+    date: "2 tuần trước",
+    rating: 5,
+    text: "Khu vực tạ và máy chạy bộ có đầy đủ mọi thứ tôi cần cho việc tập luyện sức bền. Các hội viên và HLV ở đây rất thân thiện, cởi mở.",
+  },
+  {
+    id: 3,
+    name: "Sofia R.",
+    date: "1 tháng trước",
+    rating: 5,
+    text: "Các huấn luyện viên thực sự tận tâm và chuyên nghiệp. Quy trình đăng ký và đặt lịch tập luyện 1:1 qua ứng dụng diễn ra rất nhanh chóng.",
+  },
+];
+
+export default function GymDetail() {
+  const { slug } = useParams<{ slug: string }>();
+  const [branch, setBranch] = useState<BranchDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Hero Carousel and Lightbox state
+  const [heroImageIndex, setHeroImageIndex] = useState(0);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxImageIndex, setLightboxImageIndex] = useState(0);
+
+  // Trainer pagination state
+  const [trainerPage, setTrainerPage] = useState(1);
+  const trainerLimit = 3;
+
+  // Construct images list
+  const heroImages = Array.from(
+    new Set(
+      [
+        ...(branch?.images?.map((img) => img.image_url) || []),
+        ...(branch?.image_url ? [branch.image_url] : []),
+      ].filter(Boolean),
+    ),
+  );
+  if (heroImages.length === 0) {
+    heroImages.push(
+      "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=1200&q=80",
+    );
+  }
+
+  // Lightbox keyboard navigation handler
+  useEffect(() => {
+    if (!lightboxOpen || heroImages.length <= 1) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft") {
+        setLightboxImageIndex((prev) =>
+          prev === 0 ? heroImages.length - 1 : prev - 1,
+        );
+      } else if (e.key === "ArrowRight") {
+        setLightboxImageIndex((prev) =>
+          prev === heroImages.length - 1 ? 0 : prev + 1,
+        );
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [lightboxOpen, heroImages.length]);
+
+  const fetchBranchDetail = async (page = 1) => {
+    if (!slug) return;
+    try {
+      setLoading(true);
+      const response = await branchesApi.getById(slug, {
+        trainerPage: page,
+        trainerLimit,
+      });
+      const data = response.data?.data ?? response.data;
+      setBranch(data);
+      setTrainerPage(data?.trainerMeta?.page || 1);
+    } catch (error) {
+      console.error("Failed to load branch detail:", error);
+      toast.error("Không thể tải chi tiết phòng tập.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBranchDetail(1);
+  }, [slug]);
+
+  const handleTrainerPageChange = (page: number) => {
+    if (
+      branch?.trainerMeta &&
+      page >= 1 &&
+      page <= branch.trainerMeta.totalPages
+    ) {
+      fetchBranchDetail(page);
+    }
+  };
+
+  if (loading && !branch) {
+    return (
+      <div className="min-h-screen bg-white text-slate-800 flex flex-col justify-between">
+        <Navbar />
+        <div className="flex-1 flex flex-col items-center justify-center gap-3">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent" />
+          <p className="text-sm text-slate-500 font-medium">
+            Đang tải thông tin phòng tập...
+          </p>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (!branch) {
+    return (
+      <div className="min-h-screen bg-white text-slate-800 flex flex-col justify-between">
+        <Navbar />
+        <div className="flex-1 flex flex-col items-center justify-center text-center p-6">
+          <Building2 className="h-16 w-16 text-slate-300" />
+          <h2 className="mt-4 text-2xl font-bold text-slate-800">
+            Không tìm thấy chi nhánh
+          </h2>
+          <p className="mt-2 text-slate-500">
+            Chi nhánh này có thể không tồn tại hoặc đã dừng hoạt động.
+          </p>
+          <Link to="/gyms" className="mt-6">
+            <Button className="bg-primary hover:bg-primary/95 text-primary-foreground font-medium rounded-full px-6">
+              Quay lại danh sách
+            </Button>
+          </Link>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  const mainImageUrl = heroImages[0];
+
+  return (
+    <div className="min-h-screen bg-white text-slate-900 font-sans selection:bg-emerald-500 selection:text-white">
+      <Navbar />
+
+      {/* SECTION 1: HERO HEADER BANNER (Full-bleed background matching user mockup, optimized clarity) */}
+      <section className="relative h-[340px] sm:h-[370px] w-full bg-white border-b border-slate-100 overflow-hidden flex items-center">
+        {/* Full-width Background Image Slideshow (optimized opacity & saturation for clarity) */}
+        <div className="absolute inset-0 z-0 overflow-hidden">
+          {heroImages.map((imgUrl, idx) => (
+            <motion.div
+              key={imgUrl}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: idx === heroImageIndex ? 0.7 : 0 }}
+              transition={{ duration: 0.8 }}
+              className="absolute inset-0"
+            >
+              <img
+                src={imgUrl}
+                alt=""
+                className="w-full h-full object-cover filter brightness-[1.01] contrast-[0.98] saturate-[0.9]"
+              />
+            </motion.div>
+          ))}
+
+          {/* Multi-directional gradient overlays for seamless blending into the page background */}
+          {/* 1. Left-to-right fade (strong on the left for maximum text readability) */}
+          <div className="absolute inset-y-0 left-0 w-full md:w-[60%] bg-gradient-to-r from-white via-white/90 to-transparent z-[1]" />
+          {/* 2. Right-to-left fade (softer to make the right side background image clearer) */}
+          <div className="absolute inset-y-0 right-0 w-full md:w-[40%] bg-gradient-to-l from-white/40 to-transparent z-[1]" />
+          {/* 3. Bottom fade to blend cleanly into the page content below */}
+          <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-white via-white/50 to-transparent z-[1]" />
+          {/* 4. Top fade to blend with navbar */}
+          <div className="absolute top-0 left-0 right-0 h-10 bg-gradient-to-b from-white/30 to-transparent z-[1]" />
+        </div>
+
+        {/* Banner Details Overlay */}
+        <div className="relative mx-auto max-w-7xl w-full px-4 sm:px-6 lg:px-8 z-10 text-slate-900 space-y-4">
+          <Link
+            to="/gyms"
+            className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-emerald-700 transition-colors font-medium"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            <span>Tất cả phòng tập</span>
+          </Link>
+
+          <div className="space-y-1.5">
+            <span className="text-[11px] uppercase font-extrabold tracking-widest text-emerald-750">
+              {branch.district}, {branch.province}
+            </span>
+            <h1 className="text-3xl sm:text-4xl md:text-[38px] font-black text-slate-900 tracking-tight leading-tight">
+              {branch.branch_name}
+            </h1>
+          </div>
+
+          {/* Inline Metadata List */}
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-slate-550 pt-0.5">
+            <div className="flex items-center gap-1.5">
+              <MapPin className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+              <span>{branch.address}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Clock className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+              <span>{branch.opening_house || "06:00 - 22:00"}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Phone className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+              <span>{branch.hotline || "1900 xxxx"}</span>
+            </div>
+          </div>
+
+          {/* Rating (Green stars matching mockup) */}
+          <div className="flex items-center gap-2 pt-0.5">
+            <div className="flex items-center text-emerald-600">
+              {[1, 2, 3, 4, 5].map((s) => (
+                <Star key={s} className="h-3.5 w-3.5 fill-current" />
+              ))}
+            </div>
+            <span className="text-xs font-semibold text-slate-500">
+              4.9 · 15 đánh giá
+            </span>
+          </div>
+
+          {/* Tags list (Badges for facilities) */}
+          {branch.facilities && branch.facilities.length > 0 && (
+            <div className="flex flex-wrap gap-2 pt-1.5">
+              {branch.facilities.slice(0, 4).map((fac) => (
+                <Badge
+                  key={fac.id}
+                  className="bg-emerald-50/40 text-slate-700 border border-slate-200/40 shadow-none hover:bg-emerald-100 rounded-full text-[10px] px-3.5 py-1 font-medium"
+                >
+                  {fac.facility_name}
+                </Badge>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* SECTION 2: FACILITIES & ROOMS */}
+      <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+        <div className="flex items-end justify-between border-b border-slate-100 pb-5 mb-10">
+          <div>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+              Khu vực & Tiện ích
+            </h2>
+            <p className="mt-2 text-sm text-slate-500">
+              Khám phá không gian luyện tập chuẩn 5 sao tại {branch.branch_name}
+              .
+            </p>
+          </div>
+          <span className="text-sm font-semibold text-slate-400 shrink-0">
+            {branch.facilities?.length || 0} khu vực
+          </span>
+        </div>
+
+        {!branch.facilities || branch.facilities.length === 0 ? (
+          <div className="text-center py-12 text-slate-400 italic bg-slate-50 rounded-2xl">
+            Chi nhánh này hiện chưa được cấu hình danh mục tiện ích.
+          </div>
+        ) : (
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {branch.facilities.map((fac) => {
+              const facImg = fac.images?.[0]?.image_url || mainImageUrl;
+              return (
+                <Card
+                  key={fac.id}
+                  className="group relative h-72 rounded-2xl overflow-hidden border-none shadow-md transition-all duration-300 hover:shadow-xl cursor-pointer"
+                >
+                  <div className="absolute inset-0 overflow-hidden">
+                    <img
+                      src={facImg}
+                      alt={fac.facility_name}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+                  </div>
+                  <div className="absolute bottom-6 left-6 right-6 text-white space-y-2">
+                    <h3 className="text-lg font-bold">{fac.facility_name}</h3>
+                    <p className="text-xs text-slate-350 line-clamp-2 leading-relaxed">
+                      {fac.description ||
+                        "Thiết bị hiện đại chuyên sâu hỗ trợ bài bản."}
+                    </p>
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold tracking-wider uppercase text-emerald-400 pt-1 group-hover:translate-x-1 transition-transform">
+                      CHI TIẾT TIỆN ÍCH →
+                    </span>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* SECTION: PHOTO GALLERY (REAL SHARP PICTURES MULTIPLE GALLERY) */}
+      {heroImages.length > 0 && (
+        <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 border-t border-slate-100">
+          <div className="border-b border-slate-100 pb-5 mb-10">
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+              Thư viện hình ảnh
+            </h2>
+            <p className="mt-2 text-sm text-slate-500">
+              Khám phá toàn bộ hình ảnh thực tế tại chi nhánh{" "}
+              {branch.branch_name}. Nhấn vào ảnh để xem kích thước lớn.
+            </p>
+          </div>
+
+          <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+            {heroImages.map((imgUrl, idx) => (
+              <div
+                key={idx}
+                className="relative h-48 rounded-2xl overflow-hidden cursor-pointer group border border-slate-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+                tabIndex={0}
+                role="button"
+                aria-label={`Xem ảnh thư viện ${idx + 1}`}
+                onClick={() => {
+                  setLightboxImageIndex(idx);
+                  setLightboxOpen(true);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setLightboxImageIndex(idx);
+                    setLightboxOpen(true);
+                  }
+                }}
+              >
+                <img
+                  src={imgUrl}
+                  alt={`Thư viện ảnh ${idx + 1}`}
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                  loading="lazy"
+                />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300 flex items-center justify-center pointer-events-none">
+                  <Activity className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* SECTION 3: PERSONAL TRAINERS */}
+      <section className="bg-slate-50/50 py-20 border-y border-slate-100">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex items-end justify-between border-b border-slate-100 pb-5 mb-10">
+            <div>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                Huấn luyện viên cá nhân
+              </h2>
+              <p className="mt-2 text-sm text-slate-500">
+                Đặt lịch tập 1:1 cùng đội ngũ huấn luyện viên được chứng nhận
+                chuẩn quốc tế.
+              </p>
+            </div>
+            <span className="text-sm font-semibold text-slate-400 shrink-0">
+              {branch.trainerMeta?.total || 0} HLV
+            </span>
+          </div>
+
+          {!branch.trainers || branch.trainers.length === 0 ? (
+            <div className="text-center py-12 text-slate-400 italic bg-white rounded-2xl border border-slate-100">
+              Hiện tại chưa có HLV thuộc chi nhánh này.
+            </div>
+          ) : (
+            <div className="space-y-10">
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {branch.trainers.map((trainer) => {
+                  const avatar =
+                    trainer.user?.avatar_url ||
+                    `https://ui-avatars.com/api/?name=${encodeURIComponent(trainer.user?.full_name || "Trainer")}&background=4F8A74&color=fff`;
+                  return (
+                    <Card
+                      key={trainer.id}
+                      className="group overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm hover:shadow-xl transition-all duration-300"
+                    >
+                      {/* Trainer Avatar Photo */}
+                      <div className="relative h-80 w-full overflow-hidden bg-slate-100">
+                        <img
+                          src={avatar}
+                          alt={trainer.user?.full_name}
+                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                        {/* Rating Overlay */}
+                        <div className="absolute bottom-4 left-4 rounded-full bg-white/95 px-2.5 py-0.5 text-xs font-bold text-slate-800 shadow-sm flex items-center gap-1">
+                          <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                          <span>4.9</span>
+                        </div>
+                      </div>
+
+                      {/* Content details below */}
+                      <CardContent className="p-5 space-y-3">
+                        <div className="space-y-1">
+                          <h4 className="font-bold text-slate-850 text-base flex items-center gap-1.5">
+                            <Award className="h-4 w-4 text-emerald-600 shrink-0" />
+                            <span>{trainer.user?.full_name}</span>
+                          </h4>
+                          <p className="text-xs text-slate-500">
+                            {trainer.bio ||
+                              "Chuyên gia Thể hình & Giảm mỡ thừa"}
+                          </p>
+                        </div>
+
+                        {/* Specialization Badges */}
+                        <div className="flex flex-wrap gap-1.5 pt-1">
+                          <Badge className="bg-slate-100 text-slate-650 hover:bg-slate-100 rounded-md text-[10px] px-2 py-0.5 font-medium border-none shadow-none">
+                            Thể hình
+                          </Badge>
+                          <Badge className="bg-slate-100 text-slate-650 hover:bg-slate-100 rounded-md text-[10px] px-2 py-0.5 font-medium border-none shadow-none">
+                            Giảm cân
+                          </Badge>
+                        </div>
+
+                        {/* Card bottom row pricing / action */}
+                        <div className="flex items-center justify-between pt-3 border-t border-slate-50">
+                          <span className="text-xs text-slate-400 font-medium">
+                            350.000đ/giờ
+                          </span>
+                          <span className="text-xs font-bold text-emerald-600 hover:text-emerald-700 cursor-pointer transition-colors">
+                            Xem chi tiết →
+                          </span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+
+              {/* Trainer Pagination Controls */}
+              {branch.trainerMeta && branch.trainerMeta.totalPages > 1 && (
+                <div className="flex items-center justify-center gap-3">
+                  <Button
+                    variant="outline"
+                    disabled={trainerPage === 1}
+                    onClick={() => handleTrainerPageChange(trainerPage - 1)}
+                    className="h-9 px-3.5 border-slate-200 hover:bg-slate-50 text-slate-700"
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-1" />
+                    Trước
+                  </Button>
+
+                  <span className="text-xs font-semibold text-slate-500">
+                    Trang {trainerPage} / {branch.trainerMeta.totalPages}
+                  </span>
+
+                  <Button
+                    variant="outline"
+                    disabled={trainerPage === branch.trainerMeta.totalPages}
+                    onClick={() => handleTrainerPageChange(trainerPage + 1)}
+                    className="h-9 px-3.5 border-slate-200 hover:bg-slate-50 text-slate-700"
+                  >
+                    Sau
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* SECTION 4: MEMBER REVIEWS */}
+      <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+        <div className="text-center space-y-2 mb-12">
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+            Đánh giá từ Hội viên
+          </h2>
+          <div className="flex justify-center items-center gap-2">
+            <div className="flex items-center text-amber-400">
+              {[1, 2, 3, 4, 5].map((s) => (
+                <Star key={s} className="h-4 w-4 fill-current" />
+              ))}
+            </div>
+            <span className="text-sm font-semibold text-slate-500">
+              4.9 · 15 đánh giá thành viên
+            </span>
+          </div>
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-3">
+          {mockReviews.map((rev) => (
+            <Card
+              key={rev.id}
+              className="p-6 rounded-2xl border border-slate-100 bg-white shadow-sm flex flex-col justify-between"
+            >
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-emerald-700/10 text-emerald-800 flex items-center justify-center font-bold text-sm">
+                    {rev.name.charAt(0)}
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-800 text-sm">
+                      {rev.name}
+                    </h4>
+                    <span className="text-[10px] text-slate-400">
+                      {rev.date}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center text-amber-400">
+                  {Array.from({ length: rev.rating }).map((_, i) => (
+                    <Star key={i} className="h-3.5 w-3.5 fill-current" />
+                  ))}
+                </div>
+                <p className="text-xs text-slate-600 leading-relaxed italic">
+                  "{rev.text}"
+                </p>
+              </div>
+            </Card>
+          ))}
+        </div>
+      </section>
+
+      {/* SECTION 5: DYNAMIC MEMBERSHIP PACKAGES */}
+      <BranchMemberships
+        branchId={branch.id}
+        branchName={branch.branch_name}
+        branchAddress={branch.address}
+        branchProvince={branch.province}
+      />
+
+      <Footer />
+
+      {/* Lightbox Dialog Modal for full photo views */}
+      <Dialog open={lightboxOpen} onOpenChange={setLightboxOpen}>
+        <DialogContent className="max-w-4xl p-1 bg-black/95 border-none rounded-2xl overflow-hidden flex items-center justify-center">
+          <DialogTitle className="sr-only">Thư viện ảnh chi tiết</DialogTitle>
+          <DialogDescription className="sr-only">Xem ảnh kích thước lớn của phòng tập</DialogDescription>
+          <div className="relative w-full h-full flex items-center justify-center min-h-[50vh] max-h-[85vh]">
+            <img
+              src={heroImages[lightboxImageIndex]}
+              alt={`Gym Gallery Preview ${lightboxImageIndex + 1}`}
+              className="max-w-full max-h-[80vh] object-contain rounded-xl shadow-2xl transition-all duration-300"
+            />
+
+            {/* Prev/Next buttons */}
+            {heroImages.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setLightboxImageIndex((prev) =>
+                      prev === 0 ? heroImages.length - 1 : prev - 1,
+                    )
+                  }
+                  className="absolute left-4 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all hover:scale-105 active:scale-95"
+                >
+                  <ChevronLeft className="h-6 w-6" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setLightboxImageIndex((prev) =>
+                      prev === heroImages.length - 1 ? 0 : prev + 1,
+                    )
+                  }
+                  className="absolute right-4 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all hover:scale-105 active:scale-95"
+                >
+                  <ChevronRight className="h-6 w-6" />
+                </button>
+
+                {/* Image Counter */}
+                <div className="absolute bottom-4 rounded-full bg-black/60 px-3 py-1 text-xs font-semibold text-slate-350">
+                  {lightboxImageIndex + 1} / {heroImages.length}
+                </div>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
