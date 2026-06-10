@@ -9,7 +9,7 @@ import AuthLayout from "../layouts/AuthLayout";
 import AdminLayout from "../layouts/AdminLayout";
 import CustomerLayout from "../layouts/CustomerLayout";
 import Dashboard from "../pages/admin/dashboard_management/Dashboard";
-import AdminProfile from "../pages/admin/Profile";
+import AdminProfile from "../pages/admin/profile/Profile";
 import UsersManagement from "../pages/admin/users_management/Users";
 import Revenue from "../pages/admin/Revenue";
 import Transactions from "../pages/admin/transactions_management/Transactions";

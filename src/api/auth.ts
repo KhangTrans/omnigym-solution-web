@@ -54,5 +54,10 @@ export const authApi = {
   // Cập nhật hồ sơ người dùng
   updateProfile: (payload: any) => {
     return api.put('/users/profile', payload);
+  },
+
+  // Đăng ký nhận diện khuôn mặt
+  registerFaceEmbedding: (payload: { image_base64: string }) => {
+    return api.post('/users/profile/face-embedding', payload);
   }
 };
