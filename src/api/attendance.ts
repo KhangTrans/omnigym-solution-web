@@ -67,4 +67,8 @@ export const attendanceApi = {
   update: (id: number | string, data: { check_in_time?: string; check_out_time?: string; status?: string; notes?: string }) => {
     return api.put(`/attendances/${id}`, data);
   },
+
+  checkInFace: (data: { shift_id: number; image_base64: string; check_in_code?: string; dynamic_qr_token?: string }) => {
+    return api.post('/attendances/check-in-face', data);
+  },
 };
