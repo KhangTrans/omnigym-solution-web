@@ -3,6 +3,7 @@ import Register from "../pages/pubblic/Register";
 import Login from "../pages/pubblic/Login";
 import ForgotPassword from "../pages/pubblic/ForgotPassword";
 import ChangePassword from "../pages/customers/ChangePassword";
+import CustomerCheckIn from "../pages/customers/CheckIn";
 import Home from "../pages/pubblic/Home";
 import TrainerJoin from "../pages/pubblic/TrainerJoin";
 import AuthLayout from "../layouts/AuthLayout";
@@ -29,11 +30,11 @@ import TrainerApplicationList from "@/pages/admin/trainer_applications/TrainerAp
 import Gyms from "../pages/pubblic/branches/Gyms";
 import GymDetail from "../pages/pubblic/branches/GymDetail";
 import ShiftAttendance from "../pages/staffs/ShiftAttendance";
-import BranchQrDisplay from "../pages/admin/attendance_management/BranchQrDisplay";
 import AttendanceManagement from "../pages/admin/attendance_management/AttendanceManagement";
 import Checkout from "../pages/customers/transaction/Checkout";
 import PaymentSuccess from "../pages/customers/transaction/PaymentSuccess";
 import PaymentCancel from "../pages/customers/transaction/PaymentCancel";
+import CustomerAttendance from "../pages/admin/attendance_management/CustomerAttendance";
 
 const DashboardRedirect = () => {
   const userData = localStorage.getItem("user");
@@ -92,6 +93,10 @@ export const routesConfig = [
       {
         path: "/change-password",
         element: <ChangePassword />,
+      },
+      {
+        path: "/check-in",
+        element: <CustomerCheckIn />,
       },
     ],
   },
@@ -193,8 +198,8 @@ export const routesConfig = [
         element: <AttendanceManagement />,
       },
       {
-        path: "branch-qr",
-        element: <BranchQrDisplay />,
+        path: "customer-attendance",
+        element: <CustomerAttendance />,
       },
     ],
   },

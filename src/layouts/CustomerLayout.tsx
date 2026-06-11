@@ -8,6 +8,7 @@ import {
   Settings,
   Dumbbell,
   Loader2,
+  UserCheck,
 } from "lucide-react";
 import { cn } from "../utils/cn";
 import { Navbar } from "../components/site/Navbar";
@@ -67,6 +68,11 @@ export default function CustomerLayout() {
       label: "Hồ sơ cá nhân",
       path: "/profile",
       icon: User,
+    },
+    {
+      label: "Điểm danh (Check-in)",
+      path: "/check-in",
+      icon: UserCheck,
     },
     {
       label: "Đổi mật khẩu",

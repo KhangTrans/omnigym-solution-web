@@ -23,6 +23,7 @@ export interface CreateBranchRequest {
   image_url?: string;
   images?: BranchImage[];
   facilities?: BranchFacility[];
+  branch_ip?: string;
 }
 
 export const branchesApi = {

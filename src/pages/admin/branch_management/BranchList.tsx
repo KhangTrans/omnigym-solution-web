@@ -57,6 +57,7 @@ type BranchRecord = {
   hotline?: string | null;
   opening_house?: string | null;
   image_url?: string | null;
+  branch_ip?: string | null;
 };
 
 type BranchImageDraft = {
@@ -81,6 +82,7 @@ type BranchDraft = {
   hotline: string;
   opening_house: string;
   image_url: string;
+  branch_ip: string;
   images: BranchImageDraft[];
   facilities: BranchFacilityDraft[];
 };
@@ -94,6 +96,7 @@ const emptyDraft = (partnerId = 1): BranchDraft => ({
   hotline: "",
   opening_house: "06:00 - 22:00",
   image_url: "",
+  branch_ip: "",
   images: [],
   facilities: [],
 });
@@ -112,6 +115,24 @@ export default function BranchList() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailBranch, setDetailBranch] = useState<BranchRecord | null>(null);
   const { provinces, loading: loadingProvinces } = useProvinces();
+  const [fetchingIp, setFetchingIp] = useState(false);
+
+  const detectCurrentIp = async () => {
+    try {
+      setFetchingIp(true);
+      const response = await fetch("https://api.ipify.org?format=json");
+      const data = await response.json();
+      if (data.ip) {
+        setDraft((prev) => ({ ...prev, branch_ip: data.ip }));
+        toast.success(`Đã tự động điền IP hiện tại: ${data.ip}`);
+      }
+    } catch (error) {
+      console.error("Lỗi lấy IP:", error);
+      toast.error("Không thể lấy IP tự động. Bạn có thể truy cập https://www.whatismyip.com để xem.");
+    } finally {
+      setFetchingIp(false);
+    }
+  };
 
   const fetchBranches = async () => {
     try {
@@ -198,6 +219,7 @@ export default function BranchList() {
           hotline: fullBranch.hotline ?? "",
           opening_house: fullBranch.opening_house ?? "06:00 - 22:00",
           image_url: fullBranch.image_url ?? "",
+          branch_ip: fullBranch.branch_ip ?? "",
           images: fullBranch.images ?? [],
           facilities: fullBranch.facilities ?? [],
         });
@@ -253,6 +275,7 @@ export default function BranchList() {
         hotline: draft.hotline.trim() || undefined,
         opening_house: draft.opening_house.trim(),
         image_url: draft.image_url.trim(),
+        branch_ip: draft.branch_ip.trim() || undefined,
         images: draft.images,
         facilities: draft.facilities,
       };
@@ -668,6 +691,27 @@ export default function BranchList() {
                   placeholder="06:00 - 22:00"
                 />
               </div>
+            </div>
+
+            <div className="grid gap-2">
+              <div className="flex items-center justify-between">
+                <Label>Địa chỉ IP tĩnh công cộng (WiFi Chi nhánh)</Label>
+                <Button
+                  type="button"
+                  variant="link"
+                  size="sm"
+                  className="h-auto p-0 text-xs font-semibold text-emerald-600 hover:text-emerald-750"
+                  onClick={detectCurrentIp}
+                  disabled={fetchingIp}
+                >
+                  {fetchingIp ? "Đang lấy IP..." : "Lấy IP hiện tại của tôi"}
+                </Button>
+              </div>
+              <Input
+                value={draft.branch_ip}
+                onChange={(e) => setDraft({ ...draft, branch_ip: e.target.value })}
+                placeholder="Ví dụ: 14.232.12.89 (để trống nếu không bắt buộc điểm danh qua WiFi)"
+              />
             </div>
 
             <div className="grid gap-2">
