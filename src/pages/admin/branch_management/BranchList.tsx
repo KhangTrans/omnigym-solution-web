@@ -56,6 +56,7 @@ type BranchRecord = {
   status?: string | null;
   hotline?: string | null;
   opening_house?: string | null;
+  monthly_leave_limit?: number | null;
   image_url?: string | null;
   branch_ip?: string | null;
 };
@@ -81,6 +82,7 @@ type BranchDraft = {
   district: string;
   hotline: string;
   opening_house: string;
+  monthly_leave_limit: number;
   image_url: string;
   branch_ip: string;
   images: BranchImageDraft[];
@@ -95,6 +97,7 @@ const emptyDraft = (partnerId = 1): BranchDraft => ({
   district: "",
   hotline: "",
   opening_house: "06:00 - 22:00",
+  monthly_leave_limit: 0,
   image_url: "",
   branch_ip: "",
   images: [],
@@ -218,6 +221,7 @@ export default function BranchList() {
           district: fullBranch.district ?? "",
           hotline: fullBranch.hotline ?? "",
           opening_house: fullBranch.opening_house ?? "06:00 - 22:00",
+          monthly_leave_limit: Number(fullBranch.monthly_leave_limit ?? 0),
           image_url: fullBranch.image_url ?? "",
           branch_ip: fullBranch.branch_ip ?? "",
           images: fullBranch.images ?? [],
@@ -274,6 +278,7 @@ export default function BranchList() {
         district: draft.district.trim(),
         hotline: draft.hotline.trim() || undefined,
         opening_house: draft.opening_house.trim(),
+        monthly_leave_limit: Math.max(0, Number(draft.monthly_leave_limit) || 0),
         image_url: draft.image_url.trim(),
         branch_ip: draft.branch_ip.trim() || undefined,
         images: draft.images,
@@ -484,19 +489,20 @@ export default function BranchList() {
                   <TableHead>Địa chỉ</TableHead>
                   <TableHead className="hidden md:table-cell">Liên hệ</TableHead>
                   <TableHead className="hidden lg:table-cell">Giờ mở cửa</TableHead>
+                  <TableHead className="hidden xl:table-cell">Nghỉ/tháng</TableHead>
                   <TableHead className="text-right">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center text-sm text-muted-foreground">
+                    <TableCell colSpan={6} className="h-24 text-center text-sm text-muted-foreground">
                       Đang tải danh sách chi nhánh...
                     </TableCell>
                   </TableRow>
                 ) : filteredBranches.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center text-sm text-muted-foreground">
+                    <TableCell colSpan={6} className="h-24 text-center text-sm text-muted-foreground">
                       Không tìm thấy chi nhánh nào.
                     </TableCell>
                   </TableRow>
@@ -551,6 +557,11 @@ export default function BranchList() {
                           <Clock className="h-3.5 w-3.5" />
                           {branch.opening_house || "Chưa cập nhật"}
                         </div>
+                      </TableCell>
+                      <TableCell className="hidden xl:table-cell text-sm text-muted-foreground">
+                        <Badge variant="outline" className="rounded-full tabular-nums">
+                          {Number(branch.monthly_leave_limit ?? 0)} ngày
+                        </Badge>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
@@ -694,6 +705,7 @@ export default function BranchList() {
             </div>
 
             <div className="grid gap-2">
+
               <div className="flex items-center justify-between">
                 <Label>Địa chỉ IP tĩnh công cộng (WiFi Chi nhánh)</Label>
                 <Button
@@ -712,6 +724,23 @@ export default function BranchList() {
                 onChange={(e) => setDraft({ ...draft, branch_ip: e.target.value })}
                 placeholder="Ví dụ: 14.232.12.89 (để trống nếu không bắt buộc điểm danh qua WiFi)"
               />
+              <Label>Giới hạn số ngày nghỉ trong tháng</Label>
+              <Input
+                type="number"
+                min={0}
+                step={1}
+                value={draft.monthly_leave_limit}
+                onChange={(e) =>
+                  setDraft({
+                    ...draft,
+                    monthly_leave_limit: Math.max(0, Number(e.target.value) || 0),
+                  })
+                }
+                placeholder="Ví dụ: 4"
+              />
+              <p className="text-xs text-muted-foreground">
+                Số ngày nghỉ tối đa nhân viên thuộc chi nhánh này được phép đăng ký trong mỗi tháng.
+              </p>
             </div>
 
             <div className="grid gap-2">
@@ -1057,6 +1086,14 @@ export default function BranchList() {
                     ) : (
                       <span className="text-base text-muted-foreground">Không rõ</span>
                     )}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Nghỉ/tháng
+                  </div>
+                  <div className="mt-1 text-2xl font-semibold tabular-nums">
+                    {Number(detailBranch.monthly_leave_limit ?? 0)} ngày
                   </div>
                 </div>
               </div>
