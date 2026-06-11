@@ -20,6 +20,7 @@ export interface CreateBranchRequest {
   district: string;
   hotline?: string;
   opening_house?: string;
+  monthly_leave_limit?: number;
   image_url?: string;
   images?: BranchImage[];
   facilities?: BranchFacility[];
