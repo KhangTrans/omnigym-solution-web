@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Menu, X, Dumbbell, Globe, LogOut, User as UserIcon } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { authApi } from "../../api/auth";
 import logoOmnigym from "@/assets/logo-omnigym.png";
 
@@ -79,6 +79,8 @@ export function Navbar() {
   const [open, setOpen] = useState(false);
   const { lang, setLang, t } = useLang();
   const { user, signOut } = useCurrentUser();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const links = [
     { label: t("nav.home"), href: "#home" },
@@ -87,21 +89,33 @@ export function Navbar() {
     { label: t("nav.faq"), href: "#faq" },
   ];
 
+  const goToSection = (href: string) => {
+    setOpen(false);
+
+    if (location.pathname !== "/") {
+      navigate({ pathname: "/", hash: href });
+      return;
+    }
+
+    window.history.replaceState(null, "", href);
+    document.querySelector(href)?.scrollIntoView({ behavior: "smooth" });
+  };
+
   return (
     <header className="navbar-blur-in sticky top-0 z-50 w-full bg-background/80 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <a href="#home" className="flex items-center gap-2 text-lg font-semibold text-foreground">
+        <button type="button" onClick={() => goToSection("#home")} className="flex items-center gap-2 text-lg font-semibold text-foreground">
           <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg bg-white shadow-md">
             <img src={logoOmnigym} alt="OmniGym logo" className="h-full w-full object-cover" />
           </span>
           <span className="tracking-tight">OmniGym</span>
-        </a>
+        </button>
         <nav className="hidden items-center gap-8 md:flex">
           {links.map((l) => (
-            <a key={l.href} href={l.href} className="group relative inline-flex items-center justify-center rounded-full px-3 py-2 text-sm font-normal text-muted-foreground transition-all duration-300 hover:-translate-y-0.5 hover:text-foreground">
+            <button key={l.href} type="button" onClick={() => goToSection(l.href)} className="group relative inline-flex items-center justify-center rounded-full px-3 py-2 text-sm font-normal text-muted-foreground transition-all duration-300 hover:-translate-y-0.5 hover:text-foreground">
               <span className="absolute bottom-1.5 left-1/2 h-px w-0 -translate-x-1/2 bg-gradient-to-r from-transparent via-primary to-transparent transition-all duration-300 group-hover:w-[70%]" aria-hidden />
               <span className="relative">{l.label}</span>
-            </a>
+            </button>
           ))}
           <Link to="/gyms" className="group relative inline-flex items-center justify-center rounded-full px-3 py-2 text-sm font-normal text-muted-foreground transition-all duration-300 hover:-translate-y-0.5 hover:text-foreground">
             <span className="absolute bottom-1.5 left-1/2 h-px w-0 -translate-x-1/2 bg-gradient-to-r from-transparent via-primary to-transparent transition-all duration-300 group-hover:w-[70%]" aria-hidden />
@@ -169,9 +183,9 @@ export function Navbar() {
         <div className="border-t border-border bg-background md:hidden">
           <div className="flex flex-col gap-3 px-4 py-4 text-foreground">
             {links.map((l) => (
-              <a key={l.href} href={l.href} onClick={() => setOpen(false)} className="py-2 text-sm font-medium text-foreground/85">{l.label}</a>
+              <button key={l.href} type="button" onClick={() => goToSection(l.href)} className="py-2 text-left text-sm font-medium text-foreground/85">{l.label}</button>
             ))}
-            <Link to="/login" onClick={() => setOpen(false)} className="py-2 text-sm font-medium text-foreground/85">{t("nav.gyms")}</Link>
+            <Link to="/gyms" onClick={() => setOpen(false)} className="py-2 text-sm font-medium text-foreground/85">{t("nav.gyms")}</Link>
             {user ? (
               <div className="mt-2 flex flex-col gap-3 border-t border-border py-2">
                 <div className="flex items-center gap-3">

@@ -18,7 +18,8 @@ import {
   CircleHelp,
   ClipboardCheck,
   PanelLeft,
-  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   QrCode,
   Calendar,
 } from "lucide-react";
@@ -425,12 +426,11 @@ const AdminLayout = () => {
                 title={sidebarOpen ? "Thu gọn sidebar" : "Mở rộng sidebar"}
               >
                 <PanelLeft className="h-5 w-5" />
-                <ChevronDown
-                  className={cn(
-                    "h-4 w-4 transition-transform duration-200",
-                    sidebarOpen ? "rotate-180" : "rotate-0",
-                  )}
-                />
+                {sidebarOpen ? (
+                  <ChevronLeft className="h-4 w-4" />
+                ) : (
+                  <ChevronRight className="h-4 w-4" />
+                )}
               </button>
               <div className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-2xl bg-white shadow-lg">
                 <img
