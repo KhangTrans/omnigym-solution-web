@@ -127,7 +127,7 @@ export default function ShiftAttendance() {
             </div>
             <h1 className="text-3xl font-bold tracking-tight">Khu vực Điểm danh Nhân viên</h1>
             <p className="text-emerald-100 max-w-xl text-sm leading-relaxed">
-              Vui lòng kiểm tra và xác nhận điểm danh đúng giờ cho ca trực của bạn. Bạn có thể chọn nhập mã PIN của quản lý hoặc quét QR động tại quầy lễ tân.
+              Vui lòng kiểm tra và xác nhận điểm danh đúng giờ cho ca trực của bạn bằng cách nhập mã PIN xác nhận của quản lý hoặc nhận diện khuôn mặt.
             </p>
           </div>
           

@@ -95,9 +95,9 @@ const NAV: NavItem[] = [
     group: "Operations",
   },
   {
-    to: "/admin/branch-qr",
-    label: "Kiosk QR Lễ tân",
-    icon: QrCode,
+    to: "/admin/customer-attendance",
+    label: "Check-in Hội viên",
+    icon: Users,
     group: "Operations",
   },
   {

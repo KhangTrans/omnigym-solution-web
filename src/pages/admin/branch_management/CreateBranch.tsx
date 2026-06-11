@@ -38,6 +38,7 @@ const branchSchema = z.object({
   hotline: z.string().min(10, "Hotline không hợp lệ"),
   opening_house: z.string().min(1, "Giờ mở cửa là bắt buộc"),
   image_url: z.string().min(1, "Ảnh chính là bắt buộc"),
+  branch_ip: z.string().optional(),
   images: z.array(z.object({
     image_url: z.string(),
     is_cover: z.boolean(),
@@ -57,6 +58,24 @@ export default function CreateBranch() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState<string | null>(null); // 'main' or index
   const { provinces, loading: loadingProvinces } = useProvinces();
+  const [fetchingIp, setFetchingIp] = useState(false);
+
+  const detectCurrentIp = async () => {
+    try {
+      setFetchingIp(true);
+      const response = await fetch("https://api.ipify.org?format=json");
+      const data = await response.json();
+      if (data.ip) {
+        form.setValue("branch_ip", data.ip);
+        toast.success(`Đã tự động điền IP hiện tại: ${data.ip}`);
+      }
+    } catch (error) {
+      console.error("Lỗi lấy IP:", error);
+      toast.error("Không thể lấy IP tự động. Bạn có thể truy cập https://www.whatismyip.com để xem.");
+    } finally {
+      setFetchingIp(false);
+    }
+  };
 
   const form = useForm<BranchFormValues>({
     resolver: zodResolver(branchSchema),
@@ -69,6 +88,7 @@ export default function CreateBranch() {
       hotline: "",
       opening_house: "06:00 - 22:00",
       image_url: "",
+      branch_ip: "",
       images: [],
       facilities: [],
     },
@@ -286,6 +306,32 @@ export default function CreateBranch() {
                   )}
                 />
               </div>
+
+              <FormField
+                control={form.control}
+                name="branch_ip"
+                render={({ field }) => (
+                  <FormItem>
+                    <div className="flex items-center justify-between">
+                      <FormLabel>Địa chỉ IP tĩnh công cộng (WiFi Chi nhánh)</FormLabel>
+                      <Button
+                        type="button"
+                        variant="link"
+                        size="sm"
+                        className="h-auto p-0 text-xs font-semibold text-emerald-600 hover:text-emerald-750"
+                        onClick={detectCurrentIp}
+                        disabled={fetchingIp}
+                      >
+                        {fetchingIp ? "Đang lấy IP..." : "Lấy IP hiện tại của tôi"}
+                      </Button>
+                    </div>
+                    <FormControl>
+                      <Input placeholder="Ví dụ: 14.232.12.89 (để trống nếu không bắt buộc điểm danh qua WiFi)" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </CardContent>
           </Card>
 
