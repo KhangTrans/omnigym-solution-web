@@ -7,7 +7,7 @@ import {
   MapPin, 
   Loader2, 
   UserCheck, 
-  AlertTriangle 
+  AlertTriangle
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { customerCheckInApi, CustomerCheckInRecord } from '../../api/customerCheckIn';
@@ -15,6 +15,7 @@ import { branchesApi } from '../../api/branches';
 import { authApi } from '../../api/auth';
 import { notify } from '../../utils/notify';
 import { cn } from '../../utils/cn';
+import { BranchReviewModal } from '../pubblic/branches/components/BranchReviewModal';
 
 interface BranchRecord {
   id: number;
@@ -46,6 +47,11 @@ const CustomerCheckIn = () => {
   
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+
+  // States for review modal
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [reviewBranchId, setReviewBranchId] = useState<number | null>(null);
+  const [reviewBranchName, setReviewBranchName] = useState("");
 
   // Load danh sách chi nhánh, thông tin gói tập và lịch sử check-in
   useEffect(() => {
@@ -127,6 +133,14 @@ const CustomerCheckIn = () => {
       notify.error(error.response?.data?.message || 'Check-in thất bại. Vui lòng thử lại.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleLogClick = (log: CustomerCheckInRecord) => {
+    if (log.branch_id) {
+      setReviewBranchId(log.branch_id);
+      setReviewBranchName(log.branch?.branch_name || "Chi nhánh");
+      setShowReviewModal(true);
     }
   };
 
@@ -283,9 +297,11 @@ const CustomerCheckIn = () => {
                   return (
                     <div 
                       key={log.id} 
+                      onClick={() => handleLogClick(log)}
+                      title="Nhấp để đánh giá chi nhánh này"
                       className={cn(
-                        "p-3 rounded-xl border border-border bg-background/50 flex items-center justify-between gap-3 text-xs transition-all",
-                        isToday && "border-primary/20 bg-primary/5 shadow-sm"
+                        "p-3 rounded-xl border border-border bg-background/50 flex items-center justify-between gap-3 text-xs transition-all cursor-pointer hover:border-primary/40 hover:bg-primary/5",
+                        isToday && "border-primary/20 bg-primary/5 shadow-sm hover:border-primary/45 hover:bg-primary/10"
                       )}
                     >
                       <div className="space-y-1">
@@ -315,6 +331,15 @@ const CustomerCheckIn = () => {
         </div>
 
       </div>
+
+      {/* Modal Đánh giá chi nhánh */}
+      <BranchReviewModal
+        open={showReviewModal}
+        onOpenChange={setShowReviewModal}
+        branchId={reviewBranchId}
+        branchName={reviewBranchName}
+      />
+
     </div>
   );
 };
