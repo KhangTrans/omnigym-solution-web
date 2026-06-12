@@ -184,6 +184,16 @@ const AdminLayout = () => {
     user?.role === "Gym" ||
     user?.role_id === 3;
 
+  const getRoleName = (u: any) => {
+    if (!u) return "";
+    if (typeof u.role === "object" && u.role?.role_name) {
+      return String(u.role.role_name).toLowerCase();
+    }
+    return String(u.role || "").toLowerCase();
+  };
+  const userRole = getRoleName(user);
+  const isStaff = userRole === "staff";
+
   useEffect(() => {
     const verifySession = async () => {
       try {
@@ -192,12 +202,29 @@ const AdminLayout = () => {
       } catch (error) {
         console.error("Session verification failed", error);
         localStorage.removeItem("user");
+        localStorage.removeItem("token");
         navigate("/login");
       }
     };
 
     verifySession();
   }, [navigate]);
+
+  useEffect(() => {
+    const restrictedPaths = [
+      "/admin/attendance-management",
+      "/admin/branch-management",
+      "/admin/trainer-applications",
+    ];
+    const isRestricted = restrictedPaths.some(
+      (path) => pathname === path || pathname.startsWith(path + "/"),
+    );
+
+    if (!verifying && isStaff && isRestricted) {
+      toast.error("Bạn không có quyền truy cập trang này");
+      navigate("/admin/shift-attendance");
+    }
+  }, [verifying, isStaff, pathname, navigate]);
 
   const handleLogout = async () => {
     try {
@@ -211,19 +238,16 @@ const AdminLayout = () => {
       navigate("/login");
     }
   };
-
-  const getRoleName = (u: any) => {
-    if (!u) return "";
-    if (typeof u.role === "object" && u.role?.role_name) {
-      return String(u.role.role_name).toLowerCase();
-    }
-    return String(u.role || "").toLowerCase();
-  };
-  const userRole = getRoleName(user);
-  const isStaff = userRole === "staff";
   const filteredNav = NAV.filter((item) => {
     if (item.to === "/admin/shift-attendance") {
       return isStaff;
+    }
+    if (
+      item.to === "/admin/attendance-management" ||
+      item.to === "/admin/branch-management" ||
+      item.to === "/admin/trainer-applications"
+    ) {
+      return !isStaff;
     }
     return true;
   });
@@ -391,7 +415,7 @@ const AdminLayout = () => {
         <div className="flex min-w-0 flex-col">
           <header className="fixed left-0 right-0 top-0 z-30 flex h-20 items-center justify-between bg-card/80 shadow-[0_1px_8px_rgba(15,23,42,0.08)] px-4 backdrop-blur lg:px-8">
             <div className="flex items-center gap-3 overflow-x-auto admin-scrollbar lg:hidden">
-              {NAV.map((item) => {
+              {filteredNav.map((item) => {
                 const active = item.exact
                   ? pathname === item.to
                   : pathname.startsWith(item.to);

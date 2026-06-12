@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { ApplicationDetailDialog } from "./components/ApplicationDetailDialog";
 import { ApplicationRejectDialog } from "./components/ApplicationRejectDialog";
 
-const STATUSES = ["pending", "approved", "rejected", "all"] as const;
+const STATUSES = ["draft", "pending", "approved", "rejected", "all"] as const;
 type StatusFilter = (typeof STATUSES)[number];
 export type ApplicationStatus = "draft" | "pending" | "approved" | "rejected";
 
@@ -124,13 +124,11 @@ export default function TrainerApplicationList() {
     () =>
       applications.reduce(
         (acc, app) => {
-          if (app.status !== "draft") {
-            acc.all += 1;
-            if (app.status in acc) acc[app.status as keyof typeof acc] += 1;
-          }
+          acc.all += 1;
+          if (app.status in acc) acc[app.status as keyof typeof acc] += 1;
           return acc;
         },
-        { all: 0, pending: 0, approved: 0, rejected: 0 },
+        { all: 0, draft: 0, pending: 0, approved: 0, rejected: 0 },
       ),
     [applications],
   );
@@ -138,7 +136,6 @@ export default function TrainerApplicationList() {
   const filteredApplications = useMemo(() => {
     const keyword = search.trim().toLowerCase();
     return applications
-      .filter((app) => app.status !== "draft")
       .filter((app) => statusFilter === "all" || app.status === statusFilter)
       .filter((app) => {
         if (!keyword) return true;

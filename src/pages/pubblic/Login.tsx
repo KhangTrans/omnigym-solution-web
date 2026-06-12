@@ -56,10 +56,11 @@ const Login = () => {
         ...formData,
         password: encryptedPassword,
       });
-      const { user } = response.data;
+      const { user, token } = response.data;
 
-      // Lưu thông tin user vào localStorage
+      // Lưu thông tin user và token vào localStorage
       localStorage.setItem("user", JSON.stringify(user));
+      localStorage.setItem("token", token);
 
       // Phát sự kiện để Navbar cập nhật ngay lập tức
       window.dispatchEvent(new Event("user-login"));
@@ -89,9 +90,10 @@ const Login = () => {
     setError(null);
     try {
       const response = await authApi.googleLogin(credentialResponse.credential);
-      const { user } = response.data;
+      const { user, token } = response.data;
 
       localStorage.setItem("user", JSON.stringify(user));
+      localStorage.setItem("token", token);
       window.dispatchEvent(new Event("user-login"));
 
       notify.success("Đăng nhập Google thành công!");
