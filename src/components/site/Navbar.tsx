@@ -13,6 +13,7 @@ const useLang = () => ({
       "nav.pricing": "Bảng giá",
       "nav.contact": "Liên hệ",
       "nav.gyms": "Phòng tập",
+      "nav.blog": "Blog",
       "nav.faq": "FAQ",
       "nav.signin": "Đăng nhập",
       "nav.join": "Tham gia ngay",
@@ -121,6 +122,10 @@ export function Navbar() {
             <span className="absolute bottom-1.5 left-1/2 h-px w-0 -translate-x-1/2 bg-gradient-to-r from-transparent via-primary to-transparent transition-all duration-300 group-hover:w-[70%]" aria-hidden />
             <span className="relative">{t("nav.gyms")}</span>
           </Link>
+          <Link to="/blog" className="group relative inline-flex items-center justify-center rounded-full px-3 py-2 text-sm font-normal text-muted-foreground transition-all duration-300 hover:-translate-y-0.5 hover:text-foreground">
+            <span className="absolute bottom-1.5 left-1/2 h-px w-0 -translate-x-1/2 bg-gradient-to-r from-transparent via-primary to-transparent transition-all duration-300 group-hover:w-[70%]" aria-hidden />
+            <span className="relative">{t("nav.blog")}</span>
+          </Link>
         </nav>
         <div className="hidden items-center gap-3 md:flex">
           <div className="inline-flex items-center gap-0.5 rounded-xl border border-primary/15 bg-white/55 p-0.5 text-[11px] font-medium text-foreground shadow-sm backdrop-blur-xl">
@@ -186,6 +191,7 @@ export function Navbar() {
               <button key={l.href} type="button" onClick={() => goToSection(l.href)} className="py-2 text-left text-sm font-medium text-foreground/85">{l.label}</button>
             ))}
             <Link to="/gyms" onClick={() => setOpen(false)} className="py-2 text-sm font-medium text-foreground/85">{t("nav.gyms")}</Link>
+            <Link to="/blog" onClick={() => setOpen(false)} className="py-2 text-sm font-medium text-foreground/85">{t("nav.blog")}</Link>
             {user ? (
               <div className="mt-2 flex flex-col gap-3 border-t border-border py-2">
                 <div className="flex items-center gap-3">
