@@ -141,17 +141,17 @@ export default function CustomerAttendance() {
     <div className="space-y-6 animate-in fade-in-0 duration-500">
       {/* Title */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
           <Users className="h-6 w-6 text-emerald-600" />
           Nhật ký Check-in của Hội viên
         </h1>
-        <p className="text-sm text-slate-500 mt-1">
+        <p className="text-sm text-muted-foreground mt-1">
           Theo dõi và quản lý việc check-in phòng tập hàng ngày của các khách hàng (hội viên) mua gói tập.
         </p>
       </div>
 
       {/* Toolbar Filter */}
-      <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-card p-4 shadow-[0_2px_12px_rgba(15,23,42,0.08)]">
+      <div className="flex flex-wrap items-center gap-3 rounded-xl bg-card p-4 shadow-sm">
         <div className="flex items-center gap-2">
           <Calendar className="h-4.5 w-4.5 text-muted-foreground" />
           <Input 
@@ -199,7 +199,7 @@ export default function CustomerAttendance() {
       </div>
 
       {/* Logs Table */}
-      <Card className="border-0 shadow-[0_2px_12px_rgba(15,23,42,0.08)] rounded-[20px]">
+      <Card className="border-0 shadow-[0_2px_12px_rgba(15,23,42,0.08)] rounded-xl">
         <CardHeader className="py-5 border-b">
           <CardTitle className="text-base font-bold">Danh sách hội viên đi tập</CardTitle>
           <CardDescription>
@@ -260,7 +260,7 @@ export default function CustomerAttendance() {
                         </div>
                       </TableCell>
                       <TableCell className="font-medium">{branchName}</TableCell>
-                      <TableCell className="text-slate-500 text-xs flex items-center gap-1.5 py-4">
+                      <TableCell className="text-muted-foreground text-xs flex items-center gap-1.5 py-4">
                         <MapPin className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                         <span>{address}</span>
                       </TableCell>

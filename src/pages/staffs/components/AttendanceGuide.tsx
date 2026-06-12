@@ -5,14 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 export function AttendanceGuide() {
   return (
     <div className="space-y-6">
-      <Card className="border-border/60 shadow-lg rounded-[20px] overflow-hidden bg-card/50 backdrop-blur-sm">
-        <CardHeader className="bg-emerald-500/5 py-5 border-b border-emerald-500/10">
-          <CardTitle className="text-base font-bold text-slate-800 flex items-center gap-2">
+      <Card className="border-0 shadow-sm rounded-xl overflow-hidden bg-card">
+        <CardHeader className="bg-muted/40 py-5">
+          <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
             <Key className="h-4 w-4 text-emerald-600" />
             Hướng dẫn Điểm danh
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-5 space-y-4 text-sm leading-relaxed text-slate-600">
+        <CardContent className="p-5 space-y-4 text-sm leading-relaxed text-muted-foreground">
           <div className="space-y-3">
             <div className="flex gap-3">
               <div className="h-6 w-6 rounded-full bg-emerald-100 text-emerald-700 font-bold grid place-items-center text-xs shrink-0 mt-0.5">1</div>
@@ -30,14 +30,14 @@ export function AttendanceGuide() {
         </CardContent>
       </Card>
 
-      <Card className="border-amber-500/20 shadow-lg rounded-[20px] overflow-hidden bg-amber-50/40 backdrop-blur-sm">
-        <CardHeader className="bg-amber-500/5 py-4 border-b border-amber-500/10">
+      <Card className="border-0 shadow-sm rounded-xl overflow-hidden bg-card">
+        <CardHeader className="bg-muted/40 py-4">
           <CardTitle className="text-sm font-bold text-amber-800 flex items-center gap-2">
             <ShieldAlert className="h-4 w-4 text-amber-600" />
             Quy định Điểm danh
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-5 space-y-3 text-xs leading-relaxed text-slate-700">
+        <CardContent className="p-5 space-y-3 text-xs leading-relaxed text-muted-foreground">
           <div className="flex gap-2">
             <Wifi className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
             <p>

@@ -41,8 +41,8 @@ export function TodayShifts({ shifts, logs, loading, onCheckIn, onCheckOut }: To
   };
 
   return (
-    <Card className="border-border/60 shadow-lg rounded-[20px] overflow-hidden bg-card/50 backdrop-blur-sm">
-      <CardHeader className="border-b bg-muted/30 py-5">
+    <Card className="min-h-[280px] border-0 shadow-sm rounded-xl overflow-hidden bg-card">
+      <CardHeader className="bg-muted/40 py-5">
         <CardTitle className="text-lg font-bold flex items-center gap-2">
           <Clock className="h-5 w-5 text-emerald-600 animate-pulse" />
           Ca làm việc hôm nay
@@ -66,12 +66,12 @@ export function TodayShifts({ shifts, logs, loading, onCheckIn, onCheckOut }: To
                 <div 
                   key={shift.id} 
                   className={cn(
-                    "flex flex-col sm:flex-row sm:items-center justify-between p-5 rounded-2xl border transition-all duration-300 gap-4",
+                    "flex flex-col sm:flex-row sm:items-center justify-between p-5 rounded-xl bg-muted/30 shadow-sm transition-all duration-300 gap-4",
                     attendance?.check_out_time 
-                      ? "bg-emerald-500/5 border-emerald-500/20" 
+                      ? "bg-emerald-50" 
                       : attendance 
-                      ? "bg-amber-500/5 border-amber-500/20"
-                      : "bg-background border-border/80 hover:shadow-md hover:border-emerald-600/30"
+                      ? "bg-amber-50"
+                      : "bg-card hover:shadow-md"
                   )}
                 >
                   <div className="flex items-start gap-4">
@@ -87,7 +87,7 @@ export function TodayShifts({ shifts, logs, loading, onCheckIn, onCheckOut }: To
                     </div>
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-slate-800 text-base">
+                        <span className="font-semibold text-foreground text-base">
                           {formatTime(shift.start_time)} - {formatTime(shift.end_time)}
                         </span>
                         {attendance && getAttendanceStatusBadge(attendance.status)}
@@ -95,7 +95,7 @@ export function TodayShifts({ shifts, logs, loading, onCheckIn, onCheckOut }: To
                           <Badge className="bg-slate-500 text-white font-medium">Hoàn thành ca</Badge>
                         )}
                         {!attendance && (
-                          <Badge variant="outline" className="border-slate-300 text-slate-600">Chưa điểm danh</Badge>
+                          <Badge variant="secondary" className="text-muted-foreground">Chưa điểm danh</Badge>
                         )}
                       </div>
                       <div className="flex items-center text-xs text-muted-foreground gap-1">
@@ -121,7 +121,7 @@ export function TodayShifts({ shifts, logs, loading, onCheckIn, onCheckOut }: To
                     {canCheckIn && (
                       <Button 
                         onClick={() => onCheckIn(shift)}
-                        className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-5 h-10 rounded-xl transition-all active:scale-95 shadow-sm"
+                        className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-5 h-10 rounded-md transition-all active:scale-95 shadow-sm"
                       >
                         Check-in ca trực
                       </Button>
@@ -129,8 +129,8 @@ export function TodayShifts({ shifts, logs, loading, onCheckIn, onCheckOut }: To
                     {canCheckOut && (
                       <Button 
                         onClick={() => onCheckOut(shift)}
-                        variant="outline"
-                        className="border-primary text-primary hover:bg-primary/5 font-semibold px-5 h-10 rounded-xl transition-all active:scale-95"
+                        variant="secondary"
+                        className="text-primary font-semibold px-5 h-10 rounded-md shadow-sm transition-all active:scale-95"
                       >
                         Check-out ca trực
                       </Button>
@@ -146,7 +146,7 @@ export function TodayShifts({ shifts, logs, loading, onCheckIn, onCheckOut }: To
             })}
           </div>
         ) : (
-          <div className="text-center py-12 text-slate-500 bg-slate-50/50 rounded-2xl border border-dashed">
+          <div className="text-center py-12 text-slate-500 bg-muted/30 rounded-xl shadow-sm">
             <AlertCircle className="mx-auto h-8 w-8 text-slate-400 mb-3" />
             <p className="font-medium">Không có ca làm việc nào được xếp cho bạn ngày hôm nay</p>
             <p className="text-xs text-muted-foreground mt-1">Liên hệ với Quản lý nếu bạn cho rằng đây là sai sót.</p>
