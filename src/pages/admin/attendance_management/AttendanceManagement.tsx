@@ -395,7 +395,7 @@ export default function AttendanceManagement() {
       </div>
 
       {/* Toolbar filter */}
-      <div className="flex flex-wrap items-center gap-3 p-4 bg-card rounded-2xl border shadow-sm">
+      <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-card p-4 shadow-[0_2px_12px_rgba(15,23,42,0.08)]">
         <div className="flex items-center gap-2">
           <Calendar className="h-4.5 w-4.5 text-muted-foreground" />
           <Input 
@@ -440,7 +440,7 @@ export default function AttendanceManagement() {
 
         {/* Tab 1: Shift management */}
         <TabsContent value="shifts" className="space-y-4">
-          <Card className="border-border/60 shadow-lg rounded-[20px]">
+          <Card className="border-0 shadow-[0_2px_12px_rgba(15,23,42,0.08)] rounded-[20px]">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 py-5 border-b">
               <div>
                 <CardTitle className="text-base font-bold">Danh sách ca làm việc</CardTitle>
@@ -538,7 +538,7 @@ export default function AttendanceManagement() {
 
         {/* Tab 2: Attendance records */}
         <TabsContent value="logs" className="space-y-4">
-          <Card className="border-border/60 shadow-lg rounded-[20px]">
+          <Card className="border-0 shadow-[0_2px_12px_rgba(15,23,42,0.08)] rounded-[20px]">
             <CardHeader className="py-5 border-b">
               <CardTitle className="text-base font-bold">Nhật ký điểm danh chi nhánh</CardTitle>
               <CardDescription>Bảng ghi nhận giờ vào/ra thực tế của nhân viên</CardDescription>

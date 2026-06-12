@@ -284,8 +284,8 @@ export default function TrainerApplicationList() {
               />
             </div>
           </div>
-          <div className="overflow-hidden rounded-xl border border-border">
-            <div className="overflow-x-auto">
+          <div className="overflow-hidden rounded-xl bg-card shadow-[0_2px_12px_rgba(15,23,42,0.08)]">
+            <div className="overflow-x-auto admin-scrollbar">
               <table className="w-full min-w-[900px] text-sm">
                 <thead className="bg-muted/60 text-left text-xs uppercase tracking-wider text-muted-foreground">
                   <tr>

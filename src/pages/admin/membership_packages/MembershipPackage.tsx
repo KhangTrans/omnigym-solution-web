@@ -203,7 +203,7 @@ function MembershipPackage() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
-          <div className="rounded-md border overflow-x-auto">
+          <div className="rounded-xl bg-card shadow-[0_2px_12px_rgba(15,23,42,0.08)] overflow-x-auto admin-scrollbar">
             <Table>
               <TableHeader>
                 <TableRow>

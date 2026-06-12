@@ -186,7 +186,7 @@ function LibraryPage() {
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto admin-scrollbar">
           <DialogHeader>
             <DialogTitle>{editing ? "Edit exercise" : "New exercise"}</DialogTitle>
           </DialogHeader>
@@ -332,7 +332,7 @@ function MediaThumb({ url, type }: { url: string; type: ExerciseMediaType }) {
     <img
       src={url}
       alt=""
-      className="h-20 w-20 shrink-0 rounded-md bg-card shadow-[0_2px_10px_rgba(15,23,42,0.10)] object-cover"
+      className="h-20 w-20 shrink-0 rounded-xl bg-card shadow-[0_2px_12px_rgba(15,23,42,0.08)] object-cover"
       onError={(e) => ((e.currentTarget.style.opacity = "0.3"))}
     />
   );

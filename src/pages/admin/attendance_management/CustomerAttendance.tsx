@@ -151,7 +151,7 @@ export default function CustomerAttendance() {
       </div>
 
       {/* Toolbar Filter */}
-      <div className="flex flex-wrap items-center gap-3 p-4 bg-card rounded-2xl border shadow-sm">
+      <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-card p-4 shadow-[0_2px_12px_rgba(15,23,42,0.08)]">
         <div className="flex items-center gap-2">
           <Calendar className="h-4.5 w-4.5 text-muted-foreground" />
           <Input 
@@ -199,7 +199,7 @@ export default function CustomerAttendance() {
       </div>
 
       {/* Logs Table */}
-      <Card className="border-border/60 shadow-lg rounded-[20px]">
+      <Card className="border-0 shadow-[0_2px_12px_rgba(15,23,42,0.08)] rounded-[20px]">
         <CardHeader className="py-5 border-b">
           <CardTitle className="text-base font-bold">Danh sách hội viên đi tập</CardTitle>
           <CardDescription>

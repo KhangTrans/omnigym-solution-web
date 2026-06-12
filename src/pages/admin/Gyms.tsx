@@ -84,7 +84,7 @@ function AdminGymsPage() {
         <CardHeader><CardTitle className="text-base">All brands</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <Input placeholder="Search by name or owner email…" value={q} onChange={(e) => setQ(e.target.value)} />
-          <div className="rounded-md bg-card shadow-[0_2px_10px_rgba(15,23,42,0.10)]">
+          <div className="rounded-xl bg-card shadow-[0_2px_12px_rgba(15,23,42,0.08)]">
             <Table>
               <TableHeader>
                 <TableRow>

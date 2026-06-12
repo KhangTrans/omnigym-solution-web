@@ -62,7 +62,7 @@ export function ApplicationDetailDialog({
   if (!application) return null;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto">
+      <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto admin-scrollbar">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             Hồ sơ Trainer #{application.id}
@@ -74,7 +74,7 @@ export function ApplicationDetailDialog({
         </DialogHeader>
         <div className="space-y-6">
           <section className="grid gap-4 md:grid-cols-[160px_1fr]">
-            <div className="overflow-hidden rounded-xl border border-border bg-muted">
+            <div className="overflow-hidden rounded-xl bg-card shadow-[0_2px_12px_rgba(15,23,42,0.08)] bg-muted">
               {application.avatar_url ? (
                 <img
                   src={application.avatar_url}

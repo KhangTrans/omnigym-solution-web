@@ -266,7 +266,7 @@ function UsersPage() {
           </div>
 
           {/* ── Table ── */}
-          <div ref={tableTopRef} className="rounded-md bg-card shadow-[0_2px_10px_rgba(15,23,42,0.10)]">
+          <div ref={tableTopRef} className="rounded-xl bg-card shadow-[0_2px_12px_rgba(15,23,42,0.08)]">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -311,7 +311,7 @@ function UsersPage() {
                         <TableCell className="text-right">
                           <Button
                             size="sm"
-                            variant={status === "active" ? "destructive" : "secondary"}
+                            variant={status === "active" ? "danger-glass" : "success-glass"}
                             onClick={() => setConfirmUser(u)}
                             disabled={isPending}
                           >

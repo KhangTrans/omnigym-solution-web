@@ -10,10 +10,12 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default: "bg-primary text-primary-foreground shadow hover:bg-primary hover:text-primary-foreground",
-        destructive: "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
+        destructive: "border border-red-200 bg-red-50 text-red-600 shadow-sm hover:bg-red-100 hover:text-red-700",
+        "danger-glass": "border border-red-200/80 bg-red-50/70 text-red-600 shadow-sm shadow-red-950/5 backdrop-blur hover:border-red-300 hover:bg-red-100/80 hover:text-red-700",
         outline:
           "border border-input bg-background text-foreground shadow-sm hover:bg-background hover:text-foreground hover:border-input",
         secondary: "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
+        "success-glass": "border border-emerald-200/80 bg-emerald-50/70 text-emerald-700 shadow-sm shadow-emerald-950/5 backdrop-blur hover:border-emerald-300 hover:bg-emerald-100/80 hover:text-emerald-800",
         ghost: "hover:bg-background hover:text-foreground",
         link: "text-primary underline-offset-4 hover:underline",
         // Custom emerald variant for primary actions

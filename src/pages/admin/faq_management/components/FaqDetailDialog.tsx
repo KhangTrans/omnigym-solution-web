@@ -28,7 +28,7 @@ export function FaqDetailDialog({ open, onOpenChange, faq }: FaqDetailDialogProp
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[640px] w-[95vw] max-h-[95vh] overflow-y-auto font-sans rounded-3xl p-0">
+      <DialogContent className="sm:max-w-[640px] w-[95vw] max-h-[95vh] overflow-y-auto admin-scrollbar font-sans rounded-3xl p-0">
         <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-6 border-b">
           <DialogHeader>
             <div className="flex items-center gap-2">

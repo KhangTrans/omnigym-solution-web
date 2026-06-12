@@ -481,7 +481,7 @@ export default function BranchList() {
             />
           </div>
 
-          <div className="rounded-md bg-card shadow-[0_2px_10px_rgba(15,23,42,0.10)] overflow-x-auto">
+          <div className="rounded-xl bg-card shadow-[0_2px_12px_rgba(15,23,42,0.08)] overflow-x-auto admin-scrollbar">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -623,7 +623,7 @@ export default function BranchList() {
             </DialogHeader>
           </div>
 
-          <div className="grid gap-4 px-6 py-5 overflow-y-auto max-h-[55vh] [&::-webkit-scrollbar]:w-0 [scrollbar-width:none] [-ms-overflow-style:none]">
+          <div className="grid gap-4 px-6 py-5 overflow-y-auto admin-scrollbar max-h-[55vh] [&::-webkit-scrollbar]:w-0 [scrollbar-width:none] [-ms-overflow-style:none]">
             <div className="grid gap-2">
               <Label>Tên chi nhánh</Label>
               <Input
@@ -1056,7 +1056,7 @@ export default function BranchList() {
               Đang tải chi tiết...
             </div>
           ) : detailBranch ? (
-            <div className="grid gap-5 px-6 pb-6 pt-4 overflow-y-auto max-h-[60vh] [&::-webkit-scrollbar]:w-0 [scrollbar-width:none] [-ms-overflow-style:none]">
+            <div className="grid gap-5 px-6 pb-6 pt-4 overflow-y-auto admin-scrollbar max-h-[60vh] [&::-webkit-scrollbar]:w-0 [scrollbar-width:none] [-ms-overflow-style:none]">
               <div className="grid gap-3 sm:grid-cols-3">
                 <div>
                   <div className="text-xs uppercase tracking-wide text-muted-foreground">
