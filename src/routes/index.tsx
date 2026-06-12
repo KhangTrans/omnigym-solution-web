@@ -36,25 +36,63 @@ import Checkout from "../pages/customers/transaction/Checkout";
 import PaymentSuccess from "../pages/customers/transaction/PaymentSuccess";
 import PaymentCancel from "../pages/customers/transaction/PaymentCancel";
 import CustomerAttendance from "../pages/admin/attendance_management/CustomerAttendance";
+import WorkspaceShell from "../pages/branchmanager/WorkspaceShell";
+import WorkspaceDashboard from "../pages/branchmanager/WorkspaceDashboard";
+import BranchManagerTrainerApplications from "../pages/branchmanager/BranchManagerTrainerApplications";
+import BranchManagerPosts from "../pages/branchmanager/BranchManagerPosts";
+import BranchManagerAttendance from "../pages/branchmanager/BranchManagerAttendance";
+import BranchManagerCustomerCheckin from "../pages/branchmanager/BranchManagerCustomerCheckin";
+import BranchManagerStaff from "../pages/branchmanager/BranchManagerStaff";
+import BranchManagerRevenue from "../pages/branchmanager/BranchManagerRevenue";
+import BranchManagerStaffAttendance from "../pages/branchmanager/BranchManagerStaffAttendance";
+
+const getCurrentRole = () => {
+  try {
+    const user = JSON.parse(localStorage.getItem("user") || "null");
+    const roleValue =
+      typeof user?.role === "object"
+        ? user?.role?.role_name || user?.role?.name
+        : user?.role;
+    const role = String(roleValue || "").toLowerCase();
+    if (role) return role;
+    if (Number(user?.role_id) === 4) return "staff";
+    if (Number(user?.role_id) === 3) return "branchmanager";
+    return "";
+  } catch {
+    return "";
+  }
+};
+
+const RoleOnly = ({
+  allow,
+  children,
+}: {
+  allow: string[];
+  children: React.ReactElement;
+}) => {
+  const role = getCurrentRole();
+  return allow.includes(role) ? (
+    children
+  ) : (
+    <Navigate to="/branchmanager" replace />
+  );
+};
 
 const DashboardRedirect = () => {
   const userData = localStorage.getItem("user");
   if (userData) {
     try {
       const user = JSON.parse(userData);
-      const role = String(user?.role || "").toLowerCase();
-
-      if (role === "trainer") {
-        return <Navigate to="/trainer-join" replace />;
-      }
-
-      // Admin, Staff, and BranchManager all use the /admin dashboard route now
-      if (
-        ["admin", "staff", "branchmanager", "gym"].includes(role) ||
-        [1, 2, 3].includes(user?.role_id)
-      ) {
+      const roleValue =
+        typeof user?.role === "object"
+          ? user?.role?.role_name || user?.role?.name
+          : user?.role;
+      const role = String(roleValue || "").toLowerCase();
+      if (role === "trainer") return <Navigate to="/trainer-join" replace />;
+      if (role === "branchmanager" || role === "staff")
+        return <Navigate to="/branchmanager" replace />;
+      if (["admin", "gym"].includes(role) || [1, 2, 3].includes(user?.role_id))
         return <Navigate to="/admin" replace />;
-      }
     } catch (e) {
       console.error("Error parsing user data", e);
     }
@@ -62,7 +100,6 @@ const DashboardRedirect = () => {
   return <Navigate to="/" replace />;
 };
 
-// JSON-like configuration array
 export const routesConfig = [
   {
     path: "/",
@@ -121,115 +158,70 @@ export const routesConfig = [
     path: "/admin",
     element: <AdminLayout />,
     children: [
-      {
-        index: true,
-        element: <Dashboard />,
-      },
-      {
-        path: "revenue",
-        element: <Revenue />,
-      },
-      {
-        path: "transactions",
-        element: <Transactions />,
-      },
-      {
-        path: "users",
-        element: <UsersManagement />,
-      },
-      {
-        path: "gyms",
-        element: <GymsManagement />,
-      },
+      { index: true, element: <Dashboard /> },
+      { path: "revenue", element: <Revenue /> },
+      { path: "transactions", element: <Transactions /> },
+      { path: "users", element: <UsersManagement /> },
+      { path: "gyms", element: <GymsManagement /> },
       {
         path: "branch-management",
         children: [
-          {
-            index: true,
-            element: <BranchList />,
-          },
-          {
-            path: "create",
-            element: <CreateBranch />,
-          },
+          { index: true, element: <BranchList /> },
+          { path: "create", element: <CreateBranch /> },
         ],
       },
-      {
-        path: "payouts",
-        element: <Payouts />,
-      },
-      {
-        path: "refunds",
-        element: <Refunds />,
-      },
-      {
-        path: "moderation",
-        element: <Moderation />,
-      },
-      {
-        path: "exercises",
-        element: <Exercises />,
-      },
-      {
-        path: "library",
-        element: <Library />,
-      },
-      {
-        path: "blogs",
-        element: <PostManagement />,
-      },
-      {
-        path: "faq",
-        element: <FAQ />,
-      },
-      {
-        path: "profile",
-        element: <AdminProfile />,
-      },
-      {
-        path: "membership-packages",
-        element: <MembershipPackage />,
-      },
-      {
-        path: "trainer-applications",
-        element: <TrainerApplicationList />,
-      },
-      {
-        path: "shift-attendance",
-        element: <ShiftAttendance />,
-      },
-      {
-        path: "attendance-management",
-        element: <AttendanceManagement />,
-      },
-      {
-        path: "customer-attendance",
-        element: <CustomerAttendance />,
-      },
+      { path: "payouts", element: <Payouts /> },
+      { path: "refunds", element: <Refunds /> },
+      { path: "moderation", element: <Moderation /> },
+      { path: "exercises", element: <Exercises /> },
+      { path: "library", element: <Library /> },
+      { path: "blogs", element: <PostManagement /> },
+      { path: "faq", element: <FAQ /> },
+      { path: "profile", element: <AdminProfile /> },
+      { path: "membership-packages", element: <MembershipPackage /> },
+      { path: "trainer-applications", element: <TrainerApplicationList /> },
+      { path: "shift-attendance", element: <ShiftAttendance /> },
+      { path: "attendance-management", element: <AttendanceManagement /> },
+      { path: "customer-attendance", element: <CustomerAttendance /> },
     ],
   },
+  { path: "/dashboard", element: <DashboardRedirect /> },
   {
-    path: "/dashboard",
-    element: <DashboardRedirect />,
+    path: "/branchmanager",
+    element: <WorkspaceShell />,
+    children: [
+      { index: true, element: <WorkspaceDashboard /> },
+      {
+        path: "trainer-applications",
+        element: (
+          <RoleOnly allow={["branchmanager"]}>
+            <BranchManagerTrainerApplications />
+          </RoleOnly>
+        ),
+      },
+      { path: "posts", element: <BranchManagerPosts /> },
+      { path: "attendance", element: <BranchManagerAttendance /> },
+      { path: "customer-checkin", element: <BranchManagerCustomerCheckin /> },
+      { path: "users", element: <BranchManagerStaff /> },
+      {
+        path: "staff-attendance",
+        element: (
+          <RoleOnly allow={["staff"]}>
+            <BranchManagerStaffAttendance />
+          </RoleOnly>
+        ),
+      },
+      { path: "revenue", element: <BranchManagerRevenue /> },
+    ],
   },
   {
     element: <AuthLayout />,
     children: [
-      {
-        path: "/register",
-        element: <Register />,
-      },
-      {
-        path: "/login",
-        element: <Login />,
-      },
-      {
-        path: "/forgot-password",
-        element: <ForgotPassword />,
-      },
+      { path: "/register", element: <Register /> },
+      { path: "/login", element: <Login /> },
+      { path: "/forgot-password", element: <ForgotPassword /> },
     ],
   },
-  // Add other routes here following the same pattern
   {
     path: "*",
     element: (
@@ -245,8 +237,8 @@ export const routesConfig = [
       </div>
     ),
   },
-];
+] as const;
 
-const router = createBrowserRouter(routesConfig);
-
+const router = createBrowserRouter(routesConfig as any);
 export default router;
+export { router };

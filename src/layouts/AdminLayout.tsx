@@ -211,12 +211,12 @@ const AdminLayout = () => {
   }, [navigate]);
 
   useEffect(() => {
-    const restrictedPaths = [
+    const blockedForPartner = [
       "/admin/attendance-management",
       "/admin/branch-management",
       "/admin/trainer-applications",
     ];
-    const isRestricted = restrictedPaths.some(
+    const isRestricted = blockedForPartner.some(
       (path) => pathname === path || pathname.startsWith(path + "/"),
     );
 

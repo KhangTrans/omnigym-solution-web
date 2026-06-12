@@ -35,8 +35,8 @@ export const getAttendanceStatusBadge = (status: string) => {
 
 export function AttendanceLogs({ logs, loading }: AttendanceLogsProps) {
   return (
-    <Card className="border-border/60 shadow-lg rounded-[20px] overflow-hidden bg-card/50 backdrop-blur-sm">
-      <CardHeader className="border-b bg-muted/30 py-5">
+    <Card className="min-h-[280px] border-0 shadow-sm rounded-xl overflow-hidden bg-card">
+      <CardHeader className="bg-muted/40 py-5">
         <CardTitle className="text-lg font-bold flex items-center gap-2">
           <ArrowRightLeft className="h-5 w-5 text-slate-700" />
           Nhật ký điểm danh cá nhân (my-logs)
@@ -50,7 +50,7 @@ export function AttendanceLogs({ logs, loading }: AttendanceLogsProps) {
             <span className="text-sm">Đang tải lịch sử điểm danh...</span>
           </div>
         ) : logs.length > 0 ? (
-          <div className="rounded-xl border overflow-hidden">
+          <div className="rounded-xl overflow-hidden shadow-sm">
             <Table>
               <TableHeader className="bg-muted/40">
                 <TableRow>
@@ -80,7 +80,7 @@ export function AttendanceLogs({ logs, loading }: AttendanceLogsProps) {
                   
                   return (
                     <TableRow key={log.id} className="hover:bg-slate-50/50 transition-colors">
-                      <TableCell className="font-semibold text-slate-800 tabular-nums">{shiftDate}</TableCell>
+                      <TableCell className="font-semibold text-foreground tabular-nums">{shiftDate}</TableCell>
                       <TableCell className="tabular-nums">{shiftTime}</TableCell>
                       <TableCell className="text-muted-foreground">{log.shift?.branch?.branch_name || (log.shift?.branch_id ? `CN: ${log.shift.branch_id}` : "OmniGym branch")}</TableCell>
                       <TableCell className="font-medium text-emerald-600 tabular-nums">{checkInTime}</TableCell>
@@ -96,7 +96,7 @@ export function AttendanceLogs({ logs, loading }: AttendanceLogsProps) {
             </Table>
           </div>
         ) : (
-          <div className="text-center py-10 text-muted-foreground bg-slate-50/50 rounded-2xl border border-dashed">
+          <div className="text-center py-10 text-muted-foreground bg-muted/30 rounded-xl shadow-sm">
             Chưa có bản ghi điểm danh nào trước đây.
           </div>
         )}

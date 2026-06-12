@@ -386,16 +386,16 @@ export default function AttendanceManagement() {
       {/* Title block */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
             <CalendarCheck className="h-6 w-6 text-emerald-600" />
             Quản lý Điểm danh & Xếp ca
           </h1>
-          <p className="text-sm text-slate-500 mt-1">Lập kế hoạch làm việc cho Staff và quản lý nhật ký check-in/out chi nhánh.</p>
+          <p className="text-sm text-muted-foreground mt-1">Lập kế hoạch làm việc cho Staff và quản lý nhật ký check-in/out chi nhánh.</p>
         </div>
       </div>
 
       {/* Toolbar filter */}
-      <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-card p-4 shadow-[0_2px_12px_rgba(15,23,42,0.08)]">
+      <div className="flex flex-wrap items-center gap-3 rounded-xl bg-card p-4 shadow-sm">
         <div className="flex items-center gap-2">
           <Calendar className="h-4.5 w-4.5 text-muted-foreground" />
           <Input 
@@ -440,7 +440,7 @@ export default function AttendanceManagement() {
 
         {/* Tab 1: Shift management */}
         <TabsContent value="shifts" className="space-y-4">
-          <Card className="border-0 shadow-[0_2px_12px_rgba(15,23,42,0.08)] rounded-[20px]">
+          <Card className="border-0 shadow-[0_2px_12px_rgba(15,23,42,0.08)] rounded-xl">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 py-5 border-b">
               <div>
                 <CardTitle className="text-base font-bold">Danh sách ca làm việc</CardTitle>
@@ -538,7 +538,7 @@ export default function AttendanceManagement() {
 
         {/* Tab 2: Attendance records */}
         <TabsContent value="logs" className="space-y-4">
-          <Card className="border-0 shadow-[0_2px_12px_rgba(15,23,42,0.08)] rounded-[20px]">
+          <Card className="border-0 shadow-[0_2px_12px_rgba(15,23,42,0.08)] rounded-xl">
             <CardHeader className="py-5 border-b">
               <CardTitle className="text-base font-bold">Nhật ký điểm danh chi nhánh</CardTitle>
               <CardDescription>Bảng ghi nhận giờ vào/ra thực tế của nhân viên</CardDescription>
@@ -628,7 +628,7 @@ export default function AttendanceManagement() {
 
       {/* Modal 1: Shift Dialog (Create / Edit) */}
       <Dialog open={shiftDialogOpen} onOpenChange={setShiftDialogOpen}>
-        <DialogContent className="max-w-md rounded-[20px] p-6">
+        <DialogContent className="max-w-md rounded-xl p-6">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold">
               {selectedShift ? "Chỉnh sửa ca làm việc" : "Tạo ca làm việc mới"}
@@ -780,7 +780,7 @@ export default function AttendanceManagement() {
 
       {/* Modal 2: Edit Attendance Record */}
       <Dialog open={attendanceDialogOpen} onOpenChange={setAttendanceDialogOpen}>
-        <DialogContent className="max-w-md rounded-[20px] p-6">
+        <DialogContent className="max-w-md rounded-xl p-6">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold">Điều chỉnh thông tin điểm danh</DialogTitle>
             <DialogDescription>
