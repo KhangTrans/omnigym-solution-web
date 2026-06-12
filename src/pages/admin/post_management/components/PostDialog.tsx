@@ -139,7 +139,7 @@ export function PostDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[800px] w-[95vw] max-h-[95vh] overflow-y-auto font-sans">
+      <DialogContent className="sm:max-w-[800px] w-[95vw] max-h-[95vh] overflow-y-auto admin-scrollbar font-sans">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold flex items-center gap-2">
             {getDialogTitle()}

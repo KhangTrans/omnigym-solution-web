@@ -42,7 +42,7 @@ export function PackageFormDialog({
 }: PackageFormDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto admin-scrollbar">
         <DialogHeader>
           <DialogTitle>{editing ? "Edit package" : "New package"}</DialogTitle>
         </DialogHeader>
@@ -119,7 +119,7 @@ export function PackageFormDialog({
               </div>
 
               {!applyToAll && (
-                <div className="ml-6 space-y-2 p-3 border rounded-md bg-muted/50 max-h-48 overflow-y-auto">
+                <div className="ml-6 space-y-2 p-3 border rounded-md bg-muted/50 max-h-48 overflow-y-auto admin-scrollbar">
                   {branches.map((branch) => (
                     <div key={branch.id} className="flex items-center space-x-2">
                       <Checkbox

@@ -195,7 +195,7 @@ function ExercisesPage() {
 
       {/* Create / edit dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto admin-scrollbar">
           <DialogHeader>
             <DialogTitle>{editing ? "Edit pack" : "New pack"}</DialogTitle>
           </DialogHeader>
@@ -269,7 +269,7 @@ function ExercisesPage() {
               </div>
               <div className="space-y-3">
                 {draft.exercises.map((ex, idx) => (
-                  <div key={ex.id} className="rounded-md bg-card shadow-[0_2px_10px_rgba(15,23,42,0.10)] p-3">
+                  <div key={ex.id} className="rounded-xl bg-card shadow-[0_2px_12px_rgba(15,23,42,0.08)] p-3">
                     <div className="flex items-start gap-3">
                       <div className="flex flex-col items-center pt-1 text-muted-foreground">
                         <button
@@ -398,7 +398,7 @@ function ExercisesPage() {
 
       {/* Preview dialog */}
       <Dialog open={!!previewing} onOpenChange={(o) => !o && setPreviewing(null)}>
-        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto admin-scrollbar">
           <DialogHeader>
             <DialogTitle>{previewing?.name}</DialogTitle>
           </DialogHeader>
@@ -407,7 +407,7 @@ function ExercisesPage() {
               <p className="text-sm text-muted-foreground">{previewing.description}</p>
               <div className="space-y-3">
                 {previewing.exercises.map((ex, i) => (
-                  <div key={ex.id} className="flex gap-3 rounded-md bg-card shadow-[0_2px_10px_rgba(15,23,42,0.10)] p-3">
+                  <div key={ex.id} className="flex gap-3 rounded-xl bg-card shadow-[0_2px_12px_rgba(15,23,42,0.08)] p-3">
                     <MediaThumb url={ex.mediaUrl} type={ex.mediaType} large />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
@@ -449,7 +449,7 @@ function MediaThumb({ url, type, large = false }: { url: string; type: ExerciseM
       src={url}
       alt=""
       loading="lazy"
-      className={`${size} rounded-md bg-card shadow-[0_2px_10px_rgba(15,23,42,0.10)] object-cover`}
+      className={`${size} rounded-xl bg-card shadow-[0_2px_12px_rgba(15,23,42,0.08)] object-cover`}
       onError={(e) => ((e.currentTarget.style.opacity = "0.3"))}
     />
   );
@@ -497,7 +497,7 @@ function ExerciseNameSearch({
         placeholder="Search library or type a new name…"
       />
       {open && matches.length > 0 && (
-        <div className="absolute z-50 mt-1 max-h-72 w-full overflow-y-auto rounded-md bg-popover shadow-[0_2px_10px_rgba(15,23,42,0.10)] p-1">
+        <div className="absolute z-50 mt-1 max-h-72 w-full overflow-y-auto admin-scrollbar rounded-md bg-popover shadow-[0_2px_10px_rgba(15,23,42,0.10)] p-1">
           {matches.map((ex) => (
             <button
               key={ex.id}

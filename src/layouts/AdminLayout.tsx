@@ -269,7 +269,7 @@ const AdminLayout = () => {
         >
           <nav
             className={cn(
-              "flex-1 overflow-y-auto overflow-x-hidden py-8 transition-[padding] duration-300 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+              "flex-1 overflow-y-auto no-scrollbar overflow-x-hidden py-8 transition-[padding] duration-300",
               sidebarOpen ? "space-y-7 px-4" : "space-y-8 px-3",
             )}
           >
@@ -390,7 +390,7 @@ const AdminLayout = () => {
 
         <div className="flex min-w-0 flex-col">
           <header className="fixed left-0 right-0 top-0 z-30 flex h-20 items-center justify-between bg-card/80 shadow-[0_1px_8px_rgba(15,23,42,0.08)] px-4 backdrop-blur lg:px-8">
-            <div className="flex items-center gap-3 overflow-x-auto lg:hidden">
+            <div className="flex items-center gap-3 overflow-x-auto admin-scrollbar lg:hidden">
               {NAV.map((item) => {
                 const active = item.exact
                   ? pathname === item.to

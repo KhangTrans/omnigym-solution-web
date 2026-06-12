@@ -281,7 +281,7 @@ function RevenuePage() {
           </Select>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md bg-card shadow-[0_2px_10px_rgba(15,23,42,0.10)]">
+          <div className="rounded-xl bg-card shadow-[0_2px_12px_rgba(15,23,42,0.08)]">
             <Table>
               <TableHeader>
                 <TableRow>

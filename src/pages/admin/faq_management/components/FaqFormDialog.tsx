@@ -111,7 +111,7 @@ export function FaqFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[768px] w-[95vw] max-h-[95vh] overflow-y-auto font-sans rounded-3xl p-0">
+      <DialogContent className="sm:max-w-[768px] w-[95vw] max-h-[95vh] overflow-y-auto admin-scrollbar font-sans rounded-3xl p-0">
         <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-6 border-b">
           <DialogHeader>
             <div className="inline-flex rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary w-fit">

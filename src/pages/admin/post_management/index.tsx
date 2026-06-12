@@ -302,7 +302,7 @@ export default function PostManagement() {
           ) : visiblePosts.length === 0 ? (
             <div className="grid place-items-center rounded-md border border-dashed py-16 text-center text-sm text-muted-foreground"><FileText className="mb-2 h-6 w-6" />Không có bài viết trong mục này.</div>
           ) : (
-            <div className="rounded-md border overflow-x-auto">
+            <div className="rounded-xl bg-card shadow-[0_2px_12px_rgba(15,23,42,0.08)] overflow-x-auto admin-scrollbar">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -339,7 +339,7 @@ export default function PostManagement() {
       <PostDialog open={dialogOpen} onOpenChange={setDialogOpen} mode={mode} post={selectedPost} onSubmit={handleSubmit} isSubmitting={isSubmitting} canPublishDirectly={isAdminLike} />
 
       <Dialog open={!!reviewingPost} onOpenChange={(o) => !o && setReviewingPost(null)}>
-        <DialogContent className="sm:max-w-[760px] max-h-[95vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[760px] max-h-[95vh] overflow-y-auto admin-scrollbar">
           {reviewingPost && <><DialogHeader><DialogTitle>{reviewingPost.title}</DialogTitle><DialogDescription>Đăng bởi {reviewingPost.user?.full_name || "N/A"} · {new Date(reviewingPost.created_at).toLocaleString("vi-VN")}</DialogDescription></DialogHeader>
           {extractThumbnail(reviewingPost) && <img src={extractThumbnail(reviewingPost)!} alt="" className="max-h-72 w-full rounded-md border object-cover" />}
           <div className="flex items-center gap-2"><StatusBadge status={normalizeStatus(reviewingPost)} /><Badge variant="outline">{getAuthorRole(reviewingPost)}</Badge></div>
