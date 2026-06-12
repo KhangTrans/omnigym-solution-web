@@ -341,12 +341,12 @@ export default function PostManagement() {
       <Dialog open={!!reviewingPost} onOpenChange={(o) => !o && setReviewingPost(null)}>
         <DialogContent className="sm:max-w-[760px] max-h-[95vh] overflow-y-auto admin-scrollbar">
           {reviewingPost && <><DialogHeader><DialogTitle>{reviewingPost.title}</DialogTitle><DialogDescription>Đăng bởi {reviewingPost.user?.full_name || "N/A"} · {new Date(reviewingPost.created_at).toLocaleString("vi-VN")}</DialogDescription></DialogHeader>
-          {extractThumbnail(reviewingPost) && <img src={extractThumbnail(reviewingPost)!} alt="" className="max-h-72 w-full rounded-md border object-cover" />}
-          <div className="flex items-center gap-2"><StatusBadge status={normalizeStatus(reviewingPost)} /><Badge variant="outline">{getAuthorRole(reviewingPost)}</Badge></div>
-          <div className="prose prose-sm max-w-none rounded-md border bg-muted/30 p-4 [&_img]:max-w-full [&_img]:rounded-lg" dangerouslySetInnerHTML={{ __html: reviewingPost.content || "" }} />
-          <DialogFooter className="gap-2 sm:justify-between">
-            {!isStaffView ? <><Button variant="ghost" className="text-destructive hover:text-destructive" onClick={() => { setPostToDelete(reviewingPost); setReviewingPost(null); setDeleteDialogOpen(true); }}><Trash2 className="mr-2 h-4 w-4" /> Xóa</Button><div className="flex gap-2"><Button variant="outline" onClick={() => setRejectOpen(true)} disabled={isSubmitting}><XCircle className="mr-2 h-4 w-4" /> Từ chối</Button><Button onClick={() => handleApprove(reviewingPost)} disabled={isSubmitting}><CheckCircle2 className="mr-2 h-4 w-4" /> Duyệt</Button></div></> : <Button className="ml-auto" variant="outline" onClick={() => setReviewingPost(null)}>Đóng</Button>}
-          </DialogFooter></>}
+            {extractThumbnail(reviewingPost) && <img src={extractThumbnail(reviewingPost)!} alt="" className="max-h-72 w-full rounded-md border object-cover" />}
+            <div className="flex items-center gap-2"><StatusBadge status={normalizeStatus(reviewingPost)} /><Badge variant="outline">{getAuthorRole(reviewingPost)}</Badge></div>
+            <div className="prose prose-sm max-w-none rounded-md border bg-muted/30 p-4 [&_img]:max-w-full [&_img]:rounded-lg" dangerouslySetInnerHTML={{ __html: reviewingPost.content || "" }} />
+            <DialogFooter className="gap-2 sm:justify-between">
+              {!isStaffView ? <><Button variant="ghost" className="text-destructive hover:text-destructive" onClick={() => { setPostToDelete(reviewingPost); setReviewingPost(null); setDeleteDialogOpen(true); }}><Trash2 className="mr-2 h-4 w-4" /> Xóa</Button><div className="flex gap-2"><Button variant="outline" onClick={() => setRejectOpen(true)} disabled={isSubmitting}><XCircle className="mr-2 h-4 w-4" /> Từ chối</Button><Button onClick={() => handleApprove(reviewingPost)} disabled={isSubmitting}><CheckCircle2 className="mr-2 h-4 w-4" /> Duyệt</Button></div></> : <Button className="ml-auto" variant="outline" onClick={() => setReviewingPost(null)}>Đóng</Button>}
+            </DialogFooter></>}
         </DialogContent>
       </Dialog>
 

@@ -51,7 +51,7 @@ export default function BlogList() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Filters & Pagination State
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Tất cả");
@@ -118,7 +118,7 @@ export default function BlogList() {
     try {
       setLoading(true);
       setError(null);
-      
+
       const response = await postsApi.list({
         page,
         limit,
@@ -224,11 +224,10 @@ export default function BlogList() {
               <button
                 key={cat}
                 onClick={() => handleCategoryChange(cat)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-                  selectedCategory === cat
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${selectedCategory === cat
                     ? "bg-primary text-primary-foreground shadow-md scale-105"
                     : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
-                }`}
+                  }`}
               >
                 {cat}
               </button>
@@ -434,11 +433,10 @@ export default function BlogList() {
                           <PaginationItem key={pageNum}>
                             <button
                               onClick={() => setPage(pageNum)}
-                              className={`flex h-9 w-9 items-center justify-center rounded-md text-sm font-medium shadow-sm border cursor-pointer transition-colors ${
-                                page === pageNum
+                              className={`flex h-9 w-9 items-center justify-center rounded-md text-sm font-medium shadow-sm border cursor-pointer transition-colors ${page === pageNum
                                   ? "bg-primary text-primary-foreground border-primary hover:bg-primary/95"
                                   : "bg-card border-input hover:bg-accent hover:text-accent-foreground"
-                              }`}
+                                }`}
                             >
                               {pageNum}
                             </button>
