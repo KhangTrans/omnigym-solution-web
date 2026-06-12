@@ -21,8 +21,8 @@ export const trainerApplicationAPI = {
     return api.get(`/trainer-applications/${id}`);
   },
 
-  approve: (id: number) => {
-    return api.patch(`/trainer-applications/${id}/approve`);
+  approve: (id: number, approved_level: "junior" | "senior" | "master") => {
+    return api.patch(`/trainer-applications/${id}/approve`, { approved_level });
   },
 
   reject: (id: number, rejection_reason: string) => {
