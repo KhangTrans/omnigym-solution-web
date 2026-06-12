@@ -46,6 +46,7 @@ export default function CustomerLayout() {
       console.error("Logout failed", error);
     } finally {
       localStorage.removeItem("user");
+      localStorage.removeItem("token");
       navigate("/login");
     }
   };
