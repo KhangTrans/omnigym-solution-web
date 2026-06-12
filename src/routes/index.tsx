@@ -6,6 +6,7 @@ import ChangePassword from "../pages/customers/ChangePassword";
 import CustomerCheckIn from "../pages/customers/CheckIn";
 import Home from "../pages/pubblic/Home";
 import TrainerJoin from "../pages/pubblic/TrainerJoin";
+import BlogList from "../pages/pubblic/BlogList";
 import AuthLayout from "../layouts/AuthLayout";
 import AdminLayout from "../layouts/AdminLayout";
 import CustomerLayout from "../layouts/CustomerLayout";
@@ -78,6 +79,10 @@ export const routesConfig = [
   {
     path: "/gyms/:slug",
     element: <GymDetail />,
+  },
+  {
+    path: "/blog",
+    element: <BlogList />,
   },
   {
     path: "/staff/trainer-applications",
