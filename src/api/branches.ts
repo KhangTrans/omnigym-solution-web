@@ -49,5 +49,17 @@ export const branchesApi = {
   
   getById: (id: string | number, params?: { trainerPage?: number; trainerLimit?: number }) => {
     return api.get(`/branches/${id}`, { params });
+  },
+
+  getReviews: (id: string | number) => {
+    return api.get(`/branches/${id}/reviews`);
+  },
+
+  checkCanReview: (id: string | number) => {
+    return api.get(`/branches/${id}/can-review`);
+  },
+
+  createReview: (id: string | number, data: { rating: number; comment?: string }) => {
+    return api.post(`/branches/${id}/reviews`, data);
   }
 };

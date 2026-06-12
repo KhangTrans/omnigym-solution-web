@@ -76,34 +76,24 @@ interface BranchDetail {
   };
 }
 
-const mockReviews = [
-  {
-    id: 1,
-    name: "Jordan L.",
-    date: "3 ngày trước",
-    rating: 5,
-    text: "Phòng tập yoga thật lộng lẫy, ngập tràn ánh sáng tự nhiên và vô cùng yên tĩnh. Nơi trú ẩn yêu thích của tôi sau giờ làm việc căng thẳng.",
-  },
-  {
-    id: 2,
-    name: "Ava T.",
-    date: "2 tuần trước",
-    rating: 5,
-    text: "Khu vực tạ và máy chạy bộ có đầy đủ mọi thứ tôi cần cho việc tập luyện sức bền. Các hội viên và HLV ở đây rất thân thiện, cởi mở.",
-  },
-  {
-    id: 3,
-    name: "Sofia R.",
-    date: "1 tháng trước",
-    rating: 5,
-    text: "Các huấn luyện viên thực sự tận tâm và chuyên nghiệp. Quy trình đăng ký và đặt lịch tập luyện 1:1 qua ứng dụng diễn ra rất nhanh chóng.",
-  },
-];
-
 export default function GymDetail() {
   const { slug } = useParams<{ slug: string }>();
   const [branch, setBranch] = useState<BranchDetail | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Reviews state
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [ratingStats, setRatingStats] = useState({ averageRating: 0, reviewCount: 0 });
+  const [reviewsLoading, setReviewsLoading] = useState(true);
+
+  // Review capability state
+  const [canReview, setCanReview] = useState(false);
+  const [canReviewReason, setCanReviewReason] = useState("");
+
+  // Form state
+  const [userRating, setUserRating] = useState(5);
+  const [userComment, setUserComment] = useState("");
+  const [submittingReview, setSubmittingReview] = useState(false);
 
   // Hero Carousel and Lightbox state
   const [heroImageIndex, setHeroImageIndex] = useState(0);
@@ -147,6 +137,65 @@ export default function GymDetail() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [lightboxOpen, heroImages.length]);
 
+  const fetchReviewsAndStats = async (branchId: number) => {
+    try {
+      setReviewsLoading(true);
+      const response = await branchesApi.getReviews(branchId);
+      const result = response.data?.data ?? response.data;
+      setReviews(result.reviews || []);
+      setRatingStats(result.stats || { averageRating: 0, reviewCount: 0 });
+    } catch (error) {
+      console.error("Failed to load reviews:", error);
+    } finally {
+      setReviewsLoading(false);
+    }
+  };
+
+  const checkUserReviewStatus = async (branchId: number) => {
+    const token = localStorage.getItem("token");
+    const userRaw = localStorage.getItem("user");
+    if (!token || !userRaw) return;
+
+    try {
+      const user = JSON.parse(userRaw);
+      if (user.role !== "Customer") return;
+
+      const response = await branchesApi.checkCanReview(branchId);
+      const data = response.data;
+      setCanReview(data.canReview);
+      setCanReviewReason(data.reason || "");
+    } catch (error) {
+      console.error("Failed to check review status:", error);
+    }
+  };
+
+  const handleSubmitReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!branch?.id) return;
+    if (userRating < 1 || userRating > 5) {
+      toast.error("Vui lòng chọn số sao từ 1 đến 5.");
+      return;
+    }
+
+    try {
+      setSubmittingReview(true);
+      const response = await branchesApi.createReview(branch.id, {
+        rating: userRating,
+        comment: userComment.trim() || undefined
+      });
+      toast.success(response.data?.message || "Gửi đánh giá thành công!");
+      setUserComment("");
+      // Reload stats & check eligibility again
+      fetchReviewsAndStats(branch.id);
+      checkUserReviewStatus(branch.id);
+    } catch (error: any) {
+      const msg = error.response?.data?.message || error.message || "Không thể gửi đánh giá.";
+      toast.error(msg);
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
+
   const fetchBranchDetail = async (page = 1) => {
     if (!slug) return;
     try {
@@ -158,6 +207,10 @@ export default function GymDetail() {
       const data = response.data?.data ?? response.data;
       setBranch(data);
       setTrainerPage(data?.trainerMeta?.page || 1);
+      if (data?.id) {
+        fetchReviewsAndStats(data.id);
+        checkUserReviewStatus(data.id);
+      }
     } catch (error) {
       console.error("Failed to load branch detail:", error);
       toast.error("Không thể tải chi tiết phòng tập.");
@@ -294,11 +347,20 @@ export default function GymDetail() {
           <div className="flex items-center gap-2 pt-0.5">
             <div className="flex items-center text-emerald-600">
               {[1, 2, 3, 4, 5].map((s) => (
-                <Star key={s} className="h-3.5 w-3.5 fill-current" />
+                <Star
+                  key={s}
+                  className={`h-3.5 w-3.5 ${
+                    s <= Math.round(ratingStats.averageRating)
+                      ? "fill-current text-emerald-600"
+                      : "text-slate-300"
+                  }`}
+                />
               ))}
             </div>
             <span className="text-xs font-semibold text-slate-500">
-              4.9 · 15 đánh giá
+              {ratingStats.reviewCount > 0
+                ? `${ratingStats.averageRating} · ${ratingStats.reviewCount} đánh giá`
+                : "Chưa có đánh giá"}
             </span>
           </div>
 
@@ -541,7 +603,7 @@ export default function GymDetail() {
       </section>
 
       {/* SECTION 4: MEMBER REVIEWS */}
-      <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+      <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 border-t border-slate-100">
         <div className="text-center space-y-2 mb-12">
           <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
             Đánh giá từ Hội viên
@@ -549,47 +611,136 @@ export default function GymDetail() {
           <div className="flex justify-center items-center gap-2">
             <div className="flex items-center text-amber-400">
               {[1, 2, 3, 4, 5].map((s) => (
-                <Star key={s} className="h-4 w-4 fill-current" />
+                <Star
+                  key={s}
+                  className={`h-4 w-4 ${
+                    s <= Math.round(ratingStats.averageRating)
+                      ? "fill-current text-amber-400"
+                      : "text-slate-200"
+                  }`}
+                />
               ))}
             </div>
             <span className="text-sm font-semibold text-slate-500">
-              4.9 · 15 đánh giá thành viên
+              {ratingStats.reviewCount > 0
+                ? `${ratingStats.averageRating} · ${ratingStats.reviewCount} đánh giá thành viên`
+                : "Chưa có đánh giá thành viên"}
             </span>
           </div>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-3">
-          {mockReviews.map((rev) => (
-            <Card
-              key={rev.id}
-              className="p-6 rounded-2xl border border-slate-100 bg-white shadow-sm flex flex-col justify-between"
-            >
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-emerald-700/10 text-emerald-800 flex items-center justify-center font-bold text-sm">
-                    {rev.name.charAt(0)}
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-slate-800 text-sm">
-                      {rev.name}
-                    </h4>
-                    <span className="text-[10px] text-slate-400">
-                      {rev.date}
-                    </span>
-                  </div>
-                </div>
+        {/* Form viết đánh giá của khách hàng */}
+        {canReview ? (
+          <Card className="mb-12 max-w-xl mx-auto p-6 rounded-2xl border border-emerald-100 bg-emerald-50/10 shadow-sm">
+            <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
+              <Star className="h-5 w-5 fill-amber-400 text-amber-400" />
+              <span>Gửi đánh giá của bạn</span>
+            </h3>
+            <form onSubmit={handleSubmitReview} className="space-y-4">
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium text-slate-700">Điểm số:</span>
                 <div className="flex items-center text-amber-400">
-                  {Array.from({ length: rev.rating }).map((_, i) => (
-                    <Star key={i} className="h-3.5 w-3.5 fill-current" />
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setUserRating(star)}
+                      className="focus:outline-none transition-transform hover:scale-110 p-0.5"
+                    >
+                      <Star
+                        className={`h-6 w-6 ${
+                          star <= userRating ? "fill-amber-400 text-amber-400" : "text-slate-300"
+                        }`}
+                      />
+                    </button>
                   ))}
                 </div>
-                <p className="text-xs text-slate-600 leading-relaxed italic">
-                  "{rev.text}"
-                </p>
               </div>
-            </Card>
-          ))}
-        </div>
+
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-slate-700 block">Nhận xét của bạn:</label>
+                <textarea
+                  value={userComment}
+                  onChange={(e) => setUserComment(e.target.value)}
+                  placeholder="Hãy chia sẻ trải nghiệm tập luyện thực tế của bạn tại đây để giúp phòng gym cải thiện chất lượng tốt hơn nhé..."
+                  rows={4}
+                  className="w-full rounded-xl border border-slate-200 p-3 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white"
+                />
+              </div>
+
+              <div className="flex justify-end">
+                <Button
+                  type="submit"
+                  disabled={submittingReview}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-full px-6 py-2 transition-all shadow-md active:scale-95"
+                >
+                  {submittingReview ? "Đang gửi..." : "Gửi đánh giá"}
+                </Button>
+              </div>
+            </form>
+          </Card>
+        ) : (
+          canReviewReason && (
+            <div className="mb-12 max-w-xl mx-auto p-4 rounded-xl bg-slate-50 border border-slate-150 text-center text-xs text-slate-500 leading-relaxed font-medium">
+              💡 {canReviewReason}
+            </div>
+          )
+        )}
+
+        {/* Hiển thị danh sách đánh giá */}
+        {reviewsLoading ? (
+          <div className="flex justify-center items-center py-12">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent" />
+          </div>
+        ) : reviews.length === 0 ? (
+          <div className="text-center py-12 text-slate-400 italic bg-slate-50 rounded-2xl max-w-3xl mx-auto">
+            Chưa có đánh giá nào cho chi nhánh này. Hãy là người đầu tiên trải nghiệm và đánh giá nhé!
+          </div>
+        ) : (
+          <div className="grid gap-6 md:grid-cols-3 max-w-7xl mx-auto">
+            {reviews.map((rev) => (
+              <Card
+                key={rev.id}
+                className="p-6 rounded-2xl border border-slate-100 bg-white shadow-sm flex flex-col justify-between animate-fadeIn"
+              >
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    {rev.customer?.user?.avatar_url ? (
+                      <img
+                        src={rev.customer.user.avatar_url}
+                        alt={rev.customer.user.full_name}
+                        className="h-10 w-10 rounded-full object-cover border border-slate-100"
+                      />
+                    ) : (
+                      <div className="h-10 w-10 rounded-full bg-emerald-700/10 text-emerald-800 flex items-center justify-center font-bold text-sm">
+                        {(rev.customer?.user?.full_name || "H").charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <div>
+                      <h4 className="font-bold text-slate-800 text-sm">
+                        {rev.customer?.user?.full_name || "Hội viên ẩn danh"}
+                      </h4>
+                      <span className="text-[10px] text-slate-400">
+                        {new Date(rev.created_at).toLocaleDateString("vi-VN")}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center text-amber-400">
+                    {Array.from({ length: rev.rating }).map((_, i) => (
+                      <Star key={i} className="h-3.5 w-3.5 fill-current" />
+                    ))}
+                    {Array.from({ length: 5 - rev.rating }).map((_, i) => (
+                      <Star key={i + 5} className="h-3.5 w-3.5 text-slate-200" />
+                    ))}
+                  </div>
+                  <p className="text-xs text-slate-600 leading-relaxed italic">
+                    "{rev.comment || "Không có nội dung nhận xét."}"
+                  </p>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* SECTION 5: DYNAMIC MEMBERSHIP PACKAGES */}
