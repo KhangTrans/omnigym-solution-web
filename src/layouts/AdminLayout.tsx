@@ -22,6 +22,7 @@ import {
   ChevronRight,
   QrCode,
   Calendar,
+  UserPlus,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "../utils/cn";
@@ -104,6 +105,12 @@ const NAV: NavItem[] = [
     to: "/admin/customer-attendance",
     label: "Check-in Hội viên",
     icon: Users,
+    group: "Operations",
+  },
+  {
+    to: "/admin/staff-accounts",
+    label: "Tài khoản Staff",
+    icon: UserPlus,
     group: "Operations",
   },
   {
@@ -221,6 +228,8 @@ const AdminLayout = () => {
       "/admin/attendance-management",
       "/admin/branch-management",
       "/admin/trainer-applications",
+      "/admin/users",
+      "/admin/staff-accounts",
     ];
     const isRestricted = blockedForPartner.some(
       (path) => pathname === path || pathname.startsWith(path + "/"),
@@ -251,7 +260,9 @@ const AdminLayout = () => {
     if (
       item.to === "/admin/attendance-management" ||
       item.to === "/admin/branch-management" ||
-      item.to === "/admin/trainer-applications"
+      item.to === "/admin/trainer-applications" ||
+      item.to === "/admin/users" ||
+      item.to === "/admin/staff-accounts"
     ) {
       return !isStaff;
     }

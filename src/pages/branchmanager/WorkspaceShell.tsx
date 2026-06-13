@@ -32,7 +32,7 @@ const NAV: NavItem[] = [
   { to: "/branchmanager/posts", label: "Posts", icon: FileText },
   { to: "/branchmanager/attendance", label: "Attendance", icon: ScanFace },
   { to: "/branchmanager/customer-checkin", label: "Customer Check-in", icon: CalendarCheck2 },
-  { to: "/branchmanager/users", label: "Users", icon: Users },
+  { to: "/branchmanager/users", label: "Users", icon: Users, roles: ["branchmanager"] },
   { to: "/branchmanager/staff-attendance", label: "Staff Attendance", icon: ScanFace, roles: ["staff"] },
   { to: "/branchmanager/revenue", label: "Revenue", icon: DollarSign },
 ];
@@ -159,7 +159,13 @@ export default function WorkspaceShell() {
                   <div className="text-xs font-semibold">Alex Park</div>
                   <div className="text-[10px] text-muted-foreground">{role === "staff" ? "Staff" : "Branch Manager"}</div>
                 </div>
-                <div className="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br from-primary to-primary/40">
+                <div
+                  className="grid h-8 w-8 place-items-center rounded-full"
+                  style={{
+                    backgroundImage:
+                      "linear-gradient(to bottom right, hsl(var(--primary)), color-mix(in srgb, hsl(var(--primary)) 40%, transparent))",
+                  }}
+                >
                   <UserCog className="h-4 w-4 text-primary-foreground" />
                 </div>
               </div>
@@ -167,7 +173,7 @@ export default function WorkspaceShell() {
           </header>
 
           <main className="flex-1 p-4 lg:p-8">
-            <div className="mx-auto w-full max-w-[1440px]">
+            <div className="mx-auto w-full" style={{ maxWidth: 1440 }}>
               <Outlet />
             </div>
           </main>

@@ -14,6 +14,7 @@ import {
   MapPin,
   Phone,
   Clock,
+  Calendar,
 } from "lucide-react";
 import { useAdminRevenue } from "@/lib/admin-store";
 
@@ -25,8 +26,29 @@ function fmt(n: number) {
   }).format(n);
 }
 
+type WorkspaceRole = "branchmanager" | "staff";
+
+function getWorkspaceRole(): WorkspaceRole {
+  try {
+    const user = JSON.parse(localStorage.getItem("user") || "null");
+    const roleValue =
+      typeof user?.role === "object"
+        ? user?.role?.role_name || user?.role?.name
+        : user?.role;
+    const role = String(roleValue || "").toLowerCase();
+    if (role === "staff" || Number(user?.role_id) === 4) {
+      return "staff";
+    }
+    return "branchmanager";
+  } catch {
+    return "branchmanager";
+  }
+}
+
 export default function WorkspaceDashboard() {
   const { revenue } = useAdminRevenue();
+  const role = getWorkspaceRole();
+  const canManageStaff = role === "branchmanager";
 
   const branchRevenue = useMemo(() => {
     const factor = 0.28;
@@ -118,8 +140,8 @@ export default function WorkspaceDashboard() {
         {cards.map((c) => {
           const Icon = c.icon;
           return (
-            <Card key={c.label} className="relative min-h-[136px] overflow-hidden border-0 bg-card text-card-foreground shadow-sm">
-              <div className={`pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-gradient-to-br ${c.accent} blur-2xl`} />
+            <Card key={c.label} className="relative min-h-34 overflow-hidden border-0 bg-card text-card-foreground shadow-sm">
+              <div className={`pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-linear-to-br ${c.accent} blur-2xl`} />
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   {c.label}
@@ -136,7 +158,7 @@ export default function WorkspaceDashboard() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <Card className="min-h-[320px] border-0 bg-card text-card-foreground shadow-sm lg:col-span-2">
+        <Card className="min-h-80 border-0 bg-card text-card-foreground shadow-sm lg:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
               <CardTitle className="text-base">Revenue trend</CardTitle>
@@ -163,7 +185,7 @@ export default function WorkspaceDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="min-h-[320px] border-0 bg-card text-card-foreground shadow-sm">
+        <Card className="min-h-80 border-0 bg-card text-card-foreground shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
               <CardTitle className="text-base">Posts queue</CardTitle>
@@ -184,7 +206,7 @@ export default function WorkspaceDashboard() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <Card className="min-h-[260px] border-0 bg-card text-card-foreground shadow-sm lg:col-span-2 overflow-hidden">
+        <Card className="min-h-65 overflow-hidden border-0 bg-card text-card-foreground shadow-sm lg:col-span-2">
           <CardHeader>
             <CardTitle className="text-base">Branch details</CardTitle>
             <p className="text-xs text-muted-foreground">Your active location</p>
@@ -207,17 +229,30 @@ export default function WorkspaceDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="min-h-[320px] border-0 bg-card text-card-foreground shadow-sm">
+        <Card className="min-h-80 border-0 bg-card text-card-foreground shadow-sm">
           <CardHeader>
             <CardTitle className="text-base">Quick actions</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <ActionLink to="/branchmanager/trainer-applications" label="Manage trainers" />
-            <ActionLink to="/branchmanager/users" label="Manage staff" />
+            {canManageStaff && <ActionLink to="/branchmanager/users" label="Manage staff" />}
             <ActionLink to="/branchmanager/revenue" label="View revenue" />
           </CardContent>
         </Card>
       </div>
+
+      {canManageStaff && (
+        <Card className="min-h-80 border-0 bg-card text-card-foreground shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-base">Branch/staff scope</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm text-muted-foreground">
+            <Row icon={Users} text="User list for branch operations" />
+            <Row icon={UserSquare2} text="Work shifts management" />
+            <Row icon={Calendar} text="Customer check-in monitoring" />
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
