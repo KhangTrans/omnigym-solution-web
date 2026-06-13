@@ -46,6 +46,7 @@ import BranchManagerCustomerCheckin from "../pages/branchmanager/BranchManagerCu
 import BranchManagerStaff from "../pages/branchmanager/BranchManagerStaff";
 import BranchManagerRevenue from "../pages/branchmanager/BranchManagerRevenue";
 import BranchManagerStaffAttendance from "../pages/branchmanager/BranchManagerStaffAttendance";
+import TrainerDashboard from "../pages/trainer/TrainerDashboard";
 
 const getCurrentRole = () => {
   try {
@@ -89,7 +90,7 @@ const DashboardRedirect = () => {
           ? user?.role?.role_name || user?.role?.name
           : user?.role;
       const role = String(roleValue || "").toLowerCase();
-      if (role === "trainer") return <Navigate to="/trainer-join" replace />;
+      if (role === "trainer") return <Navigate to="/trainer" replace />;
       if (role === "branchmanager" || role === "staff")
         return <Navigate to="/branchmanager" replace />;
       if (["admin", "gym"].includes(role) || [1, 2, 3].includes(user?.role_id))
@@ -109,6 +110,10 @@ export const routesConfig = [
   {
     path: "/trainer-join",
     element: <TrainerJoin />,
+  },
+  {
+    path: "/trainer",
+    element: <TrainerDashboard />,
   },
   {
     path: "/gyms",
