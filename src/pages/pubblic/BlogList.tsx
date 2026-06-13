@@ -54,14 +54,14 @@ export default function BlogList() {
 
   // Filters & Pagination State
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Tất cả");
   const [sortBy, setSortBy] = useState("newest");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [totalPosts, setTotalPosts] = useState(0);
   const limit = 12;
 
-  // Local view count map for optimistic updates: postId → displayCount
+  // Local view count map: postId → server-confirmed displayCount
   const [viewCounts, setViewCounts] = useState<Record<number, number>>({});
 
   // Reading Dialog
@@ -75,37 +75,30 @@ export default function BlogList() {
     setReadingPost(post);
     setLoadingDetail(true);
 
-    // ── Optimistic update: tăng view ngay lập tức trên UI ──────────────────
     const authUser = getAuthUser();
     const countableRoles = ["Customer", "Trainer"];
     const token = localStorage.getItem("token");
     const canTrack = !!token && !!authUser?.role && countableRoles.includes(authUser.role);
 
-    const prevCount = viewCounts[post.id] ?? (post.view_count ?? 0);
-    if (canTrack) {
-      setViewCounts((prev) => ({ ...prev, [post.id]: prevCount + 1 }));
-    }
-
-    // ── Fire-and-forget view API (không await, không block UI) ─────────────
-    if (canTrack) {
-      trackBlogView(post.id).then((result) => {
-        if (result === null) {
-          // Network error — rollback
-          setViewCounts((prev) => ({ ...prev, [post.id]: prevCount }));
-        } else if (result.viewCount !== undefined) {
-          // Sync từ server để tránh drift
-          setViewCounts((prev) => ({ ...prev, [post.id]: result.viewCount! }));
-        } else if (result.alreadyViewed) {
-          // Đã view rồi — rollback về số cũ
-          setViewCounts((prev) => ({ ...prev, [post.id]: prevCount }));
-        }
-      });
-    }
-    // ───────────────────────────────────────────────────────────────────────
+    let confirmedViewCount: number | undefined;
 
     try {
+      if (canTrack) {
+        const result = await trackBlogView(post.id);
+
+        if (!result.success) {
+          console.error("Track view failed:", result);
+        } else if (typeof result.viewCount === "number") {
+          confirmedViewCount = result.viewCount;
+          setViewCounts((prev) => ({ ...prev, [post.id]: result.viewCount! }));
+        }
+      }
+
       const detailedPost = await postsApi.getById(post.id);
-      setReadingPost(detailedPost);
+      setReadingPost({
+        ...detailedPost,
+        view_count: confirmedViewCount ?? viewCounts[post.id] ?? detailedPost.view_count,
+      });
     } catch (err) {
       console.error("Error loading post details:", err);
     } finally {
@@ -122,7 +115,7 @@ export default function BlogList() {
       const response = await postsApi.list({
         page,
         limit,
-        search: search.trim() || undefined,
+        search: debouncedSearch.trim() || undefined,
         category: selectedCategory === "Tất cả" ? undefined : selectedCategory,
         sortBy,
         status: "published", // Guest is only interested in published posts
@@ -134,8 +127,7 @@ export default function BlogList() {
 
       setPosts(items);
       setTotalPages(pagination.totalPages || 1);
-      setTotalPosts(pagination.total || 0);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error fetching blogs:", err);
       setError("Không thể tải danh sách bài viết. Vui lòng kiểm tra kết nối mạng hoặc tải lại trang.");
     } finally {
@@ -143,19 +135,19 @@ export default function BlogList() {
     }
   };
 
-  // Fetch data when filters or page changes
-  useEffect(() => {
-    fetchBlogs();
-  }, [page, selectedCategory, sortBy]);
-
-  // Debounced search trigger
+  // Debounced search trigger: only update state, do not call API directly here.
   useEffect(() => {
     const timer = setTimeout(() => {
-      setPage(1); // Reset to page 1 on search
-      fetchBlogs();
+      setPage(1);
+      setDebouncedSearch(search);
     }, 400);
     return () => clearTimeout(timer);
   }, [search]);
+
+  // Fetch data from a single effect to avoid duplicate /api/posts calls on first load/search.
+  useEffect(() => {
+    fetchBlogs();
+  }, [page, selectedCategory, sortBy, debouncedSearch]);
 
   // Reset page helper
   const handleCategoryChange = (cat: string) => {

@@ -1,16 +1,18 @@
 import api from './axios';
 
+export type ApiPostStatus = 'DRAFT' | 'PENDING' | 'PUBLISHED' | 'REJECTED';
+export type UiPostStatus = 'draft' | 'pending' | 'approved' | 'rejected';
+
 export type PostStatus =
+  | ApiPostStatus
+  | UiPostStatus
+  // Legacy aliases kept only for backward-compatible reads from older responses.
   | 'Draft'
   | 'Pending'
   | 'Approved'
   | 'Rejected'
   | 'Published'
   | 'Public'
-  | 'draft'
-  | 'pending'
-  | 'approved'
-  | 'rejected'
   | 'published'
   | 'public';
 
@@ -62,24 +64,35 @@ export type TrackViewResult = {
   alreadyViewed?: boolean;
   viewCount?: number;
   skipped?: boolean;
+  reason?: 'session_duplicate' | 'network_error' | 'server_error';
+  error?: string;
 };
 
-/**
- * Fire-and-forget view tracker.
- * - Locks immediately using session Set to prevent double-calls
- * - Unlocks on network error to allow retry on next navigation
- */
-export const trackBlogView = async (postId: number): Promise<TrackViewResult | null> => {
-  if (viewedPostsInSession.has(postId)) return null; // Already tracked in this session
-  viewedPostsInSession.add(postId); // Lock immediately
+export const trackBlogView = async (postId: number): Promise<TrackViewResult> => {
+  if (viewedPostsInSession.has(postId)) {
+    return {
+      success: true,
+      alreadyViewed: true,
+      skipped: true,
+      reason: 'session_duplicate',
+    };
+  }
+
+  viewedPostsInSession.add(postId);
 
   try {
     const response = await api.post(`/posts/${postId}/view`);
     return response.data as TrackViewResult;
-  } catch (err) {
-    // Network/server error — unlock so user can retry after navigation
+  } catch (err: unknown) {
     viewedPostsInSession.delete(postId);
-    return null;
+
+    const error = err as { response?: { data?: { error?: string } }; message?: string };
+
+    return {
+      success: false,
+      reason: error.response ? 'server_error' : 'network_error',
+      error: error.response?.data?.error || error.message || 'track_view_failed',
+    };
   }
 };
 
