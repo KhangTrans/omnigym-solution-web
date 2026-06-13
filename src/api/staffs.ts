@@ -35,4 +35,7 @@ export const staffAPI = {
 
   list: () =>
     api.get<{ message: string; data: StaffUser[] }>('/staffs'),
+
+  updateStatus: (id: number, status: 'active' | 'locked') =>
+    api.patch(`/staffs/${id}/status`, { status }),
 };
