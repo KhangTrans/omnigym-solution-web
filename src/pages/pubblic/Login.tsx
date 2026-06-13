@@ -13,7 +13,14 @@ const Login = () => {
   const [formData, setFormData] = useState({ identifier: "", password: "" });
   const navigate = useNavigate();
 
-  const getRoleName = (user: any) => String(user?.role || "").toLowerCase();
+  const getRoleName = (user: any) => {
+    const roleValue = typeof user?.role === "object" ? user?.role?.role_name || user?.role?.name : user?.role;
+    const role = String(roleValue || "").toLowerCase();
+    if (role) return role;
+    if (Number(user?.role_id) === 4) return "staff";
+    if (Number(user?.role_id) === 3) return "branchmanager";
+    return "";
+  };
 
   const redirectByRole = (user: any) => {
     const role = getRoleName(user);
@@ -23,7 +30,17 @@ const Login = () => {
       return;
     }
 
-    const adminRoles = ["admin", "staff", "branchmanager", "gym"];
+    if (role === "branchmanager") {
+      navigate("/branchmanager");
+      return;
+    }
+
+    if (role === "staff") {
+      navigate("/branchmanager");
+      return;
+    }
+
+    const adminRoles = ["admin", "gym"];
     if (adminRoles.includes(role) || [1, 2, 3].includes(user?.role_id)) {
       navigate("/admin");
     } else {

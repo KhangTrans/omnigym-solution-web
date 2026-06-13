@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import { 
   Calendar, 
   RefreshCw,
-  Clock
+  Clock,
+  UserCheck
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -113,37 +114,57 @@ export default function ShiftAttendance() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in-0 duration-500">
-      {/* Header section with gradient glow */}
-      <div className="relative overflow-hidden rounded-[24px] bg-gradient-to-r from-emerald-800 to-teal-900 p-8 text-white shadow-2xl">
-        <div className="absolute right-0 top-0 -mr-20 -mt-20 h-80 w-80 rounded-full bg-emerald-700/20 blur-3xl" />
-        <div className="absolute left-1/3 bottom-0 -mb-20 h-60 w-60 rounded-full bg-teal-500/15 blur-3xl" />
-        
-        <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-emerald-300 ring-1 ring-emerald-400/20">
-              <Calendar className="h-3.5 w-3.5" />
-              Hôm nay: {new Date().toLocaleDateString("vi-VN", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+    <div className="space-y-6 animate-in fade-in-0 duration-500">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <div className="text-xs uppercase tracking-wider text-muted-foreground">Staff workspace</div>
+          <h1 className="mt-1 text-3xl font-bold tracking-tight text-foreground">Điểm danh nhân viên</h1>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+            Kiểm tra ca trực hôm nay, check-in/check-out bằng mã PIN quản lý hoặc nhận diện khuôn mặt.
+          </p>
+        </div>
+        <Button
+          variant="secondary"
+          onClick={() => { fetchTodayData(); fetchLogsData(); }}
+          className="self-start shadow-sm"
+        >
+          <RefreshCw className="mr-2 h-4 w-4" /> Làm mới dữ liệu
+        </Button>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-xl bg-card p-5 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="grid h-11 w-11 place-items-center rounded-xl bg-emerald-50 text-emerald-700"><Calendar className="h-5 w-5" /></div>
+            <div>
+              <div className="text-xs uppercase tracking-wider text-muted-foreground">Hôm nay</div>
+              <div className="font-semibold">{new Date().toLocaleDateString("vi-VN", { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}</div>
             </div>
-            <h1 className="text-3xl font-bold tracking-tight">Khu vực Điểm danh Nhân viên</h1>
-            <p className="text-emerald-100 max-w-xl text-sm leading-relaxed">
-              Vui lòng kiểm tra và xác nhận điểm danh đúng giờ cho ca trực của bạn bằng cách nhập mã PIN xác nhận của quản lý hoặc nhận diện khuôn mặt.
-            </p>
           </div>
-          
-          <Button 
-            variant="outline" 
-            onClick={() => { fetchTodayData(); fetchLogsData(); }}
-            className="self-start md:self-auto bg-white/10 text-white border-white/20 hover:bg-white/20 hover:text-white h-11 px-5 rounded-xl transition-all active:scale-95"
-          >
-            <RefreshCw className="mr-2 h-4 w-4" /> Làm mới dữ liệu
-          </Button>
+        </div>
+        <div className="rounded-xl bg-card p-5 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="grid h-11 w-11 place-items-center rounded-xl bg-sky-50 text-sky-700"><Clock className="h-5 w-5" /></div>
+            <div>
+              <div className="text-xs uppercase tracking-wider text-muted-foreground">Ca hôm nay</div>
+              <div className="text-2xl font-bold">{shifts.length}</div>
+            </div>
+          </div>
+        </div>
+        <div className="rounded-xl bg-card p-5 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="grid h-11 w-11 place-items-center rounded-xl bg-violet-50 text-violet-700"><UserCheck className="h-5 w-5" /></div>
+            <div>
+              <div className="text-xs uppercase tracking-wider text-muted-foreground">Nhật ký</div>
+              <div className="text-2xl font-bold">{logs.length}</div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-3">
         {/* Today's Shifts - Left/Main Column */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-4">
           <TodayShifts
             shifts={shifts}
             logs={logs}
@@ -154,7 +175,7 @@ export default function ShiftAttendance() {
         </div>
 
         {/* Info panel / quick tip - Right Column */}
-        <div className="space-y-6">
+        <div className="space-y-4">
           <AttendanceGuide />
         </div>
       </div>
@@ -178,7 +199,7 @@ export default function ShiftAttendance() {
 
       {/* Check-out Confirmation Dialog */}
       <AlertDialog open={checkOutConfirmOpen} onOpenChange={setCheckOutConfirmOpen}>
-        <AlertDialogContent className="max-w-md rounded-[20px] p-6">
+        <AlertDialogContent className="max-w-md rounded-xl border-0 p-6 shadow-lg">
           <AlertDialogHeader className="space-y-1.5">
             <AlertDialogTitle className="text-xl font-bold flex items-center gap-2">
               <Clock className="h-5 w-5 text-amber-600" />
@@ -191,12 +212,12 @@ export default function ShiftAttendance() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex gap-2 pt-3">
-            <AlertDialogCancel className="flex-1 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 border-none text-slate-800">
+            <AlertDialogCancel className="h-10 flex-1 rounded-md border-0 bg-muted text-foreground shadow-sm hover:bg-muted/80">
               Hủy
             </AlertDialogCancel>
             <AlertDialogAction 
               onClick={confirmCheckOut}
-              className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground h-10 rounded-xl font-bold border-none"
+              className="h-10 flex-1 rounded-md border-0 bg-primary font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
             >
               Xác nhận ra ca
             </AlertDialogAction>
