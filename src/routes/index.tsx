@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate, Link } from "react-router-dom";
+import { createBrowserRouter, Link, type RouteObject } from "react-router-dom";
 import Register from "../pages/pubblic/Register";
 import Login from "../pages/pubblic/Login";
 import ForgotPassword from "../pages/pubblic/ForgotPassword";
@@ -46,63 +46,11 @@ import BranchManagerCustomerCheckin from "../pages/branchmanager/BranchManagerCu
 import BranchManagerStaff from "../pages/branchmanager/BranchManagerStaff";
 import BranchManagerRevenue from "../pages/branchmanager/BranchManagerRevenue";
 import BranchManagerStaffAttendance from "../pages/branchmanager/BranchManagerStaffAttendance";
+import StaffAccounts from "../pages/admin/staff_accounts/StaffAccounts";
 import TrainerDashboard from "../pages/trainer/TrainerDashboard";
+import { DashboardRedirect, RoleOnly } from "./routeGuards";
 
-const getCurrentRole = () => {
-  try {
-    const user = JSON.parse(localStorage.getItem("user") || "null");
-    const roleValue =
-      typeof user?.role === "object"
-        ? user?.role?.role_name || user?.role?.name
-        : user?.role;
-    const role = String(roleValue || "").toLowerCase();
-    if (role) return role;
-    if (Number(user?.role_id) === 4) return "staff";
-    if (Number(user?.role_id) === 3) return "branchmanager";
-    return "";
-  } catch {
-    return "";
-  }
-};
-
-const RoleOnly = ({
-  allow,
-  children,
-}: {
-  allow: string[];
-  children: React.ReactElement;
-}) => {
-  const role = getCurrentRole();
-  return allow.includes(role) ? (
-    children
-  ) : (
-    <Navigate to="/branchmanager" replace />
-  );
-};
-
-const DashboardRedirect = () => {
-  const userData = localStorage.getItem("user");
-  if (userData) {
-    try {
-      const user = JSON.parse(userData);
-      const roleValue =
-        typeof user?.role === "object"
-          ? user?.role?.role_name || user?.role?.name
-          : user?.role;
-      const role = String(roleValue || "").toLowerCase();
-      if (role === "trainer") return <Navigate to="/trainer" replace />;
-      if (role === "branchmanager" || role === "staff")
-        return <Navigate to="/branchmanager" replace />;
-      if (["admin", "gym"].includes(role) || [1, 2, 3].includes(user?.role_id))
-        return <Navigate to="/admin" replace />;
-    } catch (e) {
-      console.error("Error parsing user data", e);
-    }
-  }
-  return <Navigate to="/" replace />;
-};
-
-export const routesConfig = [
+export const routesConfig: RouteObject[] = [
   {
     path: "/",
     element: <Home />,
@@ -190,6 +138,7 @@ export const routesConfig = [
       { path: "shift-attendance", element: <ShiftAttendance /> },
       { path: "attendance-management", element: <AttendanceManagement /> },
       { path: "customer-attendance", element: <CustomerAttendance /> },
+      { path: "staff-accounts", element: <StaffAccounts /> },
     ],
   },
   { path: "/dashboard", element: <DashboardRedirect /> },
@@ -209,7 +158,14 @@ export const routesConfig = [
       { path: "posts", element: <BranchManagerPosts /> },
       { path: "attendance", element: <BranchManagerAttendance /> },
       { path: "customer-checkin", element: <BranchManagerCustomerCheckin /> },
-      { path: "users", element: <BranchManagerStaff /> },
+      {
+        path: "users",
+        element: (
+          <RoleOnly allow={["branchmanager"]}>
+            <BranchManagerStaff />
+          </RoleOnly>
+        ),
+      },
       {
         path: "staff-attendance",
         element: (
@@ -244,8 +200,8 @@ export const routesConfig = [
       </div>
     ),
   },
-] as const;
+] ;
 
-const router = createBrowserRouter(routesConfig as any);
+const router = createBrowserRouter(routesConfig);
 export default router;
 export { router };
