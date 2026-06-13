@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Navbar } from "../../components/site/Navbar";
 import { Footer } from "../../components/site/Footer";
 import { ScrollProgressButton } from "../../components/site/ScrollProgressButton";
@@ -7,122 +8,44 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Pagination,
   PaginationContent,
   PaginationItem,
 } from "@/components/ui/pagination";
-import { postsApi, trackBlogView, type Post } from "@/api/posts";
+import { postsApi, type Post } from "@/api/posts";
 import { Search, Calendar, BookOpen, ArrowRight, RefreshCw, AlertTriangle, Eye } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
+import { extractThumbnail, formatPostDate, formatViewCount, stripHtml } from "@/utils/blogUtils";
+
 const CATEGORIES = ["Tất cả", "Fitness", "Dinh dưỡng", "Yoga", "Cardio"];
 
-function extractThumbnail(post: Post) {
-  if (post.images?.[0]?.image_url) return post.images[0].image_url;
-  const match = (post.content || "").match(/<img[^>]+src=["']([^"']+)["']/i);
-  return match?.[1] || null;
-}
-
-function stripHtml(html?: string) {
-  return (html || "").replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").trim();
-}
-
-/** Format number: 999→"999", 1500→"1.5k", 1200000→"1.2M" */
-function formatViewCount(count?: number): string {
-  const n = count ?? 0;
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1).replace(/\.0$/, "")}k`;
-  return `${n}`;
-}
-
-/** Get current logged-in user from localStorage (token-based auth) */
-function getAuthUser(): { role?: string } | null {
-  try {
-    const raw = localStorage.getItem("user");
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
-
 export default function BlogList() {
+  const navigate = useNavigate();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Filters & Pagination State
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Tất cả");
   const [sortBy, setSortBy] = useState("newest");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [totalPosts, setTotalPosts] = useState(0);
   const limit = 12;
-
-  // Local view count map for optimistic updates: postId → displayCount
-  const [viewCounts, setViewCounts] = useState<Record<number, number>>({});
-
-  // Reading Dialog
-  const [readingPost, setReadingPost] = useState<Post | null>(null);
-  const [loadingDetail, setLoadingDetail] = useState(false);
-
-  const handleReadPost = async (post: Post) => {
-    if (loadingDetail) return; // Debounce/click lock: ignore duplicate clicks while loading
-
-    // Immediately open dialog with existing post info as placeholder for smooth transition
-    setReadingPost(post);
-    setLoadingDetail(true);
-
-    // ── Optimistic update: tăng view ngay lập tức trên UI ──────────────────
-    const authUser = getAuthUser();
-    const countableRoles = ["Customer", "Trainer"];
-    const token = localStorage.getItem("token");
-    const canTrack = !!token && !!authUser?.role && countableRoles.includes(authUser.role);
-
-    const prevCount = viewCounts[post.id] ?? (post.view_count ?? 0);
-    if (canTrack) {
-      setViewCounts((prev) => ({ ...prev, [post.id]: prevCount + 1 }));
-    }
-
-    // ── Fire-and-forget view API (không await, không block UI) ─────────────
-    if (canTrack) {
-      trackBlogView(post.id).then((result) => {
-        if (result === null) {
-          // Network error — rollback
-          setViewCounts((prev) => ({ ...prev, [post.id]: prevCount }));
-        } else if (result.viewCount !== undefined) {
-          // Sync từ server để tránh drift
-          setViewCounts((prev) => ({ ...prev, [post.id]: result.viewCount! }));
-        } else if (result.alreadyViewed) {
-          // Đã view rồi — rollback về số cũ
-          setViewCounts((prev) => ({ ...prev, [post.id]: prevCount }));
-        }
-      });
-    }
-    // ───────────────────────────────────────────────────────────────────────
-
-    try {
-      const detailedPost = await postsApi.getById(post.id);
-      setReadingPost(detailedPost);
-    } catch (err) {
-      console.error("Error loading post details:", err);
-    } finally {
-      setLoadingDetail(false);
-    }
-  };
 
   // Fetch blogs from API
   const fetchBlogs = async () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const response = await postsApi.list({
         page,
         limit,
-        search: search.trim() || undefined,
+        search: debouncedSearch.trim() || undefined,
         category: selectedCategory === "Tất cả" ? undefined : selectedCategory,
         sortBy,
         status: "published", // Guest is only interested in published posts
@@ -134,8 +57,7 @@ export default function BlogList() {
 
       setPosts(items);
       setTotalPages(pagination.totalPages || 1);
-      setTotalPosts(pagination.total || 0);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error fetching blogs:", err);
       setError("Không thể tải danh sách bài viết. Vui lòng kiểm tra kết nối mạng hoặc tải lại trang.");
     } finally {
@@ -143,19 +65,19 @@ export default function BlogList() {
     }
   };
 
-  // Fetch data when filters or page changes
-  useEffect(() => {
-    fetchBlogs();
-  }, [page, selectedCategory, sortBy]);
-
-  // Debounced search trigger
+  // Debounced search trigger: only update state, do not call API directly here.
   useEffect(() => {
     const timer = setTimeout(() => {
-      setPage(1); // Reset to page 1 on search
-      fetchBlogs();
+      setPage(1);
+      setDebouncedSearch(search);
     }, 400);
     return () => clearTimeout(timer);
   }, [search]);
+
+  // Fetch data from a single effect to avoid duplicate /api/posts calls on first load/search.
+  useEffect(() => {
+    fetchBlogs();
+  }, [page, selectedCategory, sortBy, debouncedSearch]);
 
   // Reset page helper
   const handleCategoryChange = (cat: string) => {
@@ -224,11 +146,10 @@ export default function BlogList() {
               <button
                 key={cat}
                 onClick={() => handleCategoryChange(cat)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-                  selectedCategory === cat
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${selectedCategory === cat
                     ? "bg-primary text-primary-foreground shadow-md scale-105"
                     : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
-                }`}
+                  }`}
               >
                 {cat}
               </button>
@@ -327,11 +248,7 @@ export default function BlogList() {
                   const thumbnail = extractThumbnail(post);
                   const postCategory = post.category || "General";
                   const summary = stripHtml(post.content).slice(0, 120) + "...";
-                  const createdDate = new Date(post.created_at).toLocaleDateString("vi-VN", {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  });
+                  const createdDate = formatPostDate(post.created_at);
 
                   return (
                     <motion.div
@@ -341,7 +258,7 @@ export default function BlogList() {
                     >
                       <Card
                         className="h-full flex flex-col overflow-hidden border border-border bg-card hover:shadow-lg transition-shadow duration-300 cursor-pointer"
-                        onClick={() => handleReadPost(post)}
+                        onClick={() => navigate(`/blog/${post.id}`)}
                       >
                         {/* Cover Image */}
                         <div className="relative h-48 w-full overflow-hidden bg-muted">
@@ -403,7 +320,7 @@ export default function BlogList() {
                           </span>
                           <span className="flex items-center gap-1 text-muted-foreground">
                             <Eye className="h-3.5 w-3.5" />
-                            <span>{formatViewCount(viewCounts[post.id] ?? post.view_count)}</span>
+                            <span>{formatViewCount(post.view_count)}</span>
                           </span>
                         </CardFooter>
                       </Card>
@@ -434,11 +351,10 @@ export default function BlogList() {
                           <PaginationItem key={pageNum}>
                             <button
                               onClick={() => setPage(pageNum)}
-                              className={`flex h-9 w-9 items-center justify-center rounded-md text-sm font-medium shadow-sm border cursor-pointer transition-colors ${
-                                page === pageNum
+                              className={`flex h-9 w-9 items-center justify-center rounded-md text-sm font-medium shadow-sm border cursor-pointer transition-colors ${page === pageNum
                                   ? "bg-primary text-primary-foreground border-primary hover:bg-primary/95"
                                   : "bg-card border-input hover:bg-accent hover:text-accent-foreground"
-                              }`}
+                                }`}
                             >
                               {pageNum}
                             </button>
@@ -468,78 +384,6 @@ export default function BlogList() {
       <Footer />
       <ScrollProgressButton />
 
-      {/* Dialog xem chi tiết bài viết */}
-      <Dialog open={!!readingPost} onOpenChange={(open) => !open && setReadingPost(null)}>
-        <DialogContent className="sm:max-w-[800px] w-[95vw] max-h-[90vh] overflow-y-auto font-sans p-6 rounded-2xl">
-          {readingPost && (
-            <div className="space-y-6">
-              <DialogHeader className="space-y-3">
-                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                  <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100/85 border-none">
-                    {readingPost.category || "General"}
-                  </Badge>
-                  <span>•</span>
-                  <div className="flex items-center gap-1">
-                    <Calendar className="h-3.5 w-3.5" />
-                    <span>
-                      {new Date(readingPost.created_at).toLocaleDateString("vi-VN", {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      })}
-                    </span>
-                  </div>
-                  <span>•</span>
-                  <span>Đăng bởi: <span className="font-semibold text-foreground">{readingPost.user?.full_name || "Huấn luyện viên"}</span></span>
-                </div>
-                <DialogTitle className="text-xl md:text-3xl font-extrabold leading-snug tracking-tight text-foreground">
-                  {readingPost.title}
-                </DialogTitle>
-                <DialogDescription className="sr-only">
-                  Nội dung chi tiết bài viết {readingPost.title}
-                </DialogDescription>
-              </DialogHeader>
-
-              {/* Optional Hero Image for Details if available */}
-              {extractThumbnail(readingPost) && (
-                <div className="relative h-60 md:h-96 w-full rounded-xl overflow-hidden border">
-                  <img
-                    src={extractThumbnail(readingPost)!}
-                    alt={readingPost.title}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              )}
-
-              {/* HTML Content Render */}
-              {loadingDetail ? (
-                <div className="space-y-4 py-4">
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-11/12" />
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-10/12" />
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-8/12" />
-                </div>
-              ) : (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className="bg-muted/10 border border-border/80 rounded-xl p-4 md:p-6 prose prose-slate max-w-none dark:prose-invert [&_img]:max-w-full [&_img]:rounded-lg [&_img]:mx-auto [&_p]:leading-relaxed [&_p]:text-base [&_h2]:text-xl [&_h2]:font-bold [&_h3]:text-lg [&_h3]:font-bold break-words"
-                  dangerouslySetInnerHTML={{ __html: readingPost.content || "" }}
-                />
-              )}
-
-              <div className="flex justify-end border-t border-border pt-4 text-xs text-muted-foreground">
-                <Button variant="outline" size="sm" onClick={() => setReadingPost(null)}>
-                  Đóng bài viết
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

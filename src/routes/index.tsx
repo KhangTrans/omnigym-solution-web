@@ -7,6 +7,7 @@ import CustomerCheckIn from "../pages/customers/CheckIn";
 import Home from "../pages/pubblic/Home";
 import TrainerJoin from "../pages/pubblic/TrainerJoin";
 import BlogList from "../pages/pubblic/BlogList";
+import BlogDetail from "../pages/pubblic/BlogDetail";
 import AuthLayout from "../layouts/AuthLayout";
 import AdminLayout from "../layouts/AdminLayout";
 import CustomerLayout from "../layouts/CustomerLayout";
@@ -74,6 +75,10 @@ export const routesConfig: RouteObject[] = [
   {
     path: "/blog",
     element: <BlogList />,
+  },
+  {
+    path: "/blog/:id",
+    element: <BlogDetail />,
   },
   {
     path: "/staff/trainer-applications",

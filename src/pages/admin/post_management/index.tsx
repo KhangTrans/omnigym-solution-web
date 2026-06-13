@@ -48,11 +48,25 @@ const STATUS_LABEL: Record<StatusKey, string> = {
 };
 
 function normalizeStatus(post: Post): StatusKey {
-  const status = String(post.status || "").toLowerCase();
-  if (["draft", "pending", "approved", "rejected"].includes(status)) return status as StatusKey;
-  if (["public", "published", "publish", "active"].includes(status)) return "approved";
-  if (post.is_published === true) return "approved";
-  return "draft";
+  const status = String(post.status || "").trim().toUpperCase();
+
+  switch (status) {
+    case "DRAFT":
+      return "draft";
+    case "PENDING":
+      return "pending";
+    case "PUBLISHED":
+      return "approved";
+    case "REJECTED":
+      return "rejected";
+    case "APPROVED":
+    case "PUBLIC":
+    case "PUBLISH":
+    case "ACTIVE":
+      return "approved";
+    default:
+      return post.is_published === true ? "approved" : "draft";
+  }
 }
 
 function useCurrentUser() {
@@ -110,7 +124,11 @@ export default function PostManagement() {
   const fetchPosts = async () => {
     try {
       setLoading(true);
-      const data = await postsApi.list({ search });
+      const data = await postsApi.list({
+        search: search.trim() || undefined,
+        page: 1,
+        limit: 100,
+      });
       const items = Array.isArray(data.posts)
         ? data.posts
         : Array.isArray(data.data?.posts)
@@ -136,20 +154,30 @@ export default function PostManagement() {
     return () => clearTimeout(timer);
   }, [search]);
 
+  const scopedPosts = useMemo(() => {
+    const mine = (p: Post) =>
+      Number(p.user_id) === Number(currentUser?.id) ||
+      Number(p.user?.id) === Number(currentUser?.id);
+
+    if (isStaffView) {
+      return posts.filter(mine);
+    }
+
+    // Admin/BranchManager xem hàng quản trị: Chờ duyệt, Từ chối, Đã public/Đã duyệt.
+    // Không hiển thị Draft vì Draft vẫn là bản nháp riêng của tác giả.
+    return posts.filter((p) => ["pending", "rejected", "approved"].includes(normalizeStatus(p)));
+  }, [posts, currentUser?.id, isStaffView]);
+
   const counts = useMemo(() => ({
-    draft: posts.filter((p) => normalizeStatus(p) === "draft").length,
-    pending: posts.filter((p) => normalizeStatus(p) === "pending").length,
-    approved: posts.filter((p) => normalizeStatus(p) === "approved").length,
-    rejected: posts.filter((p) => normalizeStatus(p) === "rejected").length,
-  }), [posts]);
+    draft: scopedPosts.filter((p) => normalizeStatus(p) === "draft").length,
+    pending: scopedPosts.filter((p) => normalizeStatus(p) === "pending").length,
+    approved: scopedPosts.filter((p) => normalizeStatus(p) === "approved").length,
+    rejected: scopedPosts.filter((p) => normalizeStatus(p) === "rejected").length,
+  }), [scopedPosts]);
 
   const visiblePosts = useMemo(() => {
-    const mine = (p: Post) => p.user_id === currentUser?.id || p.user?.id === currentUser?.id;
-    // Admin xem toàn bộ bài trong hàng quản trị: Chờ duyệt, Từ chối, Đã public/Đã duyệt.
-    // Không hiển thị Draft vì Draft vẫn là bản nháp riêng của tác giả.
-    const base = isStaffView ? posts.filter(mine) : posts.filter((p) => ["pending", "rejected", "approved"].includes(normalizeStatus(p)));
-    return base.filter((p) => tab === "all" || normalizeStatus(p) === tab);
-  }, [posts, currentUser?.id, isStaffView, tab]);
+    return scopedPosts.filter((p) => tab === "all" || normalizeStatus(p) === tab);
+  }, [scopedPosts, tab]);
 
   const handleOpenDialog = (targetMode: PostDialogMode, post?: Post) => {
     setMode(targetMode);
@@ -170,7 +198,6 @@ export default function PostManagement() {
       const payload = {
         title: data.title.trim(),
         content: data.content,
-        ...(shouldPublish ? { status: "Approved" as const } : {}),
       };
       if (mode === "edit" && selectedPost) {
         savedResponse = await postsApi.update(selectedPost.id, payload);
@@ -341,12 +368,12 @@ export default function PostManagement() {
       <Dialog open={!!reviewingPost} onOpenChange={(o) => !o && setReviewingPost(null)}>
         <DialogContent className="sm:max-w-[760px] max-h-[95vh] overflow-y-auto admin-scrollbar">
           {reviewingPost && <><DialogHeader><DialogTitle>{reviewingPost.title}</DialogTitle><DialogDescription>Đăng bởi {reviewingPost.user?.full_name || "N/A"} · {new Date(reviewingPost.created_at).toLocaleString("vi-VN")}</DialogDescription></DialogHeader>
-          {extractThumbnail(reviewingPost) && <img src={extractThumbnail(reviewingPost)!} alt="" className="max-h-72 w-full rounded-md border object-cover" />}
-          <div className="flex items-center gap-2"><StatusBadge status={normalizeStatus(reviewingPost)} /><Badge variant="outline">{getAuthorRole(reviewingPost)}</Badge></div>
-          <div className="prose prose-sm max-w-none rounded-md border bg-muted/30 p-4 [&_img]:max-w-full [&_img]:rounded-lg" dangerouslySetInnerHTML={{ __html: reviewingPost.content || "" }} />
-          <DialogFooter className="gap-2 sm:justify-between">
-            {!isStaffView ? <><Button variant="ghost" className="text-destructive hover:text-destructive" onClick={() => { setPostToDelete(reviewingPost); setReviewingPost(null); setDeleteDialogOpen(true); }}><Trash2 className="mr-2 h-4 w-4" /> Xóa</Button><div className="flex gap-2"><Button variant="outline" onClick={() => setRejectOpen(true)} disabled={isSubmitting}><XCircle className="mr-2 h-4 w-4" /> Từ chối</Button><Button onClick={() => handleApprove(reviewingPost)} disabled={isSubmitting}><CheckCircle2 className="mr-2 h-4 w-4" /> Duyệt</Button></div></> : <Button className="ml-auto" variant="outline" onClick={() => setReviewingPost(null)}>Đóng</Button>}
-          </DialogFooter></>}
+            {extractThumbnail(reviewingPost) && <img src={extractThumbnail(reviewingPost)!} alt="" className="max-h-72 w-full rounded-md border object-cover" />}
+            <div className="flex items-center gap-2"><StatusBadge status={normalizeStatus(reviewingPost)} /><Badge variant="outline">{getAuthorRole(reviewingPost)}</Badge></div>
+            <div className="prose prose-sm max-w-none rounded-md border bg-muted/30 p-4 [&_img]:max-w-full [&_img]:rounded-lg" dangerouslySetInnerHTML={{ __html: reviewingPost.content || "" }} />
+            <DialogFooter className="gap-2 sm:justify-between">
+              {!isStaffView ? <><Button variant="ghost" className="text-destructive hover:text-destructive" onClick={() => { setPostToDelete(reviewingPost); setReviewingPost(null); setDeleteDialogOpen(true); }}><Trash2 className="mr-2 h-4 w-4" /> Xóa</Button><div className="flex gap-2"><Button variant="outline" onClick={() => setRejectOpen(true)} disabled={isSubmitting}><XCircle className="mr-2 h-4 w-4" /> Từ chối</Button><Button onClick={() => handleApprove(reviewingPost)} disabled={isSubmitting}><CheckCircle2 className="mr-2 h-4 w-4" /> Duyệt</Button></div></> : <Button className="ml-auto" variant="outline" onClick={() => setReviewingPost(null)}>Đóng</Button>}
+            </DialogFooter></>}
         </DialogContent>
       </Dialog>
 
