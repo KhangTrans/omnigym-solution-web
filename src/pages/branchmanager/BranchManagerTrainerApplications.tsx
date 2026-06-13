@@ -12,6 +12,8 @@ import {
   statusLabel,
   type ApplicationStatus,
   type TrainerApplication,
+  type TrainerLevel,
+  trainerLevelLabel,
 } from "@/pages/admin/trainer_applications/TrainerApplicationList";
 import { BranchApplicationDetailDialog } from "./BranchApplicationDetailDialog";
 import { ApplicationRejectDialog } from "@/pages/admin/trainer_applications/components/ApplicationRejectDialog";
@@ -27,6 +29,7 @@ export default function BranchManagerTrainerApplications() {
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
   const [processing, setProcessing] = useState(false);
+  const [approvedLevel, setApprovedLevel] = useState<TrainerLevel>("junior");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("pending");
   const [search, setSearch] = useState("");
 
@@ -71,7 +74,9 @@ export default function BranchManagerTrainerApplications() {
   async function openDetail(id: number) {
     try {
       const res = await trainerApplicationAPI.getOne(id);
-      setSelectedApplication(res.data.data);
+      const app = res.data.data as TrainerApplication;
+      setSelectedApplication(app);
+      setApprovedLevel(app.desired_level || "junior");
       setDetailOpen(true);
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Không thể tải chi tiết hồ sơ");
@@ -80,14 +85,17 @@ export default function BranchManagerTrainerApplications() {
 
   async function refreshSelected(id: number) {
     const res = await trainerApplicationAPI.getOne(id);
-    setSelectedApplication(res.data.data);
+    const app = res.data.data as TrainerApplication;
+    setSelectedApplication(app);
+    if (app.status === "pending") setApprovedLevel(app.desired_level || "junior");
   }
 
   async function handleApprove(id: number) {
-    if (!confirm("Bạn chắc chắn muốn duyệt hồ sơ Trainer này?")) return;
+    if (!approvedLevel) return toast.error("Vui lòng chọn level duyệt cho Trainer.");
+    if (!confirm(`Bạn chắc chắn muốn duyệt hồ sơ Trainer với level ${trainerLevelLabel[approvedLevel]}?`)) return;
     setProcessing(true);
     try {
-      await trainerApplicationAPI.approve(id);
+      await trainerApplicationAPI.approve(id, approvedLevel);
       toast.success("Đã duyệt hồ sơ Trainer");
       await fetchApplications();
       await refreshSelected(id);
@@ -196,7 +204,7 @@ export default function BranchManagerTrainerApplications() {
         </CardContent>
       </Card>
 
-      <BranchApplicationDetailDialog application={selectedApplication} open={detailOpen} onOpenChange={setDetailOpen} processing={processing} onApprove={handleApprove} onRejectClick={() => setRejectOpen(true)} />
+      <BranchApplicationDetailDialog application={selectedApplication} open={detailOpen} onOpenChange={setDetailOpen} processing={processing} approvedLevel={approvedLevel} setApprovedLevel={setApprovedLevel} onApprove={handleApprove} onRejectClick={() => setRejectOpen(true)} />
       <ApplicationRejectDialog open={rejectOpen} onOpenChange={setRejectOpen} rejectionReason={rejectionReason} setRejectionReason={setRejectionReason} onSubmit={handleReject} processing={processing} />
     </div>
   );

@@ -71,6 +71,12 @@ const NAV: NavItem[] = [
     group: "Operations",
   },
   {
+    to: "/admin/trainer-packages",
+    label: "Gói PT",
+    icon: Dumbbell,
+    group: "Operations",
+  },
+  {
     to: "/admin/branch-management",
     label: "Chi nhánh",
     icon: Building2,
