@@ -27,6 +27,7 @@ import CustomerProfile from "../pages/customers/Profile";
 import BranchList from "../pages/admin/branch_management/BranchList";
 import CreateBranch from "../pages/admin/branch_management/CreateBranch";
 import MembershipPackage from "@/pages/admin/membership_packages/MembershipPackage";
+import TrainerPackages from "@/pages/admin/trainer_packages/TrainerPackages";
 import TrainerApplicationList from "@/pages/admin/trainer_applications/TrainerApplicationList";
 import Gyms from "../pages/pubblic/branches/Gyms";
 import GymDetail from "../pages/pubblic/branches/GymDetail";
@@ -179,6 +180,7 @@ export const routesConfig = [
       { path: "faq", element: <FAQ /> },
       { path: "profile", element: <AdminProfile /> },
       { path: "membership-packages", element: <MembershipPackage /> },
+      { path: "trainer-packages", element: <TrainerPackages /> },
       { path: "trainer-applications", element: <TrainerApplicationList /> },
       { path: "shift-attendance", element: <ShiftAttendance /> },
       { path: "attendance-management", element: <AttendanceManagement /> },
