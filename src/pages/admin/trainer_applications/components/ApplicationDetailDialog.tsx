@@ -8,16 +8,20 @@ import {
   Phone,
   ShieldCheck,
   User,
+  MapPin,
+  Award,
   XCircle,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import type { TrainerApplication } from "../TrainerApplicationList";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import type { TrainerApplication, TrainerLevel } from "../TrainerApplicationList";
 import {
   applicantName,
   formatDate,
   formatMoney,
   StatusBadge,
+  trainerLevelLabel,
 } from "../TrainerApplicationList";
 
 interface ApplicationDetailDialogProps {
@@ -25,6 +29,8 @@ interface ApplicationDetailDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   processing: boolean;
+  approvedLevel: TrainerLevel;
+  setApprovedLevel: (level: TrainerLevel) => void;
   onApprove: (id: number) => void;
   onRejectClick: () => void;
 }
@@ -56,6 +62,8 @@ export function ApplicationDetailDialog({
   open,
   onOpenChange,
   processing,
+  approvedLevel,
+  setApprovedLevel,
   onApprove,
   onRejectClick,
 }: ApplicationDetailDialogProps) {
@@ -110,6 +118,16 @@ export function ApplicationDetailDialog({
                 label="Ngày gửi"
                 value={formatDate(application.submitted_at)}
               />
+              <InfoItem
+                icon={<MapPin className="h-3.5 w-3.5" />}
+                label="Chi nhánh ứng tuyển"
+                value={application.branch?.branch_name || (application.branch_id ? `#${application.branch_id}` : "-")}
+              />
+              <InfoItem
+                icon={<Award className="h-3.5 w-3.5" />}
+                label="Level mong muốn"
+                value={application.desired_level ? trainerLevelLabel[application.desired_level] : "-"}
+              />
             </div>
           </section>
           <section>
@@ -118,6 +136,12 @@ export function ApplicationDetailDialog({
             </h3>
             <div className="grid gap-3 sm:grid-cols-2">
               <InfoItem label="Chuyên môn" value={application.specialization} />
+              {application.status === "approved" && (
+                <InfoItem
+                  label="Level đã duyệt"
+                  value={application.approved_level ? trainerLevelLabel[application.approved_level] : "-"}
+                />
+              )}
               <InfoItem
                 label="Số năm kinh nghiệm"
                 value={application.years_experience ?? "-"}
@@ -226,6 +250,25 @@ export function ApplicationDetailDialog({
             <section className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
               <div className="font-semibold">Lý do từ chối</div>
               <p className="mt-1">{application.rejection_reason}</p>
+            </section>
+          )}
+
+          {application.status === "pending" && (
+            <section className="rounded-xl border border-border bg-muted/20 p-4">
+              <h3 className="text-base font-semibold">Duyệt level chính thức</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Level mong muốn của ứng viên: <span className="font-semibold text-foreground">{application.desired_level ? trainerLevelLabel[application.desired_level] : "-"}</span>
+              </p>
+              <div className="mt-3 max-w-sm">
+                <Select value={approvedLevel} onValueChange={(value) => setApprovedLevel(value as TrainerLevel)}>
+                  <SelectTrigger><SelectValue placeholder="Chọn level duyệt" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="junior">Junior</SelectItem>
+                    <SelectItem value="senior">Senior</SelectItem>
+                    <SelectItem value="master">Master</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </section>
           )}
         </div>

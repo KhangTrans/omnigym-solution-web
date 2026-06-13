@@ -30,6 +30,21 @@ export type ApplicationCertificate = {
   expires_at?: string | null;
   status?: string | null;
 };
+export type ApplicationBranch = {
+  id?: number;
+  branch_name?: string | null;
+  address?: string | null;
+  province?: string | null;
+  district?: string | null;
+};
+export type TrainerLevel = "junior" | "senior" | "master";
+
+export const trainerLevelLabel: Record<TrainerLevel, string> = {
+  junior: "Junior",
+  senior: "Senior",
+  master: "Master",
+};
+
 export type ApplicationUser = {
   id?: number;
   full_name?: string | null;
@@ -51,6 +66,10 @@ export type TrainerApplication = {
   avatar_url?: string | null;
   phone_number?: string | null;
   address?: string | null;
+  branch_id?: number | null;
+  branch?: ApplicationBranch | null;
+  desired_level?: TrainerLevel | null;
+  approved_level?: TrainerLevel | null;
   years_experience?: number | string | null;
   hourly_rate?: number | string | null;
   identity_number?: string | null;
@@ -99,6 +118,7 @@ export default function TrainerApplicationList() {
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
   const [processing, setProcessing] = useState(false);
+  const [approvedLevel, setApprovedLevel] = useState<TrainerLevel>("junior");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("pending");
   const [search, setSearch] = useState("");
 
@@ -145,6 +165,8 @@ export default function TrainerApplicationList() {
           app.user?.email,
           app.phone_number,
           app.specialization,
+          app.branch?.branch_name,
+          app.desired_level ? trainerLevelLabel[app.desired_level] : undefined,
         ]
           .filter(Boolean)
           .some((value) => String(value).toLowerCase().includes(keyword));
@@ -154,7 +176,9 @@ export default function TrainerApplicationList() {
   async function openDetail(id: number) {
     try {
       const res = await trainerApplicationAPI.getOne(id);
-      setSelectedApplication(res.data.data);
+      const app = res.data.data as TrainerApplication;
+      setSelectedApplication(app);
+      setApprovedLevel(app.desired_level || "junior");
       setDetailOpen(true);
     } catch (error: any) {
       toast.error(
@@ -164,14 +188,17 @@ export default function TrainerApplicationList() {
   }
   async function refreshSelected(id: number) {
     const res = await trainerApplicationAPI.getOne(id);
-    setSelectedApplication(res.data.data);
+    const app = res.data.data as TrainerApplication;
+    setSelectedApplication(app);
+    if (app.status === "pending") setApprovedLevel(app.desired_level || "junior");
   }
 
   async function handleApprove(id: number) {
-    if (!confirm("Bạn chắc chắn muốn duyệt hồ sơ Trainer này?")) return;
+    if (!approvedLevel) return toast.error("Vui lòng chọn level duyệt cho Trainer.");
+    if (!confirm(`Bạn chắc chắn muốn duyệt hồ sơ Trainer với level ${trainerLevelLabel[approvedLevel]}?`)) return;
     setProcessing(true);
     try {
-      await trainerApplicationAPI.approve(id);
+      await trainerApplicationAPI.approve(id, approvedLevel);
       toast.success("Đã duyệt hồ sơ Trainer");
       await fetchApplications();
       await refreshSelected(id);
@@ -288,7 +315,9 @@ export default function TrainerApplicationList() {
                   <tr>
                     <th className="px-4 py-3">Hồ sơ</th>
                     <th className="px-4 py-3">Người gửi</th>
+                    <th className="px-4 py-3">Chi nhánh</th>
                     <th className="px-4 py-3">Chuyên môn</th>
+                    <th className="px-4 py-3">Level mong muốn</th>
                     <th className="px-4 py-3">Liên hệ</th>
                     <th className="px-4 py-3">Trạng thái</th>
                     <th className="px-4 py-3">Ngày gửi</th>
@@ -328,7 +357,13 @@ export default function TrainerApplicationList() {
                           </div>
                         </td>
                         <td className="max-w-[220px] truncate px-4 py-4">
+                          {app.branch?.branch_name || (app.branch_id ? `#${app.branch_id}` : "-")}
+                        </td>
+                        <td className="max-w-[220px] truncate px-4 py-4">
                           {app.specialization || "-"}
+                        </td>
+                        <td className="px-4 py-4">
+                          {app.desired_level ? trainerLevelLabel[app.desired_level] : "-"}
                         </td>
                         <td className="px-4 py-4">
                           {app.phone_number || app.user?.phone_number || "-"}
@@ -363,6 +398,8 @@ export default function TrainerApplicationList() {
         open={detailOpen}
         onOpenChange={setDetailOpen}
         processing={processing}
+        approvedLevel={approvedLevel}
+        setApprovedLevel={setApprovedLevel}
         onApprove={handleApprove}
         onRejectClick={() => setRejectOpen(true)}
       />

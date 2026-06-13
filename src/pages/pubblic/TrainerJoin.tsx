@@ -22,6 +22,16 @@ import { Navbar } from "@/components/site/Navbar";
 import { Footer } from "@/components/site/Footer";
 import { useBrands } from "@/lib/gym-store";
 import { trainerApplicationAPI } from "@/api/trainerApplications";
+import { branchesApi } from "@/api/branches";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+type TrainerLevel = "junior" | "senior" | "master";
+const TRAINER_LEVEL_OPTIONS: Array<{ value: TrainerLevel; label: string; description: string }> = [
+  { value: "junior", label: "Junior", description: "Kinh nghiệm cơ bản" },
+  { value: "senior", label: "Senior", description: "Kinh nghiệm tốt" },
+  { value: "master", label: "Master", description: "Chuyên gia/cấp cao" },
+];
+type BranchOption = { id: number; branch_name?: string | null; address?: string | null; province?: string | null; district?: string | null; status?: string | null; };
 
 type ApplicationCertificate = {
   cert_name: string;
@@ -46,6 +56,10 @@ type TrainerApplication = {
   hourly_rate?: number | null;
   identity_number?: string | null;
   identity_image_url?: string | null;
+  branch_id?: number | null;
+  desired_level?: TrainerLevel | null;
+  approved_level?: TrainerLevel | null;
+  branch?: BranchOption | null;
   certificates?: Array<Partial<ApplicationCertificate>>;
 };
 
@@ -70,6 +84,8 @@ export default function TrainerJoin() {
   const [checkingApplication, setCheckingApplication] = useState(true);
   const [savingDraft, setSavingDraft] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [branches, setBranches] = useState<BranchOption[]>([]);
+  const [loadingBranches, setLoadingBranches] = useState(false);
 
   const brand = brands.find((b) => b.id === "omnigym") ?? brands[0] ?? null;
 
@@ -81,6 +97,8 @@ export default function TrainerJoin() {
     bio: "",
     specialization: "",
     address: "",
+    branch_id: "",
+    desired_level: "junior" as TrainerLevel,
     years_experience: 0,
     hourly_rate: 0,
     identity_number: "",
@@ -98,6 +116,40 @@ export default function TrainerJoin() {
       setLoaded(true);
     }
   }, []);
+
+
+  useEffect(() => {
+    async function fetchBranches() {
+      try {
+        setLoadingBranches(true);
+        const response = await branchesApi.getAll({ status: "active" });
+        const raw = response.data;
+        const list = Array.isArray(raw)
+          ? raw
+          : Array.isArray(raw?.data)
+            ? raw.data
+            : Array.isArray(raw?.branches)
+              ? raw.branches
+              : Array.isArray(raw?.data?.branches)
+                ? raw.data.branches
+                : Array.isArray(raw?.items)
+                  ? raw.items
+                  : [];
+        setBranches(list.filter((branch: BranchOption) => branch?.id));
+      } catch (error: any) {
+        toast.error(error.response?.data?.message || "Không thể tải danh sách chi nhánh.");
+      } finally {
+        setLoadingBranches(false);
+      }
+    }
+    fetchBranches();
+  }, []);
+
+  useEffect(() => {
+    if (!form.branch_id && branches.length === 1) {
+      setField("branch_id", String(branches[0].id));
+    }
+  }, [branches, form.branch_id]);
 
   useEffect(() => {
     if (!user) return;
@@ -145,6 +197,8 @@ export default function TrainerJoin() {
       bio: app.bio || "",
       specialization: app.specialization || "",
       address: app.address || "",
+      branch_id: app.branch_id ? String(app.branch_id) : f.branch_id,
+      desired_level: app.desired_level || f.desired_level,
       years_experience: Number(app.years_experience) || 0,
       hourly_rate: Number(app.hourly_rate) || 0,
       identity_number: app.identity_number || "",
@@ -205,6 +259,8 @@ export default function TrainerJoin() {
 
   function buildDraftPayload() {
     return {
+      branch_id: form.branch_id ? Number(form.branch_id) : undefined,
+      desired_level: form.desired_level,
       bio: form.bio.trim(),
       specialization: form.specialization.trim(),
       avatar_url: form.avatar_url || undefined,
@@ -249,6 +305,8 @@ export default function TrainerJoin() {
 
     if (!user) return toast.error("Please sign in to apply.");
     if (!brand) return toast.error("No gym is available right now.");
+    if (!form.branch_id) return toast.error("Vui lòng chọn chi nhánh muốn ứng tuyển.");
+    if (!form.desired_level) return toast.error("Vui lòng chọn level muốn ứng tuyển.");
     if (!form.full_name.trim()) return toast.error("Full name is required");
     if (!form.email.trim()) return toast.error("Email is required");
     if (!form.avatar_url) return toast.error("Profile photo is required");
@@ -277,6 +335,8 @@ export default function TrainerJoin() {
     }
 
     const payload = {
+      branch_id: Number(form.branch_id),
+      desired_level: form.desired_level,
       bio: form.bio.trim(),
       specialization: form.specialization.trim(),
       avatar_url: form.avatar_url,
@@ -446,6 +506,7 @@ export default function TrainerJoin() {
                       Applying to
                     </div>
                     <div className="font-semibold">{brand.name}</div>
+                    <div className="text-xs text-muted-foreground">Chọn chi nhánh cụ thể bên dưới</div>
                   </div>
                 </div>
               )}
@@ -491,6 +552,40 @@ export default function TrainerJoin() {
                 title="Trainer application"
                 description="These fields map to trainer_applications."
               >
+                <Field label="Chi nhánh muốn ứng tuyển *" full>
+                  <Select value={form.branch_id} onValueChange={(value) => setField("branch_id", value)} disabled={loadingBranches}>
+                    <SelectTrigger><SelectValue placeholder={loadingBranches ? "Đang tải chi nhánh..." : "Chọn chi nhánh OmniGym"} /></SelectTrigger>
+                    <SelectContent>
+                      {branches.length ? (
+                        branches.map((branch) => (
+                          <SelectItem key={branch.id} value={String(branch.id)}>
+                            {branch.branch_name || `Chi nhánh #${branch.id}`}{branch.district || branch.province ? ` - ${[branch.district, branch.province].filter(Boolean).join(", ")}` : ""}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="no-branches" disabled>
+                          Chưa có chi nhánh active
+                        </SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  {!loadingBranches && branches.length === 0 && (
+                    <p className="mt-1 text-xs text-red-600">
+                      Chưa tìm thấy chi nhánh active. Vui lòng tạo/kích hoạt chi nhánh trong trang quản trị.
+                    </p>
+                  )}
+                </Field>
+                <Field label="Level muốn ứng tuyển *" full>
+                  <Select value={form.desired_level} onValueChange={(value) => setField("desired_level", value as TrainerLevel)}>
+                    <SelectTrigger><SelectValue placeholder="Chọn level mong muốn" /></SelectTrigger>
+                    <SelectContent>
+                      {TRAINER_LEVEL_OPTIONS.map((level) => (
+                        <SelectItem key={level.value} value={level.value}>{level.label} - {level.description}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="mt-1 text-xs text-muted-foreground">Đây là level mong muốn. Level chính thức sẽ do quản lý chi nhánh duyệt.</p>
+                </Field>
                 <Field label="Specialization *" full>
                   <Input
                     value={form.specialization}
