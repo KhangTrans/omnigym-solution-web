@@ -32,10 +32,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { UserPlus, Users, Eye, EyeOff, RefreshCw } from "lucide-react";
+import { UserPlus, Users, Eye, EyeOff, RefreshCw, Lock, Unlock } from "lucide-react";
 import { staffAPI, type StaffUser, type CreateStaffPayload } from "@/api/staffs";
 import { branchesApi } from "@/api/branches";
 import { rsaService } from "@/utils/rsa";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 type Branch = {
   id: number;
@@ -76,6 +77,10 @@ function StaffAccountsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // ── Lock/Unlock state ──
+  const [pendingIds, setPendingIds] = useState<Set<number>>(new Set());
+  const [confirmStaff, setConfirmStaff] = useState<StaffUser | null>(null);
 
   // ── Load data ──
   const fetchStaffList = async () => {
@@ -186,6 +191,38 @@ function StaffAccountsPage() {
     }
   };
 
+  const setPending = (staffId: number, pending: boolean) => {
+    setPendingIds((prev) => {
+      const next = new Set(prev);
+      if (pending) next.add(staffId);
+      else next.delete(staffId);
+      return next;
+    });
+  };
+
+  const handleToggleStatus = async (staff: StaffUser) => {
+    const currentStatus = String(staff.status || "").toLowerCase();
+    const nextStatus = currentStatus === "active" ? "locked" : "active";
+
+    try {
+      setPending(staff.id, true);
+      await staffAPI.updateStatus(staff.id, nextStatus);
+
+      // Cập nhật local state không cần tải lại toàn bộ
+      setStaffList((prev) =>
+        prev.map((s) => (s.id === staff.id ? { ...s, status: nextStatus } : s))
+      );
+
+      toast.success(nextStatus === "locked" ? "Đã khóa tài khoản Staff" : "Đã mở khóa tài khoản Staff");
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      const message = err.response?.data?.message || "Thao tác thất bại.";
+      toast.error(message);
+    } finally {
+      setPending(staff.id, false);
+    }
+  };
+
   // ── Render ──
   return (
     <div className="space-y-6">
@@ -238,12 +275,13 @@ function StaffAccountsPage() {
                   <TableHead className="hidden lg:table-cell">Chi nhánh</TableHead>
                   <TableHead>Trạng thái</TableHead>
                   <TableHead className="hidden xl:table-cell">Ngày tạo</TableHead>
+                  <TableHead className="text-right">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                    <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
                       Đang tải danh sách nhân viên...
                     </TableCell>
                   </TableRow>
@@ -274,13 +312,28 @@ function StaffAccountsPage() {
                         <TableCell className="hidden xl:table-cell tabular-nums text-muted-foreground">
                           {createdAt}
                         </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            size="sm"
+                            variant={status === "active" ? "danger-glass" : "success-glass"}
+                            onClick={() => setConfirmStaff(s)}
+                            disabled={pendingIds.has(s.id)}
+                          >
+                            {status === "active" ? (
+                              <Lock className="mr-2 h-4 w-4" />
+                            ) : (
+                              <Unlock className="mr-2 h-4 w-4" />
+                            )}
+                            {status === "active" ? "Khóa" : "Mở khóa"}
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     );
                   })
                 ) : (
                   <TableRow>
                     <TableCell
-                      colSpan={7}
+                      colSpan={8}
                       className="text-center text-sm text-muted-foreground py-10"
                     >
                       Chưa có nhân viên nào. Hãy tạo tài khoản Staff đầu tiên.
@@ -450,6 +503,39 @@ function StaffAccountsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ── Confirm Lock/Unlock dialog ── */}
+      <AlertDialog
+        open={Boolean(confirmStaff)}
+        onOpenChange={(open) => {
+          if (!open) setConfirmStaff(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xác nhận thao tác</AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmStaff?.status === "active"
+                ? `Bạn có chắc muốn khóa tài khoản của nhân viên "${confirmStaff?.full_name || confirmStaff?.email}" không?`
+                : `Bạn có chắc muốn mở khóa tài khoản của nhân viên "${confirmStaff?.full_name || confirmStaff?.email}" không?`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (confirmStaff) {
+                  const target = confirmStaff;
+                  setConfirmStaff(null);
+                  void handleToggleStatus(target);
+                }
+              }}
+            >
+              Xác nhận
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
