@@ -18,14 +18,14 @@ import {
 } from "@/utils/blogUtils";
 
 export default function BlogDetail() {
-  const { id } = useParams<{ id: string }>();
+  const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [displayViewCount, setDisplayViewCount] = useState<number | undefined>(undefined);
 
-  const postId = Number(id);
+  const postId = Number(slug?.split("-").pop());
 
   const fetchPostDetail = useCallback(async () => {
     if (!Number.isFinite(postId) || postId <= 0) {

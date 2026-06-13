@@ -247,9 +247,9 @@ export default function WorkspaceDashboard() {
             <CardTitle className="text-base">Branch/staff scope</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm text-muted-foreground">
-            <Row icon={Users} text="User list for branch operations" />
-            <Row icon={UserSquare2} text="Work shifts management" />
-            <Row icon={Calendar} text="Customer check-in monitoring" />
+            <Info icon={Users} text="User list for branch operations" />
+            <Info icon={UserSquare2} text="Work shifts management" />
+            <Info icon={Calendar} text="Customer check-in monitoring" />
           </CardContent>
         </Card>
       )}

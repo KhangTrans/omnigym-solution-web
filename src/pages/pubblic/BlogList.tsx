@@ -18,6 +18,7 @@ import { Search, Calendar, BookOpen, ArrowRight, RefreshCw, AlertTriangle, Eye }
 import { motion, AnimatePresence } from "framer-motion";
 
 import { extractThumbnail, formatPostDate, formatViewCount, stripHtml } from "@/utils/blogUtils";
+import { slugify } from "@/utils/slugify";
 
 const CATEGORIES = ["Tất cả", "Fitness", "Dinh dưỡng", "Yoga", "Cardio"];
 
@@ -258,7 +259,7 @@ export default function BlogList() {
                     >
                       <Card
                         className="h-full flex flex-col overflow-hidden border border-border bg-card hover:shadow-lg transition-shadow duration-300 cursor-pointer"
-                        onClick={() => navigate(`/blog/${post.id}`)}
+                        onClick={() => navigate(`/blog/${slugify(post.title || "")}-${post.id}`)}
                       >
                         {/* Cover Image */}
                         <div className="relative h-48 w-full overflow-hidden bg-muted">
