@@ -26,7 +26,7 @@ const Login = () => {
     const role = getRoleName(user);
 
     if (role === "trainer") {
-      navigate("/trainer-join");
+      navigate("/trainer");
       return;
     }
 

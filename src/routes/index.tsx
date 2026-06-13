@@ -47,6 +47,7 @@ import BranchManagerStaff from "../pages/branchmanager/BranchManagerStaff";
 import BranchManagerRevenue from "../pages/branchmanager/BranchManagerRevenue";
 import BranchManagerStaffAttendance from "../pages/branchmanager/BranchManagerStaffAttendance";
 import StaffAccounts from "../pages/admin/staff_accounts/StaffAccounts";
+import TrainerDashboard from "../pages/trainer/TrainerDashboard";
 import { DashboardRedirect, RoleOnly } from "./routeGuards";
 
 export const routesConfig: RouteObject[] = [
@@ -57,6 +58,10 @@ export const routesConfig: RouteObject[] = [
   {
     path: "/trainer-join",
     element: <TrainerJoin />,
+  },
+  {
+    path: "/trainer",
+    element: <TrainerDashboard />,
   },
   {
     path: "/gyms",
