@@ -25,6 +25,7 @@ import Library from "../pages/admin/Library";
 import PostManagement from "../pages/admin/post_management";
 import FAQ from "../pages/admin/faq_management/FAQ";
 import CustomerProfile from "../pages/customers/Profile";
+import FavoriteTrainers from "../pages/customers/FavoriteTrainers";
 import BranchList from "../pages/admin/branch_management/BranchList";
 import CreateBranch from "../pages/admin/branch_management/CreateBranch";
 import MembershipPackage from "@/pages/admin/membership_packages/MembershipPackage";
@@ -106,6 +107,10 @@ export const routesConfig: RouteObject[] = [
       {
         path: "/check-in",
         element: <CustomerCheckIn />,
+      },
+      {
+        path: "/favorites/trainers",
+        element: <FavoriteTrainers />,
       },
     ],
   },

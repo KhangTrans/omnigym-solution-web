@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
   ArrowRight,
   Award,
   Building2,
   ExternalLink,
+  Heart,
   MapPin,
   Phone,
   Star,
@@ -20,7 +21,22 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { trainersApi, type PublicTrainerDetail } from "@/api/trainers";
+import { favoriteTrainerAPI } from "@/api/favoriteTrainers";
 import { slugify } from "@/utils/slugify";
+import { notify } from "@/utils/notify";
+import { cn } from "@/utils/cn";
+
+/**
+ * Kiểm tra user có đang đăng nhập không bằng localStorage —
+ * đồng nhất với pattern hiện đang dùng ở Navbar / CustomerLayout.
+ */
+const hasLoggedInUser = (): boolean => {
+  const userData = localStorage.getItem("user");
+  const token = localStorage.getItem("token");
+  if (!userData || !token) return false;
+  if (userData === "undefined" || userData === "null") return false;
+  return true;
+};
 
 const formatPrice = (value: number | null | undefined): string => {
   if (value === null || value === undefined || Number.isNaN(Number(value))) {
@@ -51,10 +67,16 @@ const buildAvatarFallback = (name: string | null | undefined): string => {
 
 export default function TrainerDetail() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [trainer, setTrainer] = useState<PublicTrainerDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
+
+  // Favorite state — chỉ load khi user đã đăng nhập.
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [favoriteToggling, setFavoriteToggling] = useState(false);
+  const isAuthenticated = hasLoggedInUser();
 
   useEffect(() => {
     let cancelled = false;
@@ -94,6 +116,72 @@ export default function TrainerDetail() {
       cancelled = true;
     };
   }, [id]);
+
+  // Load trạng thái favorite khi đã có trainer + user đã login.
+  useEffect(() => {
+    if (!id || !isAuthenticated) {
+      return;
+    }
+    let cancelled = false;
+    async function loadStatus() {
+      try {
+        const response = await favoriteTrainerAPI.getStatus(id!);
+        if (cancelled) return;
+        setIsFavorited(!!response.data.data?.is_favorited);
+      } catch {
+        // Không phá luồng đọc detail nếu API status lỗi (vd token vừa hết hạn).
+        if (!cancelled) setIsFavorited(false);
+      }
+    }
+    loadStatus();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, isAuthenticated]);
+
+  async function handleToggleFavorite() {
+    if (!trainer) return;
+
+    // Guest → redirect login, không gọi API.
+    if (!isAuthenticated) {
+      notify.info("Vui lòng đăng nhập để lưu huấn luyện viên yêu thích.");
+      sessionStorage.setItem(
+        "postLoginRedirect",
+        `/trainers/${trainer.id}`,
+      );
+      navigate("/login");
+      return;
+    }
+
+    if (favoriteToggling) return;
+
+    // Optimistic update — đảo trạng thái UI ngay, rollback nếu API fail.
+    const nextValue = !isFavorited;
+    setIsFavorited(nextValue);
+    setFavoriteToggling(true);
+
+    try {
+      if (nextValue) {
+        await favoriteTrainerAPI.add(trainer.id);
+        notify.success("Đã thêm vào danh sách yêu thích.");
+      } else {
+        await favoriteTrainerAPI.remove(trainer.id);
+        notify.success("Đã bỏ khỏi danh sách yêu thích.");
+      }
+    } catch (error: unknown) {
+      // Rollback
+      setIsFavorited(!nextValue);
+      const err = error as {
+        response?: { data?: { message?: string } };
+      };
+      notify.error(
+        err?.response?.data?.message ||
+          "Không thể cập nhật trạng thái yêu thích. Vui lòng thử lại.",
+      );
+    } finally {
+      setFavoriteToggling(false);
+    }
+  }
 
   // Loading state
   if (loading) {
@@ -246,9 +334,41 @@ export default function TrainerDetail() {
               ) : null}
             </div>
 
-            <h1 className="mt-3 text-3xl sm:text-4xl font-bold tracking-tight text-slate-900">
-              {trainer.full_name || "Huấn luyện viên"}
-            </h1>
+            <div className="mt-3 flex items-start gap-3">
+              <h1 className="flex-1 text-3xl sm:text-4xl font-bold tracking-tight text-slate-900">
+                {trainer.full_name || "Huấn luyện viên"}
+              </h1>
+              <button
+                type="button"
+                onClick={handleToggleFavorite}
+                disabled={favoriteToggling}
+                aria-label={
+                  isFavorited
+                    ? "Bỏ khỏi danh sách yêu thích"
+                    : "Lưu vào danh sách yêu thích"
+                }
+                aria-pressed={isFavorited}
+                title={
+                  isFavorited
+                    ? "Bỏ khỏi danh sách yêu thích"
+                    : "Lưu vào danh sách yêu thích"
+                }
+                className={cn(
+                  "shrink-0 inline-flex h-11 w-11 items-center justify-center rounded-full border transition-all",
+                  "hover:scale-105 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed",
+                  isFavorited
+                    ? "border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100"
+                    : "border-slate-200 bg-white text-slate-500 hover:border-rose-200 hover:text-rose-500",
+                )}
+              >
+                <Heart
+                  className={cn(
+                    "h-5 w-5 transition-transform",
+                    isFavorited && "fill-rose-500 text-rose-500",
+                  )}
+                />
+              </button>
+            </div>
 
             <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500">
               <span className="inline-flex items-center gap-1.5">

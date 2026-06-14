@@ -9,6 +9,7 @@ import {
   Dumbbell,
   Loader2,
   UserCheck,
+  Heart,
 } from "lucide-react";
 import { cn } from "../utils/cn";
 import { Navbar } from "../components/site/Navbar";
@@ -74,6 +75,11 @@ export default function CustomerLayout() {
       label: "Điểm danh (Check-in)",
       path: "/check-in",
       icon: UserCheck,
+    },
+    {
+      label: "Trainer yêu thích",
+      path: "/favorites/trainers",
+      icon: Heart,
     },
     {
       label: "Đổi mật khẩu",
