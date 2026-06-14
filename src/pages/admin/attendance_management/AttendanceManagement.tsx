@@ -49,6 +49,16 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { workShiftsApi, type ShiftTemplate, type WorkShift } from "@/api/workShifts";
@@ -137,6 +147,7 @@ export default function AttendanceManagement() {
   const [submittingBaseSchedules, setSubmittingBaseSchedules] = useState(false);
   const [activatingFirstWeek, setActivatingFirstWeek] = useState(false);
   const [generatingNextWeek, setGeneratingNextWeek] = useState(false);
+  const [generateNextWeekConfirmOpen, setGenerateNextWeekConfirmOpen] = useState(false);
 
   function getTodayDateString() {
     const today = new Date();
@@ -439,13 +450,6 @@ export default function AttendanceManagement() {
   };
 
   const handleTriggerGenerateNextWeek = async () => {
-    if (
-      !window.confirm(
-        "Bạn có chắc chắn muốn sinh lịch tuần kế tiếp ngay bây giờ? Job tự động đã chạy 00:00 Thứ 7 hàng tuần.",
-      )
-    ) {
-      return;
-    }
     try {
       setGeneratingNextWeek(true);
       const res = await workShiftsApi.triggerGenerateNextWeek();
@@ -463,6 +467,7 @@ export default function AttendanceManagement() {
       toast.error(err.response?.data?.message || "Không thể sinh lịch tuần kế tiếp.");
     } finally {
       setGeneratingNextWeek(false);
+      setGenerateNextWeekConfirmOpen(false);
     }
   };
 
@@ -665,7 +670,7 @@ export default function AttendanceManagement() {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={handleTriggerGenerateNextWeek}
+                    onClick={() => setGenerateNextWeekConfirmOpen(true)}
                     disabled={generatingNextWeek}
                     className="h-9 px-4 rounded-xl text-xs font-semibold border-emerald-200 text-emerald-700 hover:bg-emerald-50"
                     title="Cron tự động đã chạy 00:00 Thứ 7 hàng tuần. Bấm để chạy thủ công khi cần test."
@@ -813,7 +818,7 @@ export default function AttendanceManagement() {
                       const branchName = log.shift?.branch?.branch_name || (log.shift?.branch_id 
                         ? (branches.find(b => b.id === log.shift?.branch_id)?.branch_name || `CN: ${log.shift.branch_id}`)
                         : "-");
-                      const template = log.shift?.shift || shiftTemplates.find((t) => t.id === log.shift?.shift_id);
+                      const template = shiftTemplates.find((t) => t.id === log.shift?.shift_id);
                       const start = template?.start_time || log.shift?.start_time;
                       const end = template?.end_time || log.shift?.end_time;
                       const shiftTime = start && end 
@@ -1197,18 +1202,14 @@ export default function AttendanceManagement() {
                     )}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground">
-                  {filterBranchId === "all"
-                    ? "Chỉ hiển thị nhân viên có role Staff. Chọn chi nhánh ở thanh lọc phía trên để giới hạn theo chi nhánh."
-                    : `Đang lọc theo chi nhánh: ${branches.find((b) => String(b.id) === filterBranchId)?.branch_name || "—"}.`}
-                </p>
+
               </div>
 
               <div className="space-y-2">
-                <Label>Khung lịch tuần (Thứ 2 → Chủ Nhật) *</Label>
+                <Label>Khung lịch tuần</Label>
                 <p className="text-xs text-muted-foreground">
                   Chọn ca trực tương ứng cho từng ngày làm việc. Để "Nghỉ cố định" với những ngày
-                  không đi làm; hệ thống sẽ không tạo work_shift cho ngày đó.
+                  không đi làm
                 </p>
                 <div className="rounded-lg border divide-y">
                   {onboardDays.map((d) => (
@@ -1244,8 +1245,7 @@ export default function AttendanceManagement() {
                 </div>
                 {shiftTemplates.length === 0 && (
                   <p className="text-xs text-amber-600">
-                    Chưa có ca mẫu trong hệ thống. Vui lòng tạo dữ liệu ca trong bảng shifts trước
-                    khi setup khung lịch.
+                    Chưa có ca trong hệ thống. Vui lòng tạo ca trước khi setup khung lịch.
                   </p>
                 )}
               </div>
@@ -1284,7 +1284,7 @@ export default function AttendanceManagement() {
                     <div className="font-semibold">Đã lưu khung lịch chuẩn.</div>
                     <div className="text-xs text-emerald-700 mt-1">
                       Tiếp theo, chọn ngày bắt đầu đi làm để hệ thống sinh ca cho nhân viên từ ngày
-                      đó đến hết Chủ Nhật của tuần. Từ tuần kế tiếp, cron tự động sẽ tiếp tục sinh
+                      đó đến hết Chủ Nhật của tuần. Từ tuần kế tiếp, hệ thống tự động sẽ tiếp tục sinh
                       lịch.
                     </div>
                   </div>
@@ -1299,10 +1299,6 @@ export default function AttendanceManagement() {
                   value={onboardStartDate}
                   onChange={(e) => setOnboardStartDate(e.target.value)}
                 />
-                <p className="text-xs text-muted-foreground">
-                  Hệ thống sẽ sinh work_shifts từ ngày này đến hết Chủ Nhật cùng tuần, đối chiếu các
-                  đơn nghỉ phép đã duyệt.
-                </p>
               </div>
 
               <DialogFooter className="pt-3 flex-row justify-between gap-2 sm:justify-between">
@@ -1316,15 +1312,7 @@ export default function AttendanceManagement() {
                   ← Quay lại
                 </Button>
                 <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setOnboardDialogOpen(false)}
-                    disabled={activatingFirstWeek}
-                    className="h-10 rounded-xl"
-                  >
-                    Để sau
-                  </Button>
+                  
                   <Button
                     type="button"
                     onClick={handleActivateFirstWeek}
@@ -1344,6 +1332,52 @@ export default function AttendanceManagement() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Confirm Dialog: Sinh lịch tuần kế tiếp */}
+      <AlertDialog
+        open={generateNextWeekConfirmOpen}
+        onOpenChange={(open) => {
+          if (!generatingNextWeek) {
+            setGenerateNextWeekConfirmOpen(open);
+          }
+        }}
+      >
+        <AlertDialogContent className="max-w-md rounded-xl border-0 p-6 shadow-lg">
+          <AlertDialogHeader className="space-y-1.5">
+            <AlertDialogTitle className="text-xl font-bold flex items-center gap-2">
+              <CalendarPlus className="h-5 w-5 text-emerald-600" />
+              Xác nhận sinh lịch tuần kế tiếp
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-500">
+              Bạn có chắc chắn muốn sinh lịch tuần kế tiếp ngay bây giờ? Job tự động đã chạy lúc
+              00:00 Thứ 7 hàng tuần, thao tác này thường chỉ dùng khi cần chạy thủ công để kiểm thử.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex gap-2 pt-3">
+            <AlertDialogCancel
+              disabled={generatingNextWeek}
+              className="h-10 flex-1 rounded-md border-0 bg-muted text-foreground shadow-sm hover:bg-muted/80"
+            >
+              Hủy
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleTriggerGenerateNextWeek();
+              }}
+              disabled={generatingNextWeek}
+              className="h-10 flex-1 rounded-md border-0 bg-emerald-600 font-semibold text-white shadow-sm hover:bg-emerald-700"
+            >
+              {generatingNextWeek ? (
+                <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+              ) : (
+                <CalendarPlus className="mr-1 h-4 w-4" />
+              )}
+              Xác nhận sinh lịch
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
