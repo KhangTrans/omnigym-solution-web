@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { BadgeCheck, Loader2, RefreshCw, Search, Award, Star, Mail, Phone, MapPin, DollarSign, Dumbbell, Eye, Calendar, Building2 } from "lucide-react";
+import { BadgeCheck, Loader2, RefreshCw, Search, Award, Star, Mail, Phone, MapPin, DollarSign, Dumbbell, Eye, Calendar, Building2, Lock, Unlock } from "lucide-react";
 import { toast } from "sonner";
 import { trainersApi, type Trainer } from "@/api/trainers";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export const trainerLevelLabel: Record<string, string> = {
@@ -31,6 +31,13 @@ export default function BranchManagerTrainers() {
   // Dialog state
   const [selectedTrainer, setSelectedTrainer] = useState<Trainer | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+
+  // Confirm lock/unlock state
+  const [confirmTarget, setConfirmTarget] = useState<{
+    trainer: Trainer;
+    action: "lock" | "unlock";
+  } | null>(null);
+  const [submittingStatus, setSubmittingStatus] = useState(false);
 
   async function fetchTrainers() {
     setLoading(true);
@@ -88,6 +95,29 @@ export default function BranchManagerTrainers() {
     setSelectedTrainer(trainer);
     setDetailOpen(true);
   };
+
+  const isLocked = (trainer: Trainer) =>
+    String(trainer.user?.status || "").toLowerCase() === "locked";
+
+  async function handleConfirmStatus() {
+    if (!confirmTarget || submittingStatus) return;
+    const { trainer, action } = confirmTarget;
+    const nextStatus: "active" | "locked" =
+      action === "lock" ? "locked" : "active";
+    try {
+      setSubmittingStatus(true);
+      const res = await trainersApi.updateStatus(trainer.id, nextStatus);
+      toast.success(res.data.message || "Cập nhật thành công.");
+      setConfirmTarget(null);
+      await fetchTrainers();
+    } catch (error: any) {
+      toast.error(
+        error.response?.data?.message || "Cập nhật trạng thái thất bại.",
+      );
+    } finally {
+      setSubmittingStatus(false);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -203,8 +233,16 @@ export default function BranchManagerTrainers() {
 
                     {/* Họ và tên & Email */}
                     <TableCell>
-                      <div className="font-semibold text-foreground">
-                        {trainer.user?.full_name || "Chưa cập nhật"}
+                      <div className="font-semibold text-foreground flex items-center gap-2">
+                        <span>{trainer.user?.full_name || "Chưa cập nhật"}</span>
+                        {isLocked(trainer) && (
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] py-0.5 px-2 bg-red-50 text-red-700 border-red-200"
+                          >
+                            Đã đình chỉ
+                          </Badge>
+                        )}
                       </div>
                       <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
                         <Mail className="h-3.5 w-3.5 shrink-0" />
@@ -258,14 +296,41 @@ export default function BranchManagerTrainers() {
 
                     {/* Thao tác */}
                     <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleOpenDetail(trainer)}
-                        title="Xem chi tiết"
-                      >
-                        <Eye className="h-4 w-4 text-slate-700" />
-                      </Button>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleOpenDetail(trainer)}
+                          title="Xem chi tiết"
+                        >
+                          <Eye className="h-4 w-4 text-slate-700" />
+                        </Button>
+                        {isLocked(trainer) ? (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() =>
+                              setConfirmTarget({ trainer, action: "unlock" })
+                            }
+                            title="Mở khoá tài khoản"
+                            className="text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50"
+                          >
+                            <Unlock className="h-4 w-4" />
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() =>
+                              setConfirmTarget({ trainer, action: "lock" })
+                            }
+                            title="Đình chỉ tài khoản"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Lock className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -402,6 +467,53 @@ export default function BranchManagerTrainers() {
               </div>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirm lock/unlock dialog */}
+      <Dialog
+        open={!!confirmTarget}
+        onOpenChange={(open) => {
+          if (!open && !submittingStatus) setConfirmTarget(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-[440px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {confirmTarget?.action === "lock" ? (
+                <>
+                  <Lock className="h-5 w-5 text-red-600" /> Đình chỉ huấn luyện viên
+                </>
+              ) : (
+                <>
+                  <Unlock className="h-5 w-5 text-emerald-600" /> Mở khoá huấn luyện viên
+                </>
+              )}
+            </DialogTitle>
+            <DialogDescription>
+              {confirmTarget?.action === "lock"
+                ? `HLV ${confirmTarget?.trainer.user?.full_name || ""} sẽ không thể đăng nhập vào hệ thống cho đến khi được mở khoá.`
+                : `HLV ${confirmTarget?.trainer.user?.full_name || ""} sẽ được phép đăng nhập trở lại.`}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button
+              variant="ghost"
+              onClick={() => setConfirmTarget(null)}
+              disabled={submittingStatus}
+            >
+              Huỷ
+            </Button>
+            <Button
+              variant={confirmTarget?.action === "lock" ? "destructive" : "default"}
+              onClick={handleConfirmStatus}
+              disabled={submittingStatus}
+              className="gap-2"
+            >
+              {submittingStatus && <Loader2 className="h-4 w-4 animate-spin" />}
+              {confirmTarget?.action === "lock" ? "Đình chỉ" : "Mở khoá"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
