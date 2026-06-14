@@ -49,6 +49,8 @@ import BranchManagerStaff from "../pages/branchmanager/BranchManagerStaff";
 import BranchManagerRevenue from "../pages/branchmanager/BranchManagerRevenue";
 import BranchManagerStaffAttendance from "../pages/branchmanager/BranchManagerStaffAttendance";
 import StaffAccounts from "../pages/admin/staff_accounts/StaffAccounts";
+import BranchManagerTrainers from "../pages/branchmanager/BranchManagerTrainers";
+import AdminTrainers from "../pages/admin/trainers/AdminTrainers";
 import TrainerDashboard from "../pages/trainer/TrainerDashboard";
 import { DashboardRedirect, RoleOnly } from "./routeGuards";
 
@@ -145,6 +147,7 @@ export const routesConfig: RouteObject[] = [
       { path: "attendance-management", element: <AttendanceManagement /> },
       { path: "customer-attendance", element: <CustomerAttendance /> },
       { path: "staff-accounts", element: <StaffAccounts /> },
+      { path: "trainers", element: <AdminTrainers /> },
     ],
   },
   { path: "/dashboard", element: <DashboardRedirect /> },
@@ -158,6 +161,14 @@ export const routesConfig: RouteObject[] = [
         element: (
           <RoleOnly allow={["branchmanager"]}>
             <BranchManagerTrainerApplications />
+          </RoleOnly>
+        ),
+      },
+      {
+        path: "trainers",
+        element: (
+          <RoleOnly allow={["branchmanager", "staff"]}>
+            <BranchManagerTrainers />
           </RoleOnly>
         ),
       },
