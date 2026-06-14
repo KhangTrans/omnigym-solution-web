@@ -32,6 +32,7 @@ import TrainerPackages from "@/pages/admin/trainer_packages/TrainerPackages";
 import TrainerApplicationList from "@/pages/admin/trainer_applications/TrainerApplicationList";
 import Gyms from "../pages/pubblic/branches/Gyms";
 import GymDetail from "../pages/pubblic/branches/GymDetail";
+import TrainerDetail from "../pages/pubblic/trainers/TrainerDetail";
 import ShiftAttendance from "../pages/staffs/ShiftAttendance";
 import StaffSchedule from "../pages/staffs/StaffSchedule";
 import AttendanceManagement from "../pages/admin/attendance_management/AttendanceManagement";
@@ -72,6 +73,10 @@ export const routesConfig: RouteObject[] = [
   {
     path: "/gyms/:slug",
     element: <GymDetail />,
+  },
+  {
+    path: "/trainers/:id",
+    element: <TrainerDetail />,
   },
   {
     path: "/blog",
