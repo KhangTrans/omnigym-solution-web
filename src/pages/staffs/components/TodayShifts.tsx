@@ -34,6 +34,12 @@ const isShiftActive = (shift: WorkShift) => {
   return true;
 };
 
+const getWorkShiftTime = (shift: WorkShift) => {
+  const start = shift.shift?.start_time || shift.start_time;
+  const end = shift.shift?.end_time || shift.end_time;
+  return `${formatTime(start)} - ${formatTime(end)}`;
+};
+
 export function TodayShifts({ shifts, logs, loading, onCheckIn, onCheckOut }: TodayShiftsProps) {
   // Find if there is an existing attendance check-in for a shift id
   const getShiftAttendance = (shiftId: number) => {
@@ -87,9 +93,7 @@ export function TodayShifts({ shifts, logs, loading, onCheckIn, onCheckOut }: To
                     </div>
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-foreground text-base">
-                          {formatTime(shift.start_time)} - {formatTime(shift.end_time)}
-                        </span>
+                        <span className="font-semibold text-foreground text-base">{getWorkShiftTime(shift)}</span>
                         {attendance && getAttendanceStatusBadge(attendance.status)}
                         {attendance?.check_out_time && (
                           <Badge className="bg-slate-500 text-white font-medium">Hoàn thành ca</Badge>

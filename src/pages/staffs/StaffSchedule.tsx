@@ -21,8 +21,15 @@ import { toast } from "sonner";
 // Trạng thái ca làm việc bằng Tiếng Việt
 const STATUS_LABELS = {
   scheduled: { label: "Đã xếp lịch", variant: "secondary", color: "bg-sky-50 text-sky-700 border-sky-200" },
+  off_approved: { label: "Nghỉ phép", variant: "outline", color: "bg-amber-50 text-amber-700 border-amber-200" },
   completed: { label: "Đã hoàn thành", variant: "default", color: "bg-emerald-50 text-emerald-700 border-emerald-200" },
   cancelled: { label: "Đã hủy", variant: "destructive", color: "bg-rose-50 text-rose-700 border-rose-200" },
+};
+
+const getWorkShiftTime = (shift: WorkShift) => {
+  const start = shift.shift?.start_time || shift.start_time;
+  const end = shift.shift?.end_time || shift.end_time;
+  return start && end ? `${start.slice(0, 5)} - ${end.slice(0, 5)}` : "Chưa chọn ca";
 };
 
 export default function StaffSchedule() {
@@ -240,7 +247,7 @@ export default function StaffSchedule() {
                       <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1 font-medium">Giờ làm việc</div>
                       <div className="text-sm font-semibold text-slate-700 flex items-center gap-2">
                         <Clock className="h-4 w-4 text-slate-400" />
-                        {shift.start_time} - {shift.end_time}
+                        {getWorkShiftTime(shift)}
                       </div>
                     </div>
 

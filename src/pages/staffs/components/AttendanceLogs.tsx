@@ -10,7 +10,8 @@ interface AttendanceLogsProps {
   loading: boolean;
 }
 
-export const formatTime = (timeStr: string) => {
+export const formatTime = (timeStr?: string | null) => {
+  if (!timeStr) return "-";
   try {
     return timeStr.slice(0, 5);
   } catch {
@@ -68,9 +69,9 @@ export function AttendanceLogs({ logs, loading }: AttendanceLogsProps) {
                   const shiftDate = log.shift?.date 
                     ? new Date(log.shift.date).toLocaleDateString("vi-VN", { day: '2-digit', month: '2-digit', year: 'numeric' })
                     : "-";
-                  const shiftTime = log.shift 
-                    ? `${formatTime(log.shift.start_time)} - ${formatTime(log.shift.end_time)}`
-                    : "-";
+                  const start = log.shift?.start_time;
+                  const end = log.shift?.end_time;
+                  const shiftTime = start && end ? `${formatTime(start)} - ${formatTime(end)}` : "-";
                   const checkInTime = log.check_in_time 
                     ? new Date(log.check_in_time).toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' })
                     : "-";

@@ -26,6 +26,12 @@ import { AttendanceLogs, formatTime } from "./components/AttendanceLogs";
 import { TodayShifts } from "./components/TodayShifts";
 import { CheckInModal } from "./components/CheckInModal";
 
+const getWorkShiftTime = (shift: WorkShift) => {
+  const start = shift.shift?.start_time || shift.start_time;
+  const end = shift.shift?.end_time || shift.end_time;
+  return `${formatTime(start)} đến ${formatTime(end)}`;
+};
+
 export default function ShiftAttendance() {
   const [shifts, setShifts] = useState<WorkShift[]>([]);
   const [logs, setLogs] = useState<AttendanceRecord[]>([]);
@@ -207,7 +213,7 @@ export default function ShiftAttendance() {
             </AlertDialogTitle>
             <AlertDialogDescription className="text-slate-500">
               {shiftToCheckOut && (
-                <span>Bạn có chắc chắn muốn kết thúc ca làm việc từ {formatTime(shiftToCheckOut.start_time)} đến {formatTime(shiftToCheckOut.end_time)}?</span>
+                <span>Bạn có chắc chắn muốn kết thúc ca làm việc từ {getWorkShiftTime(shiftToCheckOut)}?</span>
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
