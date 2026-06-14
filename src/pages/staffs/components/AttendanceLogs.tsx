@@ -69,8 +69,8 @@ export function AttendanceLogs({ logs, loading }: AttendanceLogsProps) {
                   const shiftDate = log.shift?.date 
                     ? new Date(log.shift.date).toLocaleDateString("vi-VN", { day: '2-digit', month: '2-digit', year: 'numeric' })
                     : "-";
-                  const start = log.shift?.start_time;
-                  const end = log.shift?.end_time;
+                  const start = log.shift?.shift?.start_time || log.shift?.start_time;
+                  const end = log.shift?.shift?.end_time || log.shift?.end_time;
                   const shiftTime = start && end ? `${formatTime(start)} - ${formatTime(end)}` : "-";
                   const checkInTime = log.check_in_time 
                     ? new Date(log.check_in_time).toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' })
