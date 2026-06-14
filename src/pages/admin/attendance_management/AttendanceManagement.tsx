@@ -813,8 +813,11 @@ export default function AttendanceManagement() {
                       const branchName = log.shift?.branch?.branch_name || (log.shift?.branch_id 
                         ? (branches.find(b => b.id === log.shift?.branch_id)?.branch_name || `CN: ${log.shift.branch_id}`)
                         : "-");
-                      const shiftTime = log.shift 
-                        ? `${log.shift.start_time.slice(0, 5)} - ${log.shift.end_time.slice(0, 5)}`
+                      const template = log.shift?.shift || shiftTemplates.find((t) => t.id === log.shift?.shift_id);
+                      const start = template?.start_time || log.shift?.start_time;
+                      const end = template?.end_time || log.shift?.end_time;
+                      const shiftTime = start && end 
+                        ? `${start.slice(0, 5)} - ${end.slice(0, 5)}`
                         : "-";
                       const checkIn = log.check_in_time 
                         ? new Date(log.check_in_time).toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' })
