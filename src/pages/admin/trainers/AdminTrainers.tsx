@@ -3,26 +3,26 @@ import { BadgeCheck, Loader2, RefreshCw, Search, Award, Star, Mail, Phone, MapPi
 import { toast } from "sonner";
 import { trainersApi, type Trainer } from "@/api/trainers";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-export const trainerLevelLabel: Record<string, string> = {
+const trainerLevelLabel: Record<string, string> = {
   junior: "Junior",
   senior: "Senior",
   master: "Master",
 };
 
-export const levelBadgeClass: Record<string, string> = {
+const levelBadgeClass: Record<string, string> = {
   junior: "bg-sky-50 text-sky-700 border-sky-200",
   senior: "bg-indigo-50 text-indigo-700 border-indigo-200",
   master: "bg-rose-50 text-rose-700 border-rose-200",
 };
 
-export default function BranchManagerTrainers() {
+export default function AdminTrainers() {
   const [trainers, setTrainers] = useState<Trainer[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
@@ -93,10 +93,9 @@ export default function BranchManagerTrainers() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Branch workspace</p>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground mt-1 font-sans">Danh sách Huấn luyện viên</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Quản lý và xem danh sách các HLV đã được duyệt hoạt động tại chi nhánh.
+          <h1 className="text-2xl font-bold tracking-tight text-foreground font-sans">Huấn luyện viên</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            {levelCounts.all} HLV đã được duyệt hoạt động trong hệ thống.
           </p>
         </div>
         <Button variant="secondary" onClick={() => void fetchTrainers()} disabled={loading} className="gap-2">
@@ -105,27 +104,27 @@ export default function BranchManagerTrainers() {
         </Button>
       </div>
 
-      {/* Summary Cards - Đã bỏ viền và đổi thành bg-muted/30 */}
+      {/* Summary Cards - Giữ viền cho giao diện Admin */}
       <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
-        <Card className="border-0 shadow-none bg-muted/30">
+        <Card className="bg-card shadow-sm border">
           <CardContent className="p-4 flex flex-col justify-center">
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tổng số HLV</span>
             <span className="text-2xl font-bold mt-1 text-foreground">{levelCounts.all}</span>
           </CardContent>
         </Card>
-        <Card className="border-0 shadow-none bg-muted/30">
+        <Card className="bg-card shadow-sm border">
           <CardContent className="p-4 flex flex-col justify-center">
             <span className="text-xs font-semibold text-sky-700 uppercase tracking-wider">Junior</span>
             <span className="text-2xl font-bold text-sky-700 mt-1">{levelCounts.junior}</span>
           </CardContent>
         </Card>
-        <Card className="border-0 shadow-none bg-muted/30">
+        <Card className="bg-card shadow-sm border">
           <CardContent className="p-4 flex flex-col justify-center">
             <span className="text-xs font-semibold text-indigo-700 uppercase tracking-wider">Senior</span>
             <span className="text-2xl font-bold text-indigo-700 mt-1">{levelCounts.senior}</span>
           </CardContent>
         </Card>
-        <Card className="border-0 shadow-none bg-muted/30">
+        <Card className="bg-card shadow-sm border">
           <CardContent className="p-4 flex flex-col justify-center">
             <span className="text-xs font-semibold text-rose-700 uppercase tracking-wider">Master</span>
             <span className="text-2xl font-bold text-rose-700 mt-1">{levelCounts.master}</span>
@@ -133,147 +132,151 @@ export default function BranchManagerTrainers() {
         </Card>
       </div>
 
-      {/* Main content wrapper */}
-      <div className="space-y-4">
-        {/* Bộ lọc và Tìm kiếm kiểu bài Post */}
-        <div className="flex flex-wrap items-center gap-3">
-          <Tabs value={levelFilter} onValueChange={setLevelFilter}>
-            <TabsList>
-              <TabsTrigger value="all">Tất cả ({levelCounts.all})</TabsTrigger>
-              <TabsTrigger value="junior">Junior ({levelCounts.junior})</TabsTrigger>
-              <TabsTrigger value="senior">Senior ({levelCounts.senior})</TabsTrigger>
-              <TabsTrigger value="master">Master ({levelCounts.master})</TabsTrigger>
-            </TabsList>
-          </Tabs>
-          <div className="relative w-full md:w-72">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Tìm kiếm huấn luyện viên..."
-              className="pl-8"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+      {/* Main content wrapped inside Card (Admin Layout Standard) */}
+      <Card className="border shadow-sm">
+        <CardHeader className="space-y-3">
+          <CardTitle className="text-base">Danh sách Huấn luyện viên</CardTitle>
+          <div className="flex flex-wrap items-center gap-3">
+            <Tabs value={levelFilter} onValueChange={setLevelFilter}>
+              <TabsList>
+                <TabsTrigger value="all">Tất cả ({levelCounts.all})</TabsTrigger>
+                <TabsTrigger value="junior">Junior ({levelCounts.junior})</TabsTrigger>
+                <TabsTrigger value="senior">Senior ({levelCounts.senior})</TabsTrigger>
+                <TabsTrigger value="master">Master ({levelCounts.master})</TabsTrigger>
+              </TabsList>
+            </Tabs>
+            <div className="relative w-full md:w-72">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Tìm kiếm huấn luyện viên..."
+                className="pl-8"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
           </div>
-        </div>
+        </CardHeader>
 
-        {/* Table View */}
-        {loading ? (
-          <div className="flex h-40 items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        ) : filteredTrainers.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed rounded-xl bg-card">
-            <Dumbbell className="h-10 w-10 text-muted-foreground/60 mb-2" />
-            <p className="text-sm font-medium text-muted-foreground">Không tìm thấy huấn luyện viên nào.</p>
-          </div>
-        ) : (
-          <div className="rounded-xl bg-card shadow-[0_2px_12px_rgba(15,23,42,0.08)] overflow-x-auto border-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-16">Ảnh</TableHead>
-                  <TableHead>Họ và tên</TableHead>
-                  <TableHead>Chuyên môn / Cấp độ</TableHead>
-                  <TableHead>Đánh giá & Kinh nghiệm</TableHead>
-                  <TableHead>Chi phí</TableHead>
-                  <TableHead>Liên hệ & Chi nhánh</TableHead>
-                  <TableHead className="text-right">Thao tác</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredTrainers.map((trainer) => (
-                  <TableRow
-                    key={trainer.id}
-                    className="hover:bg-muted/50"
-                  >
-                    {/* Ảnh đại diện */}
-                    <TableCell>
-                      {trainer.user?.avatar_url || trainer.avatar_url ? (
-                        <img
-                          src={trainer.user?.avatar_url || trainer.avatar_url}
-                          alt={trainer.user?.full_name}
-                          className="h-12 w-12 rounded-full object-cover border"
-                        />
-                      ) : (
-                        <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary border text-sm">
-                          {(trainer.user?.full_name || "T").charAt(0).toUpperCase()}
-                        </div>
-                      )}
-                    </TableCell>
-
-                    {/* Họ và tên & Email */}
-                    <TableCell>
-                      <div className="font-semibold text-foreground">
-                        {trainer.user?.full_name || "Chưa cập nhật"}
-                      </div>
-                      <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                        <Mail className="h-3.5 w-3.5 shrink-0" />
-                        <span>{trainer.user?.email || "N/A"}</span>
-                      </div>
-                    </TableCell>
-
-                    {/* Chuyên môn / Cấp độ */}
-                    <TableCell>
-                      <div className="font-medium text-foreground">{trainer.specialization || "Chưa cập nhật"}</div>
-                      {trainer.level && (
-                        <Badge variant="outline" className={`mt-1 text-[10px] py-0.5 px-2 ${levelBadgeClass[trainer.level]}`}>
-                          {trainerLevelLabel[trainer.level]}
-                        </Badge>
-                      )}
-                    </TableCell>
-
-                    {/* Đánh giá & Kinh nghiệm */}
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
-                        <span className="text-sm font-semibold">{Number(trainer.rating || 0).toFixed(1)}</span>
-                        <span className="text-xs text-muted-foreground">({trainer.review_count} reviews)</span>
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                        <Dumbbell className="h-3.5 w-3.5 shrink-0" />
-                        <span>{trainer.years_experience} năm kinh nghiệm</span>
-                      </div>
-                    </TableCell>
-
-                    {/* Chi phí */}
-                    <TableCell>
-                      <span className="font-semibold text-primary">{formatCurrency(trainer.hourly_rate)}</span>
-                    </TableCell>
-
-                    {/* Liên hệ & Chi nhánh */}
-                    <TableCell>
-                      {trainer.phone_number && (
-                        <div className="text-xs text-foreground flex items-center gap-1">
-                          <Phone className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                          <span>{trainer.phone_number}</span>
-                        </div>
-                      )}
-                      {trainer.branch && (
-                        <div className="text-xs text-emerald-700 font-semibold flex items-center gap-1 mt-1">
-                          <Building2 className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
-                          <span>{trainer.branch.branch_name}</span>
-                        </div>
-                      )}
-                    </TableCell>
-
-                    {/* Thao tác */}
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleOpenDetail(trainer)}
-                        title="Xem chi tiết"
-                      >
-                        <Eye className="h-4 w-4 text-slate-700" />
-                      </Button>
-                    </TableCell>
+        <CardContent className="pt-0">
+          {/* Table View */}
+          {loading ? (
+            <div className="flex h-40 items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : filteredTrainers.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed rounded-xl bg-card">
+              <Dumbbell className="h-10 w-10 text-muted-foreground/60 mb-2" />
+              <p className="text-sm font-medium text-muted-foreground">Không tìm thấy huấn luyện viên nào.</p>
+            </div>
+          ) : (
+            <div className="rounded-xl bg-card shadow-[0_2px_12px_rgba(15,23,42,0.08)] overflow-x-auto border-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-16">Ảnh</TableHead>
+                    <TableHead>Họ và tên</TableHead>
+                    <TableHead>Chuyên môn / Cấp độ</TableHead>
+                    <TableHead>Đánh giá & Kinh nghiệm</TableHead>
+                    <TableHead>Chi phí</TableHead>
+                    <TableHead>Liên hệ & Chi nhánh</TableHead>
+                    <TableHead className="text-right">Thao tác</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-      </div>
+                </TableHeader>
+                <TableBody>
+                  {filteredTrainers.map((trainer) => (
+                    <TableRow
+                      key={trainer.id}
+                      className="hover:bg-muted/50"
+                    >
+                      {/* Ảnh đại diện */}
+                      <TableCell>
+                        {trainer.user?.avatar_url || trainer.avatar_url ? (
+                          <img
+                            src={trainer.user?.avatar_url || trainer.avatar_url}
+                            alt={trainer.user?.full_name}
+                            className="h-12 w-12 rounded-full object-cover border"
+                          />
+                        ) : (
+                          <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary border text-sm">
+                            {(trainer.user?.full_name || "T").charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                      </TableCell>
+
+                      {/* Họ và tên & Email */}
+                      <TableCell>
+                        <div className="font-semibold text-foreground">
+                          {trainer.user?.full_name || "Chưa cập nhật"}
+                        </div>
+                        <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                          <Mail className="h-3.5 w-3.5 shrink-0" />
+                          <span>{trainer.user?.email || "N/A"}</span>
+                        </div>
+                      </TableCell>
+
+                      {/* Chuyên môn / Cấp độ */}
+                      <TableCell>
+                        <div className="font-medium text-foreground">{trainer.specialization || "Chưa cập nhật"}</div>
+                        {trainer.level && (
+                          <Badge variant="outline" className={`mt-1 text-[10px] py-0.5 px-2 ${levelBadgeClass[trainer.level]}`}>
+                            {trainerLevelLabel[trainer.level]}
+                          </Badge>
+                        )}
+                      </TableCell>
+
+                      {/* Đánh giá & Kinh nghiệm */}
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
+                          <span className="text-sm font-semibold">{Number(trainer.rating || 0).toFixed(1)}</span>
+                          <span className="text-xs text-muted-foreground">({trainer.review_count} reviews)</span>
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                          <Dumbbell className="h-3.5 w-3.5 shrink-0" />
+                          <span>{trainer.years_experience} năm kinh nghiệm</span>
+                        </div>
+                      </TableCell>
+
+                      {/* Chi phí */}
+                      <TableCell>
+                        <span className="font-semibold text-primary">{formatCurrency(trainer.hourly_rate)}</span>
+                      </TableCell>
+
+                      {/* Liên hệ & Chi nhánh */}
+                      <TableCell>
+                        {trainer.phone_number && (
+                          <div className="text-xs text-foreground flex items-center gap-1">
+                            <Phone className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                            <span>{trainer.phone_number}</span>
+                          </div>
+                        )}
+                        {trainer.branch && (
+                          <div className="text-xs text-emerald-700 font-semibold flex items-center gap-1 mt-1">
+                            <Building2 className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                            <span>{trainer.branch.branch_name}</span>
+                          </div>
+                        )}
+                      </TableCell>
+
+                      {/* Thao tác - Icon mắt outline không màu nổi bật */}
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleOpenDetail(trainer)}
+                          title="Xem chi tiết"
+                        >
+                          <Eye className="h-4 w-4 text-slate-700" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Trainer Detail Dialog */}
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>

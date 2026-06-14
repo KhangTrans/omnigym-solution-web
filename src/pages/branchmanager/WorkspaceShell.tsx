@@ -29,6 +29,7 @@ type NavItem = {
 const NAV: NavItem[] = [
   { to: "/branchmanager", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { to: "/branchmanager/trainer-applications", label: "Trainer Application", icon: ClipboardList, roles: ["branchmanager"] },
+  { to: "/branchmanager/trainers", label: "Trainers", icon: Users },
   { to: "/branchmanager/posts", label: "Posts", icon: FileText },
   { to: "/branchmanager/attendance", label: "Attendance", icon: ScanFace },
   { to: "/branchmanager/customer-checkin", label: "Customer Check-in", icon: CalendarCheck2 },
