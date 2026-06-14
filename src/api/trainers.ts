@@ -33,8 +33,16 @@ export interface Trainer {
   };
 }
 
+export type TrainerAccountStatus = "active" | "locked";
+
 export const trainersApi = {
   getApproved: () => {
     return api.get<{ status: string; data: Trainer[] }>("/trainers/approved");
+  },
+  updateStatus: (id: number, status: TrainerAccountStatus) => {
+    return api.patch<{ message: string; data: Trainer }>(
+      `/trainers/${id}/status`,
+      { status },
+    );
   },
 };
