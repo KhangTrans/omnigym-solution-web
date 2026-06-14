@@ -18,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
@@ -31,6 +32,7 @@ import { branchesApi } from "@/api/branches";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import BranchMemberships from "./BranchMemberships";
+import { TrainerCompareModal } from "./components/TrainerCompareModal";
 
 type TrainerSortBy = "rating_desc" | "price_asc" | "price_desc" | "newest";
 
@@ -152,6 +154,8 @@ export default function GymDetail() {
   const [trainerLoading, setTrainerLoading] = useState(false);
   const [trainerError, setTrainerError] = useState<string | null>(null);
   const [trainerSpecOptions, setTrainerSpecOptions] = useState<string[]>([]);
+  const [selectedTrainerIds, setSelectedTrainerIds] = useState<number[]>([]);
+  const [compareOpen, setCompareOpen] = useState(false);
 
   // Construct images list
   const heroImages = Array.from(
@@ -362,6 +366,31 @@ export default function GymDetail() {
     trainerSearchInput.trim() !== "" ||
     trainerSpecialization !== "all" ||
     trainerSortBy !== "rating_desc";
+
+  const selectedTrainers = (branch?.trainers || []).filter((trainer) =>
+    selectedTrainerIds.includes(trainer.id),
+  );
+
+  const handleToggleTrainerCompare = (trainerId: number) => {
+    setSelectedTrainerIds((prev) => {
+      if (prev.includes(trainerId)) {
+        return prev.filter((id) => id !== trainerId);
+      }
+      if (prev.length >= 3) {
+        toast.error("Chỉ chọn tối đa 3 huấn luyện viên để so sánh.");
+        return prev;
+      }
+      return [...prev, trainerId];
+    });
+  };
+
+  const handleOpenCompare = () => {
+    if (selectedTrainerIds.length < 2) {
+      toast.error("Vui lòng chọn ít nhất 2 huấn luyện viên để so sánh.");
+      return;
+    }
+    setCompareOpen(true);
+  };
 
   const handleResetTrainerFilters = () => {
     setTrainerSearchInput("");
@@ -785,6 +814,9 @@ export default function GymDetail() {
                     if (trainer.level) return [trainer.level];
                     return [];
                   })();
+                  const isSelectedForCompare = selectedTrainerIds.includes(trainer.id);
+                  const isCompareDisabled =
+                    !isSelectedForCompare && selectedTrainerIds.length >= 3;
 
                   return (
                     <motion.div
@@ -795,7 +827,11 @@ export default function GymDetail() {
                     >
                       <Link
                         to={`/trainers/${trainer.id}`}
-                        className="group flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-transform hover:-translate-y-1 hover:shadow-md"
+                        className={`group flex h-full flex-col overflow-hidden rounded-2xl border bg-card shadow-sm transition-transform hover:-translate-y-1 hover:shadow-md ${
+                          isSelectedForCompare
+                            ? "border-emerald-300 ring-2 ring-emerald-400/70"
+                            : "border-border"
+                        }`}
                       >
                         <div className="relative aspect-[4/5] overflow-hidden bg-slate-100">
                           <img
@@ -812,6 +848,32 @@ export default function GymDetail() {
                             <Star className="h-3 w-3 fill-primary text-primary" />
                             {ratingDisplay}
                           </div>
+                          <button
+                            type="button"
+                            className={`absolute right-2 top-2 inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold shadow-sm backdrop-blur transition-colors ${
+                              isSelectedForCompare
+                                ? "border-emerald-200 bg-emerald-600 text-white"
+                                : isCompareDisabled
+                                  ? "border-slate-200 bg-white/80 text-slate-400 cursor-not-allowed"
+                                  : "border-slate-200 bg-white/90 text-slate-700 hover:bg-emerald-50 hover:text-emerald-700"
+                            }`}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleToggleTrainerCompare(trainer.id);
+                            }}
+                            aria-pressed={isSelectedForCompare}
+                            aria-label={`Chọn ${trainerName} để so sánh`}
+                          >
+                            <Checkbox
+                              checked={isSelectedForCompare}
+                              disabled={isCompareDisabled}
+                              className="h-3.5 w-3.5 border-current pointer-events-none data-[state=checked]:bg-white data-[state=checked]:text-emerald-600"
+                              aria-hidden="true"
+                              tabIndex={-1}
+                            />
+                            So sánh
+                          </button>
                         </div>
                         <div className="flex flex-1 flex-col p-4">
                           <h3 className="font-bold leading-tight line-clamp-1">
@@ -889,6 +951,24 @@ export default function GymDetail() {
           )}
         </div>
       </section>
+
+      {selectedTrainerIds.length > 0 && (
+        <div className="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-2">
+          {selectedTrainerIds.length < 2 && (
+            <span className="rounded-full bg-slate-900/90 px-3 py-1 text-xs font-medium text-white shadow-lg">
+              Chọn ít nhất 2 HLV để so sánh
+            </span>
+          )}
+          <Button
+            type="button"
+            disabled={selectedTrainerIds.length < 2}
+            onClick={handleOpenCompare}
+            className="rounded-full bg-emerald-600 px-5 py-5 text-white shadow-lg hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
+          >
+            So sánh ({selectedTrainerIds.length}/3)
+          </Button>
+        </div>
+      )}
 
       {/* SECTION 4: MEMBER REVIEWS */}
       <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 border-t border-slate-100">
@@ -1040,6 +1120,16 @@ export default function GymDetail() {
       />
 
       <Footer />
+
+      <TrainerCompareModal
+        open={compareOpen}
+        onOpenChange={setCompareOpen}
+        trainers={selectedTrainers}
+        branch={branch}
+        onRemoveTrainer={(trainerId) =>
+          setSelectedTrainerIds((prev) => prev.filter((id) => id !== trainerId))
+        }
+      />
 
       {/* Lightbox Dialog Modal for full photo views */}
       <Dialog open={lightboxOpen} onOpenChange={setLightboxOpen}>
