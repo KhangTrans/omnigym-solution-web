@@ -67,7 +67,9 @@ import {
 function addMinutes(hhmm: string, mins: number) {
   const [h, m] = hhmm.split(":").map(Number);
   const total = h * 60 + m + mins;
-  const nh = Math.floor(total / 60).toString().padStart(2, "0");
+  const nh = Math.floor(total / 60)
+    .toString()
+    .padStart(2, "0");
   const nm = (total % 60).toString().padStart(2, "0");
   return `${nh}:${nm}`;
 }
@@ -145,19 +147,27 @@ export default function TrainerDashboard() {
 
   useEffect(() => {
     if (!user) return;
+
     async function loadProfile() {
       try {
         const response = await authApi.getMe();
         const data = response.data;
-        if (data && data.trainer) {
-          setTrainerProfile(data.trainer);
+
+        if (!data?.trainer || data.trainer.is_active !== true) {
+          toast.error("Tài khoản Trainer của bạn chưa được duyệt.");
+          navigate("/trainer-join");
+          return;
         }
+
+        setTrainerProfile(data.trainer);
       } catch (error) {
         console.error("Failed to load trainer profile", error);
+        navigate("/trainer-join");
       }
     }
+
     loadProfile();
-  }, [user, tick]);
+  }, [user, tick, navigate]);
 
   const trainer = useMemo(() => {
     if (trainerProfile) {
@@ -167,28 +177,40 @@ export default function TrainerDashboard() {
         email: trainerProfile.user?.email || user?.email || "",
         phone: trainerProfile.phone_number || user?.phone_number || "",
         title: trainerProfile.specialization || "HLV Cá nhân",
-        photo: trainerProfile.avatar_url || user?.avatar_url || "https://images.unsplash.com/photo-1567013127542-490d757e51fc?w=800&q=80",
+        photo:
+          trainerProfile.avatar_url ||
+          user?.avatar_url ||
+          "https://images.unsplash.com/photo-1567013127542-490d757e51fc?w=800&q=80",
         bio: trainerProfile.bio || "",
         address: trainerProfile.address || "",
         idNumber: trainerProfile.identity_number || "",
         idPhoto: trainerProfile.identity_image_url || "",
         certification: trainerProfile.certificates?.[0]?.cert_name || "N/A",
-        certificationIssuer: trainerProfile.certificates?.[0]?.issued_by || "N/A",
-        certificationNumber: trainerProfile.certificates?.[0]?.certificate_number || "N/A",
-        certificationIssuedAt: trainerProfile.certificates?.[0]?.issued_at || "",
-        certificationExpiresAt: trainerProfile.certificates?.[0]?.expires_at || "",
+        certificationIssuer:
+          trainerProfile.certificates?.[0]?.issued_by || "N/A",
+        certificationNumber:
+          trainerProfile.certificates?.[0]?.certificate_number || "N/A",
+        certificationIssuedAt:
+          trainerProfile.certificates?.[0]?.issued_at || "",
+        certificationExpiresAt:
+          trainerProfile.certificates?.[0]?.expires_at || "",
         certificationPhoto: trainerProfile.certificates?.[0]?.image_url || "",
         cprCertified: true,
         cprExpiresAt: "2030-01-01",
         insuranceProvider: "N/A",
         insurancePolicyNumber: "N/A",
         insuranceExpiresAt: "2030-01-01",
-        specialties: trainerProfile.specialization ? trainerProfile.specialization.split(", ") : [],
+        specialties: trainerProfile.specialization
+          ? trainerProfile.specialization.split(", ")
+          : [],
         yearsExperience: Number(trainerProfile.years_experience) || 0,
         hourlyRate: Number(trainerProfile.hourly_rate) || 0,
         monthlyEarnings: 0,
         monthlySessions: 0,
-        active: trainerProfile.is_active !== undefined ? trainerProfile.is_active : true,
+        active:
+          trainerProfile.is_active !== undefined
+            ? trainerProfile.is_active
+            : true,
         createdAt: trainerProfile.created_at || new Date().toISOString(),
         approved: true,
       };
@@ -203,7 +225,9 @@ export default function TrainerDashboard() {
       email: user?.email || "diego@omnigym.demo",
       phone: user?.phone_number || "+1 555 0100",
       title: "HIIT & Conditioning Coach",
-      photo: user?.avatar_url || "https://images.unsplash.com/photo-1567013127542-490d757e51fc?w=800&q=80",
+      photo:
+        user?.avatar_url ||
+        "https://images.unsplash.com/photo-1567013127542-490d757e51fc?w=800&q=80",
       bio: "Demo trainer for UI/UX preview.",
       address: "123 Demo Street",
       idNumber: "DEMO-001",
@@ -244,6 +268,7 @@ export default function TrainerDashboard() {
   };
 
   if (!loaded) return null;
+  if (!trainerProfile) return null;
 
   // Cast trainer object to match StaffTrainer type structure in staff-store
   const status = getTrainerStatus(trainer as any);
@@ -261,14 +286,22 @@ export default function TrainerDashboard() {
 
       <header className="relative border-b border-border bg-white/70 backdrop-blur-md z-10">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
-          <Link to="/" className="inline-flex items-center gap-2 text-sm font-semibold text-[#4F8A74] hover:text-[#3f6e5d]">
+          <Link
+            to="/"
+            className="inline-flex items-center gap-2 text-sm font-semibold text-[#4F8A74] hover:text-[#3f6e5d]"
+          >
             <ArrowLeft className="h-4 w-4" /> Quay lại trang chủ
           </Link>
           <div className="flex items-center gap-3">
             <span className="hidden text-sm font-medium text-slate-600 sm:inline">
               {trainer.name}
             </span>
-            <Button variant="ghost" size="sm" onClick={signOut} className="gap-2 text-red-500 hover:bg-red-50 hover:text-red-600">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={signOut}
+              className="gap-2 text-red-500 hover:bg-red-50 hover:text-red-600"
+            >
               <LogOut className="h-4 w-4" /> Đăng xuất
             </Button>
           </div>
@@ -288,7 +321,8 @@ export default function TrainerDashboard() {
                 {trainer.name}
               </h1>
               <p className="text-sm text-muted-foreground mt-0.5">
-                Các khung giờ 1h30 phút đều mặc định mở. Vui lòng đóng các khung giờ bạn bận kèm lý do để học viên được biết.
+                Các khung giờ 1h30 phút đều mặc định mở. Vui lòng đóng các khung
+                giờ bạn bận kèm lý do để học viên được biết.
               </p>
             </div>
           </div>
@@ -306,7 +340,8 @@ export default function TrainerDashboard() {
                   Tài khoản của bạn hiện đang bị tạm dừng
                 </div>
                 <div className="text-red-700 mt-0.5">
-                  Phòng tập đã tạm dừng hoạt động của bạn. Vui lòng liên hệ quản lý để kích hoạt lại lịch tập.
+                  Phòng tập đã tạm dừng hoạt động của bạn. Vui lòng liên hệ quản
+                  lý để kích hoạt lại lịch tập.
                 </div>
               </div>
             </CardContent>
@@ -322,7 +357,9 @@ export default function TrainerDashboard() {
                   Hoàn thiện thông tin để bắt đầu nhận học viên
                 </div>
                 <div className="text-amber-700 mt-0.5">
-                  Vui lòng cập nhật chứng chỉ, căn cước công dân và thông tin bảo hiểm. Sau khi hoàn tất cập nhật hồ sơ, trạng thái của bạn sẽ tự động chuyển sang <strong>Hoạt động</strong>.
+                  Vui lòng cập nhật chứng chỉ, căn cước công dân và thông tin
+                  bảo hiểm. Sau khi hoàn tất cập nhật hồ sơ, trạng thái của bạn
+                  sẽ tự động chuyển sang <strong>Hoạt động</strong>.
                 </div>
               </div>
             </CardContent>
@@ -406,7 +443,9 @@ function ScheduleManager({ trainerId }: { trainerId: string }) {
 
   // Days-off bulk dialog
   const [daysOffOpen, setDaysOffOpen] = useState(false);
-  const [daysOffSelected, setDaysOffSelected] = useState<Set<string>>(new Set());
+  const [daysOffSelected, setDaysOffSelected] = useState<Set<string>>(
+    new Set(),
+  );
   const [daysOffReason, setDaysOffReason] = useState("");
 
   // Live-refresh on booking changes from elsewhere (customers booking).
@@ -422,7 +461,10 @@ function ScheduleManager({ trainerId }: { trainerId: string }) {
   }, []);
 
   const days = useMemo(() => weekDays(weekStart), [weekStart]);
-  const bookings = useMemo(() => getBookings(trainerId), [trainerId, bookingsTick]);
+  const bookings = useMemo(
+    () => getBookings(trainerId),
+    [trainerId, bookingsTick],
+  );
 
   const closureMap = useMemo(() => {
     const map = new Map<string, TrainerClosure>();
@@ -497,16 +539,12 @@ function ScheduleManager({ trainerId }: { trainerId: string }) {
 
   const weekLabel = `${days[0].day} Thg ${days[0].iso.slice(5, 7)} – ${days[6].day} Thg ${days[6].iso.slice(5, 7)}`;
 
-  const handleCellClick = (
-    date: string,
-    time: string,
-    state: SlotState,
-  ) => {
+  const handleCellClick = (date: string, time: string, state: SlotState) => {
     if (state.kind === "past") return;
     if (state.kind === "booked") {
       toast.info(
         `Đã đặt lịch · ${date} ${time}–${addMinutes(time, SESSION_LEN_MIN)}`,
-        { description: "Khung giờ này đã được học viên đặt chỗ." }
+        { description: "Khung giờ này đã được học viên đặt chỗ." },
       );
       return;
     }
@@ -515,14 +553,16 @@ function ScheduleManager({ trainerId }: { trainerId: string }) {
         `Ngày nghỉ · ${new Date(date).toLocaleDateString("vi-VN", { weekday: "long", day: "numeric", month: "short" })}`,
         {
           description: `${state.dayOff.reason} — vui lòng xóa ngày nghỉ để cập nhật từng khung giờ.`,
-        }
+        },
       );
       return;
     }
     if (state.kind === "closed") {
       // One-tap reopen
       reopen(state.closure.id);
-      toast.success(`Đã mở lại khung giờ ${time}–${addMinutes(time, SESSION_LEN_MIN)}`);
+      toast.success(
+        `Đã mở lại khung giờ ${time}–${addMinutes(time, SESSION_LEN_MIN)}`,
+      );
       return;
     }
     // open → ask for a reason before closing
@@ -531,9 +571,7 @@ function ScheduleManager({ trainerId }: { trainerId: string }) {
   };
 
   const reopenAllWeek = () => {
-    const targets = closures.filter((c) =>
-      weekKeys.has(`${c.date}_${c.time}`),
-    );
+    const targets = closures.filter((c) => weekKeys.has(`${c.date}_${c.time}`));
     if (targets.length === 0) {
       toast.info("Không có khung giờ nào đang bị đóng trong tuần này.");
       return;
@@ -550,7 +588,9 @@ function ScheduleManager({ trainerId }: { trainerId: string }) {
       return;
     }
     close(trainerId, closing.date, closing.time, reason);
-    toast.success(`Đã đóng khung giờ ${closing.time}–${addMinutes(closing.time, SESSION_LEN_MIN)}`);
+    toast.success(
+      `Đã đóng khung giờ ${closing.time}–${addMinutes(closing.time, SESSION_LEN_MIN)}`,
+    );
     setClosing(null);
     setReasonDraft("");
   };
@@ -638,7 +678,9 @@ function ScheduleManager({ trainerId }: { trainerId: string }) {
                 <CalIcon className="h-4 w-4" /> Tuần · {weekLabel}
               </h2>
               <p className="mt-1 text-xs text-muted-foreground">
-                Tất cả khung giờ mặc định mở · Click vào khung giờ để tạm đóng · <span className="font-semibold text-slate-800">1h30 phút</span> mỗi ca tập.
+                Tất cả khung giờ mặc định mở · Click vào khung giờ để tạm đóng ·{" "}
+                <span className="font-semibold text-slate-800">1h30 phút</span>{" "}
+                mỗi ca tập.
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -732,7 +774,9 @@ function ScheduleManager({ trainerId }: { trainerId: string }) {
                       </div>
                       <div
                         className={`mt-0.5 inline-flex h-7 min-w-7 items-center justify-center rounded-full px-1.5 text-sm font-bold ${
-                          d.isToday ? "bg-[#4F8A74] text-white" : "text-slate-800"
+                          d.isToday
+                            ? "bg-[#4F8A74] text-white"
+                            : "text-slate-800"
                         }`}
                       >
                         {d.day}
@@ -818,7 +862,8 @@ function ScheduleManager({ trainerId }: { trainerId: string }) {
               {weekBooked > 0 && (
                 <div className="rounded-2xl border border-emerald-100 bg-emerald-50/20 p-4">
                   <h3 className="text-sm font-bold inline-flex items-center gap-2 text-emerald-950">
-                    <Users className="h-4 w-4 text-emerald-600" /> Đã đặt trong tuần
+                    <Users className="h-4 w-4 text-emerald-600" /> Đã đặt trong
+                    tuần
                   </h3>
                   <ul className="mt-3 space-y-1.5">
                     {bookings
@@ -865,8 +910,8 @@ function ScheduleManager({ trainerId }: { trainerId: string }) {
                           >
                             <div className="min-w-0 flex-1">
                               <div className="font-semibold text-slate-700">
-                                {d.weekday} {d.day} Thg {d.iso.slice(5, 7)} · {c.time}–
-                                {addMinutes(c.time, SESSION_LEN_MIN)}
+                                {d.weekday} {d.day} Thg {d.iso.slice(5, 7)} ·{" "}
+                                {c.time}–{addMinutes(c.time, SESSION_LEN_MIN)}
                               </div>
                               <div className="mt-0.5 truncate text-slate-500 italic">
                                 {c.reason}
@@ -919,7 +964,8 @@ function ScheduleManager({ trainerId }: { trainerId: string }) {
                   })}
                 </div>
                 <div className="text-xs text-slate-500 mt-0.5">
-                  {closing.time} – {addMinutes(closing.time, SESSION_LEN_MIN)} · 1h30 phút
+                  {closing.time} – {addMinutes(closing.time, SESSION_LEN_MIN)} ·
+                  1h30 phút
                 </div>
               </div>
               <div className="grid gap-2">
@@ -1000,7 +1046,8 @@ function ScheduleManager({ trainerId }: { trainerId: string }) {
                   })}
                 </div>
                 <div className="text-xs text-slate-500 mt-0.5">
-                  {editing.time} – {addMinutes(editing.time, SESSION_LEN_MIN)} · 1h30 phút
+                  {editing.time} – {addMinutes(editing.time, SESSION_LEN_MIN)} ·
+                  1h30 phút
                 </div>
               </div>
               <div className="grid gap-2">
@@ -1055,7 +1102,12 @@ function ScheduleManager({ trainerId }: { trainerId: string }) {
               >
                 Hủy
               </Button>
-              <Button onClick={commitEditReason} className="bg-[#4F8A74] hover:bg-[#3f6e5d] text-white">Lưu thay đổi</Button>
+              <Button
+                onClick={commitEditReason}
+                className="bg-[#4F8A74] hover:bg-[#3f6e5d] text-white"
+              >
+                Lưu thay đổi
+              </Button>
             </div>
           </DialogFooter>
         </DialogContent>
@@ -1142,7 +1194,9 @@ function ScheduleManager({ trainerId }: { trainerId: string }) {
                 className="mt-1"
               />
               <p className="text-[10px] text-muted-foreground">
-                Tất cả các khung giờ tự do trong ngày được chọn sẽ tự động chuyển sang tạm đóng. Lịch đã có học viên đặt trước sẽ không bị ảnh hưởng.
+                Tất cả các khung giờ tự do trong ngày được chọn sẽ tự động
+                chuyển sang tạm đóng. Lịch đã có học viên đặt trước sẽ không bị
+                ảnh hưởng.
               </p>
             </div>
           </div>
@@ -1272,7 +1326,9 @@ function SlotCell({
       <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#4F8A74] text-white shadow-sm">
         <CheckCircle2 className="h-3 w-3" />
       </span>
-      <span className="text-[8px] uppercase tracking-wide font-extrabold text-[#4F8A74]/90">Giờ rảnh</span>
+      <span className="text-[8px] uppercase tracking-wide font-extrabold text-[#4F8A74]/90">
+        Giờ rảnh
+      </span>
     </button>
   );
 }
@@ -1343,7 +1399,8 @@ function ClientBookings({ trainerId }: { trainerId: string }) {
   const filtered = enriched
     .filter((b) => {
       if (filter === "upcoming") return !b.isPast && b.status !== "cancelled";
-      if (filter === "past") return b.isPast || b.status === "cancelled" || b.status === "completed";
+      if (filter === "past")
+        return b.isPast || b.status === "cancelled" || b.status === "completed";
       return true;
     })
     .filter((b) => {
@@ -1357,9 +1414,15 @@ function ClientBookings({ trainerId }: { trainerId: string }) {
     })
     .sort((a, b) => a.when.getTime() - b.when.getTime());
 
-  const upcomingCount = enriched.filter((b) => !b.isPast && b.status !== "cancelled").length;
-  const completedCount = enriched.filter((b) => b.status === "completed").length;
-  const cancelledCount = enriched.filter((b) => b.status === "cancelled").length;
+  const upcomingCount = enriched.filter(
+    (b) => !b.isPast && b.status !== "cancelled",
+  ).length;
+  const completedCount = enriched.filter(
+    (b) => b.status === "completed",
+  ).length;
+  const cancelledCount = enriched.filter(
+    (b) => b.status === "cancelled",
+  ).length;
 
   const markComplete = (b: PTBooking) => {
     updateBooking(b.id, { status: "completed" });
@@ -1377,9 +1440,21 @@ function ClientBookings({ trainerId }: { trainerId: string }) {
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-3">
-        <StatCard label="Sắp diễn ra" value={String(upcomingCount)} hint="Buổi tập đã đặt trước" />
-        <StatCard label="Đã hoàn thành" value={String(completedCount)} hint="Được đánh dấu hoàn tất" />
-        <StatCard label="Đã hủy" value={String(cancelledCount)} hint="Học viên hoặc hệ thống hủy" />
+        <StatCard
+          label="Sắp diễn ra"
+          value={String(upcomingCount)}
+          hint="Buổi tập đã đặt trước"
+        />
+        <StatCard
+          label="Đã hoàn thành"
+          value={String(completedCount)}
+          hint="Được đánh dấu hoàn tất"
+        />
+        <StatCard
+          label="Đã hủy"
+          value={String(cancelledCount)}
+          hint="Học viên hoặc hệ thống hủy"
+        />
       </div>
 
       <Card className="border-primary/10 shadow-card bg-white/70 backdrop-blur-sm">
@@ -1396,7 +1471,11 @@ function ClientBookings({ trainerId }: { trainerId: string }) {
                       : "text-slate-500 hover:text-slate-800"
                   }`}
                 >
-                  {f === "upcoming" ? "Sắp tới" : f === "past" ? "Đã qua" : "Tất cả"}
+                  {f === "upcoming"
+                    ? "Sắp tới"
+                    : f === "past"
+                      ? "Đã qua"
+                      : "Tất cả"}
                 </button>
               ))}
             </div>
@@ -1415,7 +1494,10 @@ function ClientBookings({ trainerId }: { trainerId: string }) {
           ) : (
             <ul className="divide-y divide-slate-100 rounded-xl border border-slate-100 bg-white">
               {filtered.map((b) => (
-                <li key={b.id} className="flex flex-wrap items-center gap-3 p-4 sm:flex-nowrap">
+                <li
+                  key={b.id}
+                  className="flex flex-wrap items-center gap-3 p-4 sm:flex-nowrap"
+                >
                   <div className="flex min-w-0 flex-1 items-center gap-3">
                     {b.customerAvatar ? (
                       <img
@@ -1433,7 +1515,10 @@ function ClientBookings({ trainerId }: { trainerId: string }) {
                         <span className="truncate text-sm font-bold text-slate-800">
                           {b.customerName ?? "Khách vãng lai"}
                         </span>
-                        <BookingStatusBadge status={b.status ?? "confirmed"} isPast={b.isPast} />
+                        <BookingStatusBadge
+                          status={b.status ?? "confirmed"}
+                          isPast={b.isPast}
+                        />
                       </div>
                       <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] font-medium text-slate-400">
                         {b.customerEmail && (
@@ -1485,8 +1570,12 @@ function ClientBookings({ trainerId }: { trainerId: string }) {
                         <StickyNote className="mr-2 h-4 w-4" /> Ghi chú buổi học
                       </DropdownMenuItem>
                       {b.status !== "completed" && b.status !== "cancelled" && (
-                        <DropdownMenuItem onClick={() => markComplete(b)} className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50">
-                          <CheckCircle2 className="mr-2 h-4 w-4" /> Hoàn thành buổi học
+                        <DropdownMenuItem
+                          onClick={() => markComplete(b)}
+                          className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                        >
+                          <CheckCircle2 className="mr-2 h-4 w-4" /> Hoàn thành
+                          buổi học
                         </DropdownMenuItem>
                       )}
                     </DropdownMenuContent>
@@ -1514,7 +1603,9 @@ function ClientBookings({ trainerId }: { trainerId: string }) {
           {editingNote && (
             <div className="grid gap-3">
               <div className="rounded-lg border bg-slate-50 p-3 text-sm">
-                <div className="font-bold text-slate-800">{editingNote.customerName ?? "Khách vãng lai"}</div>
+                <div className="font-bold text-slate-800">
+                  {editingNote.customerName ?? "Khách vãng lai"}
+                </div>
                 <div className="text-xs text-slate-500 mt-0.5">
                   {new Date(editingNote.date).toLocaleDateString("vi-VN", {
                     weekday: "long",
@@ -1536,7 +1627,12 @@ function ClientBookings({ trainerId }: { trainerId: string }) {
             <Button variant="ghost" onClick={() => setEditingNote(null)}>
               Hủy
             </Button>
-            <Button onClick={saveNote} className="bg-[#4F8A74] hover:bg-[#3f6e5d] text-white">Lưu ghi chú</Button>
+            <Button
+              onClick={saveNote}
+              className="bg-[#4F8A74] hover:bg-[#3f6e5d] text-white"
+            >
+              Lưu ghi chú
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1567,7 +1663,10 @@ function BookingStatusBadge({
   }
   if (isPast) {
     return (
-      <Badge variant="outline" className="text-slate-400 border-slate-200 text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+      <Badge
+        variant="outline"
+        className="text-slate-400 border-slate-200 text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+      >
         Đã qua
       </Badge>
     );
@@ -1648,7 +1747,10 @@ function ClientsList({ trainerId }: { trainerId: string }) {
       <CardContent className="p-0">
         <ul className="divide-y divide-slate-100 bg-white">
           {clients.map((c) => (
-            <li key={c.id} className="flex flex-wrap items-center gap-3 p-4 sm:flex-nowrap">
+            <li
+              key={c.id}
+              className="flex flex-wrap items-center gap-3 p-4 sm:flex-nowrap"
+            >
               {c.avatar ? (
                 <img
                   src={c.avatar}
@@ -1661,7 +1763,9 @@ function ClientsList({ trainerId }: { trainerId: string }) {
                 </div>
               )}
               <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-bold text-slate-800">{c.name}</div>
+                <div className="truncate text-sm font-bold text-slate-800">
+                  {c.name}
+                </div>
                 <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] font-medium text-slate-400">
                   {c.email && (
                     <span className="inline-flex items-center gap-1">
@@ -1677,7 +1781,9 @@ function ClientsList({ trainerId }: { trainerId: string }) {
               </div>
               <div className="flex items-center gap-4 text-xs font-semibold">
                 <div className="text-center min-w-[40px]">
-                  <div className="text-base font-bold text-slate-800">{c.total}</div>
+                  <div className="text-base font-bold text-slate-800">
+                    {c.total}
+                  </div>
                   <div className="text-[9px] uppercase tracking-wider text-slate-400 font-bold">
                     Tổng buổi
                   </div>
@@ -1691,7 +1797,9 @@ function ClientsList({ trainerId }: { trainerId: string }) {
                   </div>
                 </div>
                 <div className="text-center min-w-[40px]">
-                  <div className="text-base font-bold text-emerald-500">{c.upcoming}</div>
+                  <div className="text-base font-bold text-emerald-500">
+                    {c.upcoming}
+                  </div>
                   <div className="text-[9px] uppercase tracking-wider text-slate-400 font-bold">
                     Chờ tập
                   </div>
