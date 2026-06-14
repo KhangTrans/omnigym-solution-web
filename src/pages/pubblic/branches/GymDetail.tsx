@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Navbar } from "@/components/site/Navbar";
 import { Footer } from "@/components/site/Footer";
@@ -10,20 +10,54 @@ import {
   ArrowLeft,
   ChevronLeft,
   ChevronRight,
-  Mail,
-  Award,
   Star,
-  Check,
   Building2,
+  Search,
+  ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { branchesApi } from "@/api/branches";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import BranchMemberships from "./BranchMemberships";
+
+type TrainerSortBy = "rating_desc" | "price_asc" | "price_desc" | "newest";
+
+const TRAINER_SORT_OPTIONS: { value: TrainerSortBy; label: string }[] = [
+  { value: "rating_desc", label: "Đánh giá cao nhất" },
+  { value: "price_asc", label: "Giá thấp → cao" },
+  { value: "price_desc", label: "Giá cao → thấp" },
+  { value: "newest", label: "Mới nhất" },
+];
+
+const formatTrainerPrice = (price: number | null | undefined): string => {
+  if (price === null || price === undefined || Number.isNaN(price) || price <= 0) {
+    return "Liên hệ";
+  }
+  try {
+    return `${new Intl.NumberFormat("vi-VN").format(price)}đ / buổi`;
+  } catch {
+    return `${price}đ / buổi`;
+  }
+};
+
+const buildAvatarFallback = (name: string | null | undefined): string => {
+  const safeName = (name || "Trainer").trim() || "Trainer";
+  return `https://ui-avatars.com/api/?name=${encodeURIComponent(
+    safeName,
+  )}&background=4F8A74&color=fff&size=256`;
+};
 
 interface BranchImage {
   id: number;
@@ -49,6 +83,13 @@ interface Facility {
 interface Trainer {
   id: number;
   bio?: string;
+  specialization?: string | null;
+  rating?: number | string;
+  review_count?: number;
+  hourly_rate?: number | string | null;
+  level?: string | null;
+  avatar_url?: string | null;
+  years_experience?: number;
   user?: {
     full_name: string;
     email: string;
@@ -74,6 +115,7 @@ interface BranchDetail {
     limit: number;
     totalPages: number;
   };
+  trainerSpecializations?: string[];
 }
 
 export default function GymDetail() {
@@ -100,9 +142,16 @@ export default function GymDetail() {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxImageIndex, setLightboxImageIndex] = useState(0);
 
-  // Trainer pagination state
+  // Trainer pagination + filter state (scoped to this branch)
   const [trainerPage, setTrainerPage] = useState(1);
-  const trainerLimit = 3;
+  const trainerLimit = 6;
+  const [trainerSearchInput, setTrainerSearchInput] = useState("");
+  const [trainerSearch, setTrainerSearch] = useState("");
+  const [trainerSpecialization, setTrainerSpecialization] = useState("all");
+  const [trainerSortBy, setTrainerSortBy] = useState<TrainerSortBy>("rating_desc");
+  const [trainerLoading, setTrainerLoading] = useState(false);
+  const [trainerError, setTrainerError] = useState<string | null>(null);
+  const [trainerSpecOptions, setTrainerSpecOptions] = useState<string[]>([]);
 
   // Construct images list
   const heroImages = Array.from(
@@ -196,41 +245,129 @@ export default function GymDetail() {
     }
   };
 
-  const fetchBranchDetail = async (page = 1) => {
+  type TrainerFetchOpts = {
+    page?: number;
+    search?: string;
+    specialization?: string;
+    sortBy?: TrainerSortBy;
+    showFullPageLoading?: boolean;
+  };
+
+  const fetchBranchDetail = async (opts: TrainerFetchOpts = {}) => {
     if (!slug) return;
+    const {
+      page = 1,
+      search = trainerSearch,
+      specialization = trainerSpecialization,
+      sortBy = trainerSortBy,
+      showFullPageLoading = false,
+    } = opts;
+
     try {
-      setLoading(true);
+      if (showFullPageLoading) {
+        setLoading(true);
+      } else {
+        setTrainerLoading(true);
+      }
+      setTrainerError(null);
+
       const response = await branchesApi.getById(slug, {
         trainerPage: page,
         trainerLimit,
+        trainerSearch: search.trim() ? search.trim() : undefined,
+        trainerSpecialization:
+          specialization && specialization !== "all"
+            ? specialization
+            : undefined,
+        trainerSortBy: sortBy,
       });
       const data = response.data?.data ?? response.data;
       setBranch(data);
       setTrainerPage(data?.trainerMeta?.page || 1);
-      if (data?.id) {
+      // Cache distinct specialization options the first time we see them
+      if (
+        Array.isArray(data?.trainerSpecializations) &&
+        data.trainerSpecializations.length > 0 &&
+        trainerSpecOptions.length === 0
+      ) {
+        setTrainerSpecOptions(data.trainerSpecializations);
+      }
+      if (data?.id && showFullPageLoading) {
         fetchReviewsAndStats(data.id);
         checkUserReviewStatus(data.id);
       }
     } catch (error) {
       console.error("Failed to load branch detail:", error);
-      toast.error("Không thể tải chi tiết phòng tập.");
+      if (showFullPageLoading) {
+        toast.error("Không thể tải chi tiết phòng tập.");
+      } else {
+        setTrainerError("Không thể tải danh sách huấn luyện viên.");
+      }
     } finally {
-      setLoading(false);
+      if (showFullPageLoading) {
+        setLoading(false);
+      } else {
+        setTrainerLoading(false);
+      }
     }
   };
 
+  // Initial load: fetch branch detail with current default filters
   useEffect(() => {
-    fetchBranchDetail(1);
+    fetchBranchDetail({ page: 1, showFullPageLoading: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug]);
+
+  // Debounce search input → trainerSearch
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setTrainerSearch(trainerSearchInput);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [trainerSearchInput]);
+
+  // Re-fetch trainers (only) when filter/search/sort changes — skip first render
+  const isFirstFilterRun = useRef(true);
+  useEffect(() => {
+    if (isFirstFilterRun.current) {
+      isFirstFilterRun.current = false;
+      return;
+    }
+    fetchBranchDetail({
+      page: 1,
+      search: trainerSearch,
+      specialization: trainerSpecialization,
+      sortBy: trainerSortBy,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trainerSearch, trainerSpecialization, trainerSortBy]);
 
   const handleTrainerPageChange = (page: number) => {
     if (
       branch?.trainerMeta &&
       page >= 1 &&
-      page <= branch.trainerMeta.totalPages
+      page <= branch.trainerMeta.totalPages &&
+      !trainerLoading
     ) {
-      fetchBranchDetail(page);
+      fetchBranchDetail({
+        page,
+        search: trainerSearch,
+        specialization: trainerSpecialization,
+        sortBy: trainerSortBy,
+      });
     }
+  };
+
+  const hasActiveTrainerFilters =
+    trainerSearchInput.trim() !== "" ||
+    trainerSpecialization !== "all" ||
+    trainerSortBy !== "rating_desc";
+
+  const handleResetTrainerFilters = () => {
+    setTrainerSearchInput("");
+    setTrainerSearch("");
+    setTrainerSpecialization("all");
+    setTrainerSortBy("rating_desc");
   };
 
   if (loading && !branch) {
@@ -483,98 +620,246 @@ export default function GymDetail() {
         </section>
       )}
 
-      {/* SECTION 3: PERSONAL TRAINERS */}
+      {/* SECTION 3: PERSONAL TRAINERS (filterable, paginated) */}
       <section className="bg-slate-50/50 py-20 border-y border-slate-100">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex items-end justify-between border-b border-slate-100 pb-5 mb-10">
+          <div className="flex items-end justify-between mb-6">
             <div>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+              <h2 className="text-2xl font-bold tracking-tight text-slate-900">
                 Huấn luyện viên cá nhân
               </h2>
-              <p className="mt-2 text-sm text-slate-500">
-                Đặt lịch tập 1:1 cùng đội ngũ huấn luyện viên được chứng nhận
-                chuẩn quốc tế.
+              <p className="mt-1 text-sm text-muted-foreground">
+                Đặt lịch tập 1:1 cùng đội ngũ huấn luyện viên được chứng nhận.
               </p>
             </div>
-            <span className="text-sm font-semibold text-slate-400 shrink-0">
+            <span className="text-sm text-muted-foreground shrink-0">
               {branch.trainerMeta?.total || 0} HLV
             </span>
           </div>
 
-          {!branch.trainers || branch.trainers.length === 0 ? (
+          {/* Filter bar (search + specialization + sort + reset) */}
+          <div className="mb-8 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+            <div className="grid gap-3 md:grid-cols-4">
+              <div className="relative md:col-span-2">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Input
+                  type="text"
+                  placeholder="Tìm theo tên hoặc chuyên môn..."
+                  className="w-full border-slate-200 bg-slate-50 pl-10 pr-4 text-slate-800 placeholder:text-slate-400 focus-visible:ring-emerald-500"
+                  value={trainerSearchInput}
+                  onChange={(e) => setTrainerSearchInput(e.target.value)}
+                />
+              </div>
+
+              <Select
+                value={trainerSpecialization}
+                onValueChange={(val) => setTrainerSpecialization(val)}
+              >
+                <SelectTrigger className="w-full border-slate-200 bg-slate-50 text-slate-800 focus:ring-emerald-500">
+                  <SelectValue placeholder="Chuyên môn" />
+                </SelectTrigger>
+                <SelectContent className="bg-white text-slate-800 border-slate-100">
+                  <SelectItem value="all">Tất cả chuyên môn</SelectItem>
+                  {trainerSpecOptions.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {s}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={trainerSortBy}
+                onValueChange={(val) => setTrainerSortBy(val as TrainerSortBy)}
+              >
+                <SelectTrigger className="w-full border-slate-200 bg-slate-50 text-slate-800 focus:ring-emerald-500">
+                  <SelectValue placeholder="Sắp xếp" />
+                </SelectTrigger>
+                <SelectContent className="bg-white text-slate-800 border-slate-100">
+                  {TRAINER_SORT_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="mt-4 flex items-center justify-between gap-3 flex-wrap">
+              <span className="text-xs text-slate-500">
+                {trainerLoading
+                  ? "Đang tải..."
+                  : `Hiển thị ${branch.trainers?.length || 0} / ${branch.trainerMeta?.total || 0} HLV`}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleResetTrainerFilters}
+                disabled={!hasActiveTrainerFilters || trainerLoading}
+                className="h-8 border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg"
+              >
+                Đặt lại bộ lọc
+              </Button>
+            </div>
+          </div>
+
+          {/* Listing */}
+          {trainerError ? (
+            <div className="text-center py-12 text-rose-500 bg-white rounded-2xl border border-rose-100">
+              <p>{trainerError}</p>
+              <Button
+                size="sm"
+                variant="outline"
+                className="mt-4 border-slate-200 text-slate-700 hover:bg-slate-50"
+                onClick={() =>
+                  fetchBranchDetail({
+                    page: 1,
+                    search: trainerSearch,
+                    specialization: trainerSpecialization,
+                    sortBy: trainerSortBy,
+                  })
+                }
+              >
+                Thử lại
+              </Button>
+            </div>
+          ) : trainerLoading && (!branch.trainers || branch.trainers.length === 0) ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="animate-pulse rounded-2xl border border-border bg-card p-0 overflow-hidden shadow-sm"
+                >
+                  <div className="aspect-[4/5] w-full bg-slate-100" />
+                  <div className="p-4 space-y-2">
+                    <div className="h-4 w-2/3 rounded bg-slate-100" />
+                    <div className="h-3 w-1/2 rounded bg-slate-100" />
+                    <div className="h-3 w-1/3 rounded bg-slate-100 mt-3" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : !branch.trainers || branch.trainers.length === 0 ? (
             <div className="text-center py-12 text-slate-400 italic bg-white rounded-2xl border border-slate-100">
-              Hiện tại chưa có HLV thuộc chi nhánh này.
+              {hasActiveTrainerFilters
+                ? "Không tìm thấy HLV phù hợp với bộ lọc. Hãy thử đổi từ khóa hoặc đặt lại bộ lọc."
+                : "Hiện tại chưa có HLV thuộc chi nhánh này."}
             </div>
           ) : (
             <div className="space-y-10">
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {branch.trainers.map((trainer) => {
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                {branch.trainers.map((trainer, i) => {
+                  const trainerName =
+                    trainer.user?.full_name?.trim() || "Huấn luyện viên";
                   const avatar =
+                    trainer.avatar_url ||
                     trainer.user?.avatar_url ||
-                    `https://ui-avatars.com/api/?name=${encodeURIComponent(trainer.user?.full_name || "Trainer")}&background=4F8A74&color=fff`;
+                    buildAvatarFallback(trainerName);
+                  const specialization = trainer.specialization || null;
+                  const ratingNum = Number(trainer.rating ?? 0);
+                  const reviewCount = trainer.review_count ?? 0;
+                  const hourly =
+                    trainer.hourly_rate === null ||
+                    trainer.hourly_rate === undefined
+                      ? null
+                      : Number(trainer.hourly_rate);
+                  const ratingDisplay =
+                    Number.isFinite(ratingNum) && ratingNum > 0
+                      ? ratingNum.toFixed(1)
+                      : "—";
+                  const titleLine =
+                    specialization ||
+                    (trainer.level
+                      ? `${trainer.level} Trainer`
+                      : "Personal Trainer");
+                  // Build up to 2 specialty chips: prefer split specialization,
+                  // fallback to level chip.
+                  const specialtyChips: string[] = (() => {
+                    if (specialization) {
+                      const parts = specialization
+                        .split(/[,/&]/)
+                        .map((s) => s.trim())
+                        .filter(Boolean);
+                      if (parts.length > 0) return parts.slice(0, 2);
+                    }
+                    if (trainer.level) return [trainer.level];
+                    return [];
+                  })();
+
                   return (
-                    <Card
+                    <motion.div
                       key={trainer.id}
-                      className="group overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm hover:shadow-xl transition-all duration-300"
+                      initial={{ opacity: 0, y: 16 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.35, delay: i * 0.05 }}
                     >
-                      {/* Trainer Avatar Photo */}
-                      <div className="relative h-80 w-full overflow-hidden bg-slate-100">
-                        <img
-                          src={avatar}
-                          alt={trainer.user?.full_name}
-                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                        />
-                        {/* Rating Overlay */}
-                        <div className="absolute bottom-4 left-4 rounded-full bg-white/95 px-2.5 py-0.5 text-xs font-bold text-slate-800 shadow-sm flex items-center gap-1">
-                          <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                          <span>4.9</span>
+                      <Link
+                        to={`/trainers/${trainer.id}`}
+                        className="group flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-transform hover:-translate-y-1 hover:shadow-md"
+                      >
+                        <div className="relative aspect-[4/5] overflow-hidden bg-slate-100">
+                          <img
+                            src={avatar}
+                            alt={trainerName}
+                            loading="lazy"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src =
+                                buildAvatarFallback(trainerName);
+                            }}
+                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          />
+                          <div className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-background/90 backdrop-blur px-2 py-0.5 text-xs font-semibold">
+                            <Star className="h-3 w-3 fill-primary text-primary" />
+                            {ratingDisplay}
+                          </div>
                         </div>
-                      </div>
-
-                      {/* Content details below */}
-                      <CardContent className="p-5 space-y-3">
-                        <div className="space-y-1">
-                          <h4 className="font-bold text-slate-850 text-base flex items-center gap-1.5">
-                            <Award className="h-4 w-4 text-emerald-600 shrink-0" />
-                            <span>{trainer.user?.full_name}</span>
-                          </h4>
-                          <p className="text-xs text-slate-500">
-                            {trainer.bio ||
-                              "Chuyên gia Thể hình & Giảm mỡ thừa"}
+                        <div className="flex flex-1 flex-col p-4">
+                          <h3 className="font-bold leading-tight line-clamp-1">
+                            {trainerName}
+                          </h3>
+                          <p
+                            className="text-xs text-muted-foreground line-clamp-1"
+                            title={titleLine}
+                          >
+                            {titleLine}
                           </p>
+                          {specialtyChips.length > 0 && (
+                            <div className="mt-3 flex flex-wrap gap-1">
+                              {specialtyChips.map((s) => (
+                                <span
+                                  key={s}
+                                  className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-secondary-foreground"
+                                >
+                                  {s}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          <div className="mt-auto pt-4 flex items-center justify-between text-xs">
+                            <span className="text-muted-foreground">
+                              {formatTrainerPrice(hourly)}
+                              {reviewCount > 0
+                                ? ` · ${reviewCount} đánh giá`
+                                : ""}
+                            </span>
+                            <span className="inline-flex items-center gap-1 font-semibold text-primary">
+                              Xem
+                              <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-1" />
+                            </span>
+                          </div>
                         </div>
-
-                        {/* Specialization Badges */}
-                        <div className="flex flex-wrap gap-1.5 pt-1">
-                          <Badge className="bg-slate-100 text-slate-650 hover:bg-slate-100 rounded-md text-[10px] px-2 py-0.5 font-medium border-none shadow-none">
-                            Thể hình
-                          </Badge>
-                          <Badge className="bg-slate-100 text-slate-650 hover:bg-slate-100 rounded-md text-[10px] px-2 py-0.5 font-medium border-none shadow-none">
-                            Giảm cân
-                          </Badge>
-                        </div>
-
-                        {/* Card bottom row pricing / action */}
-                        <div className="flex items-center justify-between pt-3 border-t border-slate-50">
-                          <span className="text-xs text-slate-400 font-medium">
-                            350.000đ/giờ
-                          </span>
-                          <span className="text-xs font-bold text-emerald-600 hover:text-emerald-700 cursor-pointer transition-colors">
-                            Xem chi tiết →
-                          </span>
-                        </div>
-                      </CardContent>
-                    </Card>
+                      </Link>
+                    </motion.div>
                   );
                 })}
               </div>
 
               {/* Trainer Pagination Controls */}
               {branch.trainerMeta && branch.trainerMeta.totalPages > 1 && (
-                <div className="flex items-center justify-center gap-3">
+                <div className="flex items-center justify-center gap-3 flex-wrap">
                   <Button
                     variant="outline"
-                    disabled={trainerPage === 1}
+                    disabled={trainerPage === 1 || trainerLoading}
                     onClick={() => handleTrainerPageChange(trainerPage - 1)}
                     className="h-9 px-3.5 border-slate-200 hover:bg-slate-50 text-slate-700"
                   >
@@ -588,7 +873,10 @@ export default function GymDetail() {
 
                   <Button
                     variant="outline"
-                    disabled={trainerPage === branch.trainerMeta.totalPages}
+                    disabled={
+                      trainerPage === branch.trainerMeta.totalPages ||
+                      trainerLoading
+                    }
                     onClick={() => handleTrainerPageChange(trainerPage + 1)}
                     className="h-9 px-3.5 border-slate-200 hover:bg-slate-50 text-slate-700"
                   >

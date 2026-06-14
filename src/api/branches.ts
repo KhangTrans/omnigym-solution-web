@@ -47,7 +47,16 @@ export const branchesApi = {
     return api.get('/branches', { params });
   },
   
-  getById: (id: string | number, params?: { trainerPage?: number; trainerLimit?: number }) => {
+  getById: (
+    id: string | number,
+    params?: {
+      trainerPage?: number;
+      trainerLimit?: number;
+      trainerSearch?: string;
+      trainerSpecialization?: string;
+      trainerSortBy?: 'rating_desc' | 'price_asc' | 'price_desc' | 'newest';
+    },
+  ) => {
     return api.get(`/branches/${id}`, { params });
   },
 
