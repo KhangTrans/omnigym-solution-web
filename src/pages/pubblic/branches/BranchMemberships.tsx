@@ -60,9 +60,11 @@ export default function BranchMemberships({
             return true;
           return false;
         });
-        activePackages.sort(
-          (a, b) => parseFloat(a.price) - parseFloat(b.price),
-        );
+        activePackages.sort((a, b) => {
+          const priceA = parseFloat(String(a.price).replace(/\./g, ""));
+          const priceB = parseFloat(String(b.price).replace(/\./g, ""));
+          return priceA - priceB;
+        });
         setPackages(activePackages);
       } catch (error) {
         console.error("Failed to load membership packages:", error);
@@ -193,7 +195,7 @@ export default function BranchMemberships({
               )}
 
               {/* Track */}
-              <div className="overflow-hidden px-1 py-4">
+              <div className="overflow-hidden px-2 py-12 -my-8">
                 <div
                   ref={trackRef}
                   className="flex gap-6 transition-transform duration-400 ease-in-out"
@@ -216,7 +218,7 @@ export default function BranchMemberships({
                     return (
                       <div
                         key={pkg.id}
-                        className="flex-none transition-all duration-400"
+                        className="flex-none transition-all duration-400 flex flex-col"
                         style={{
                           width: `calc(${100 / visibleCount}% - ${((visibleCount - 1) * 24) / visibleCount}px)`,
                           transform: isCenter
@@ -226,9 +228,9 @@ export default function BranchMemberships({
                         }}
                       >
                         <Card
-                          className={`relative flex flex-col justify-between p-8 rounded-3xl border bg-white h-full transition-all duration-300 ${
+                          className={`relative flex flex-col justify-between p-8 rounded-3xl border bg-white h-full min-h-[520px] transition-all duration-300 ${
                             isCenter
-                              ? "border-emerald-500 shadow-2xl ring-2 ring-emerald-500/25"
+                              ? "border-primary shadow-glow ring-2 ring-primary/20 opacity-100"
                               : "border-slate-100 shadow-sm opacity-80 hover:opacity-100"
                           }`}
                         >
@@ -260,7 +262,11 @@ export default function BranchMemberships({
                                     key={idx}
                                     className="flex items-start gap-2.5 text-xs text-slate-600"
                                   >
-                                    <span className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-50 text-emerald-700 shrink-0 mt-0.5">
+                                    <span className={`flex h-4 w-4 items-center justify-center rounded-full shrink-0 mt-0.5 ${
+                                      isCenter
+                                        ? "bg-primary/10 text-primary"
+                                        : "bg-emerald-50 text-emerald-700"
+                                    }`}>
                                       <Check className="h-2.5 w-2.5" />
                                     </span>
                                     <span>{feat}</span>
@@ -270,14 +276,37 @@ export default function BranchMemberships({
                             )}
                           </div>
 
-                          <div className="pt-8">
+                          <div className="pt-8 space-y-2">
                             <Button
                               onClick={() => handleRegister(pkg)}
-                              variant={isCenter ? "emerald" : "emerald-outline"}
+                              variant={isCenter ? "default" : "emerald-outline"}
                               className="w-full font-bold rounded-full py-5 transition-all duration-400 hover:scale-[1.02]"
                             >
                               Đăng ký {pkg.name}
                             </Button>
+                            {(() => {
+                              if (pkg.apply_to_all) {
+                                return (
+                                  <p className="text-[11px] text-slate-400 text-center leading-snug">
+                                    (Áp dụng cho tất cả chi nhánh)
+                                  </p>
+                                );
+                              }
+                              const otherBranches = (pkg.branches || []).filter(
+                                (b) => b.id !== branchId,
+                              );
+                              if (otherBranches.length === 0) return null;
+                              const branchNames = otherBranches
+                                .map((b) => b.branch_name || b.name)
+                                .filter(Boolean)
+                                .join(", ");
+                              if (!branchNames) return null;
+                              return (
+                                <p className="text-[11px] text-slate-400 text-center leading-snug">
+                                  (Áp dụng cho chi nhánh: {branchNames})
+                                </p>
+                              );
+                            })()}
                           </div>
                         </Card>
                       </div>

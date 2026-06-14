@@ -90,6 +90,12 @@ const NAV: NavItem[] = [
     group: "Operations",
   },
   {
+    to: "/admin/trainers",
+    label: "Danh sách Trainer",
+    icon: Users,
+    group: "Operations",
+  },
+  {
     to: "/admin/shift-attendance",
     label: "Điểm danh ca trực",
     icon: ClipboardCheck,
