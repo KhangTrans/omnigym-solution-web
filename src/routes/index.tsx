@@ -33,6 +33,7 @@ import TrainerApplicationList from "@/pages/admin/trainer_applications/TrainerAp
 import Gyms from "../pages/pubblic/branches/Gyms";
 import GymDetail from "../pages/pubblic/branches/GymDetail";
 import ShiftAttendance from "../pages/staffs/ShiftAttendance";
+import StaffSchedule from "../pages/staffs/StaffSchedule";
 import AttendanceManagement from "../pages/admin/attendance_management/AttendanceManagement";
 import Checkout from "../pages/customers/transaction/Checkout";
 import PaymentSuccess from "../pages/customers/transaction/PaymentSuccess";
@@ -168,6 +169,14 @@ export const routesConfig: RouteObject[] = [
         element: (
           <RoleOnly allow={["branchmanager"]}>
             <BranchManagerStaff />
+          </RoleOnly>
+        ),
+      },
+      {
+        path: "staff-schedule",
+        element: (
+          <RoleOnly allow={["staff"]}>
+            <StaffSchedule />
           </RoleOnly>
         ),
       },
