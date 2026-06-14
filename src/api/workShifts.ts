@@ -44,6 +44,10 @@ export const workShiftsApi = {
     return api.get<{ data: WorkShift[] }>('/work-shifts', { params });
   },
 
+  getMyShifts: (params?: { date?: string }) => {
+    return api.get<{ message: string; data: WorkShift[] }>('/work-shifts/me', { params });
+  },
+
   create: (data: CreateShiftRequest) => {
     return api.post<{ data: WorkShift }>('/work-shifts', data);
   },

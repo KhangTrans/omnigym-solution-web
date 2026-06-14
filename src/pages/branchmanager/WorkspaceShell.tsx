@@ -33,6 +33,7 @@ const NAV: NavItem[] = [
   { to: "/branchmanager/attendance", label: "Attendance", icon: ScanFace },
   { to: "/branchmanager/customer-checkin", label: "Customer Check-in", icon: CalendarCheck2 },
   { to: "/branchmanager/users", label: "Users", icon: Users, roles: ["branchmanager"] },
+  { to: "/branchmanager/staff-schedule", label: "Lịch làm việc", icon: CalendarCheck2, roles: ["staff"] },
   { to: "/branchmanager/staff-attendance", label: "Staff Attendance", icon: ScanFace, roles: ["staff"] },
   { to: "/branchmanager/revenue", label: "Revenue", icon: DollarSign },
 ];
