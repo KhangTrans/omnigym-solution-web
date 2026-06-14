@@ -5,6 +5,19 @@ export type ApiRole = {
   role_name: string;
 };
 
+export type ApiStaffInfo = {
+  id?: number;
+  user_id?: number;
+  branch_id?: number | null;
+  department?: string | null;
+};
+
+export type ApiTrainerInfo = {
+  id?: number;
+  user_id?: number;
+  branch_id?: number | null;
+};
+
 export type ApiUser = {
   id: number;
   email?: string;
@@ -13,6 +26,8 @@ export type ApiUser = {
   status?: string;
   created_at?: string;
   role?: ApiRole;
+  staff?: ApiStaffInfo | null;
+  trainer?: ApiTrainerInfo | null;
 };
 
 export type UserStatus = 'active' | 'locked';

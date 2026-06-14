@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { 
   Calendar, 
   Clock, 
@@ -16,7 +16,10 @@ import {
   RefreshCw,
   CheckCircle,
   XCircle,
-  CalendarCheck
+  CalendarCheck,
+  Sparkles,
+  CalendarPlus,
+  ArrowRight
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -48,12 +51,14 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { workShiftsApi, type WorkShift } from "@/api/workShifts";
+import { workShiftsApi, type ShiftTemplate, type WorkShift } from "@/api/workShifts";
+import { baseSchedulesApi, type BaseScheduleSetupItem } from "@/api/baseSchedules";
 import { attendanceApi, type AttendanceRecord } from "@/api/attendance";
 import { branchesApi } from "@/api/branches";
 import { usersApi, type ApiUser } from "@/api/users";
 import { toast } from "sonner";
 import { cn } from "@/utils/cn";
+import { staffAPI, StaffUser } from "@/api/staffs";
 
 export default function AttendanceManagement() {
   const userData = localStorage.getItem("user");
@@ -76,7 +81,8 @@ export default function AttendanceManagement() {
 
   const [activeTab, setActiveTab] = useState("shifts");
   const [branches, setBranches] = useState<any[]>([]);
-  const [staffList, setStaffList] = useState<ApiUser[]>([]);
+  const [staffList, setStaffList] = useState<StaffUser[]>([]);
+  const [shiftTemplates, setShiftTemplates] = useState<ShiftTemplate[]>([]);
   
   // Filtering & selection state
   const [filterDate, setFilterDate] = useState(getTodayDateString());
@@ -99,10 +105,9 @@ export default function AttendanceManagement() {
     user_id: "",
     branch_id: "",
     date: getTodayDateString(),
-    start_time: "08:00",
-    end_time: "17:00",
+    shift_id: "",
     check_in_code: "",
-    status: "scheduled" as 'scheduled' | 'completed' | 'cancelled'
+    status: "scheduled" as 'scheduled' | 'off_approved' | 'completed' | 'cancelled'
   });
 
   // Dialog states for attendance edits
@@ -114,6 +119,24 @@ export default function AttendanceManagement() {
     status: "present" as 'present' | 'absent' | 'late' | 'excused',
     notes: ""
   });
+
+  // ============================================================
+  // Onboarding wizard state (Step 1 + Step 2 trong luồng tạo lịch).
+  // Step 1: setup base_schedules (POST /api/base-schedules/setup).
+  // Step 2: activate-first-week (POST /api/work-shifts/activate-first-week).
+  // ============================================================
+  type OnboardDayItem = { day_of_week: number; shift_id: string }; // shift_id = "" nghĩa là ngày nghỉ.
+  const buildEmptyOnboardDays = (): OnboardDayItem[] =>
+    [1, 2, 3, 4, 5, 6, 7].map((d) => ({ day_of_week: d, shift_id: "" }));
+
+  const [onboardDialogOpen, setOnboardDialogOpen] = useState(false);
+  const [onboardStep, setOnboardStep] = useState<1 | 2>(1);
+  const [onboardUserId, setOnboardUserId] = useState<string>("");
+  const [onboardDays, setOnboardDays] = useState<OnboardDayItem[]>(buildEmptyOnboardDays());
+  const [onboardStartDate, setOnboardStartDate] = useState<string>(getTodayDateString());
+  const [submittingBaseSchedules, setSubmittingBaseSchedules] = useState(false);
+  const [activatingFirstWeek, setActivatingFirstWeek] = useState(false);
+  const [generatingNextWeek, setGeneratingNextWeek] = useState(false);
 
   function getTodayDateString() {
     const today = new Date();
@@ -127,12 +150,17 @@ export default function AttendanceManagement() {
   useEffect(() => {
     const fetchMeta = async () => {
       try {
-        const [branchesRes, usersRes] = await Promise.all([
-          branchesApi.getAll(),
-          isStaff ? Promise.resolve({ data: { data: [] } }) : usersApi.list({ role: "Staff", limit: 100 })
+        const [branchesRes, usersRes, templatesRes] = await Promise.all([
+          branchesApi.getAll(), staffAPI.list(),
+          workShiftsApi.listTemplates()
         ]);
         setBranches(Array.isArray(branchesRes.data) ? branchesRes.data : (branchesRes.data?.data ?? []));
         setStaffList(usersRes?.data?.data || []);
+        console.log("tetsss staff", staffList);
+        console.log("aaaa", usersRes?.data?.data || []);
+        
+        
+        setShiftTemplates(templatesRes.data?.data || []);
       } catch (err) {
         console.error("Meta fetch error:", err);
       }
@@ -216,12 +244,21 @@ export default function AttendanceManagement() {
 
   const handleOpenCreateShift = () => {
     setSelectedShift(null);
+    // Mặc định chi nhánh = chi nhánh đang lọc trên toolbar; nếu "all" thì lấy chi nhánh đầu tiên.
+    const defaultBranchId =
+      filterBranchId !== "all"
+        ? filterBranchId
+        : branches[0]?.id
+        ? String(branches[0].id)
+        : "";
+    const firstStaffInBranch = defaultBranchId
+      ? staffList.find((u) => String(u.staff?.branch_id ?? "") === defaultBranchId)
+      : staffList[0];
     setShiftForm({
-      user_id: staffList[0]?.id ? String(staffList[0].id) : "",
-      branch_id: branches[0]?.id ? String(branches[0].id) : "",
+      user_id: firstStaffInBranch?.id ? String(firstStaffInBranch.id) : "",
+      branch_id: defaultBranchId,
       date: filterDate,
-      start_time: "08:00",
-      end_time: "17:00",
+      shift_id: shiftTemplates[0]?.id ? String(shiftTemplates[0].id) : "",
       check_in_code: "",
       status: "scheduled"
     });
@@ -238,8 +275,7 @@ export default function AttendanceManagement() {
       user_id: String(shift.user_id),
       branch_id: String(shift.branch_id),
       date: shift.date,
-      start_time: shift.start_time.slice(0, 5),
-      end_time: shift.end_time.slice(0, 5),
+      shift_id: shift.shift_id ? String(shift.shift_id) : "",
       check_in_code: shift.check_in_code,
       status: shift.status
     });
@@ -248,7 +284,7 @@ export default function AttendanceManagement() {
 
   const handleShiftSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!shiftForm.user_id || !shiftForm.branch_id || !shiftForm.date || !shiftForm.start_time || !shiftForm.end_time || !shiftForm.check_in_code) {
+    if (!shiftForm.user_id || !shiftForm.branch_id || !shiftForm.date || !shiftForm.shift_id) {
       toast.error("Vui lòng nhập đầy đủ thông tin");
       return;
     }
@@ -259,17 +295,15 @@ export default function AttendanceManagement() {
         user_id: Number(shiftForm.user_id),
         branch_id: Number(shiftForm.branch_id),
         date: shiftForm.date,
-        start_time: shiftForm.start_time + ":00",
-        end_time: shiftForm.end_time + ":00",
-        check_in_code: shiftForm.check_in_code
+        shift_id: Number(shiftForm.shift_id),
+        check_in_code: shiftForm.check_in_code || undefined
       };
 
       if (selectedShift) {
         // Edit
         await workShiftsApi.update(selectedShift.id, {
           date: payload.date,
-          start_time: payload.start_time,
-          end_time: payload.end_time,
+          shift_id: payload.shift_id,
           check_in_code: payload.check_in_code,
           status: shiftForm.status
         });
@@ -302,6 +336,133 @@ export default function AttendanceManagement() {
       toast.error(err.response?.data?.message || "Xóa ca trực thất bại");
     } finally {
       setLoadingShifts(false);
+    }
+  };
+
+  // ============================================================
+  // Onboarding wizard handlers.
+  // ============================================================
+  const DAY_LABELS: Record<number, string> = {
+    1: "Thứ 2",
+    2: "Thứ 3",
+    3: "Thứ 4",
+    4: "Thứ 5",
+    5: "Thứ 6",
+    6: "Thứ 7",
+    7: "Chủ Nhật",
+  };
+
+  const handleOpenOnboardWizard = () => {
+    setOnboardStep(1);
+    // Khi toolbar đã chọn 1 chi nhánh cụ thể, ưu tiên nhân viên thuộc chi nhánh đó.
+    const firstStaffInBranch =
+      filterBranchId !== "all"
+        ? staffList.find((u) => String(u.staff?.branch_id ?? "") === filterBranchId)
+        : staffList[0];
+    setOnboardUserId(firstStaffInBranch?.id ? String(firstStaffInBranch.id) : "");
+    setOnboardDays(buildEmptyOnboardDays());
+    setOnboardStartDate(getTodayDateString());
+    setOnboardDialogOpen(true);
+  };
+
+  const handleOnboardDayChange = (dayOfWeek: number, value: string) => {
+    // Giá trị "off" trong UI tương đương ngày nghỉ cố định -> shift_id = "".
+    const normalized = value === "off" ? "" : value;
+    setOnboardDays((prev) =>
+      prev.map((it) => (it.day_of_week === dayOfWeek ? { ...it, shift_id: normalized } : it)),
+    );
+  };
+
+  const handleSubmitBaseSchedules = async () => {
+    if (!onboardUserId) {
+      toast.error("Vui lòng chọn nhân viên cần setup khung lịch.");
+      return;
+    }
+
+    const items: BaseScheduleSetupItem[] = onboardDays
+      .filter((d) => d.shift_id !== "")
+      .map((d) => ({ day_of_week: d.day_of_week, shift_id: Number(d.shift_id) }));
+
+    if (items.length === 0) {
+      toast.error("Vui lòng chọn ít nhất 1 ngày đi làm trong tuần.");
+      return;
+    }
+
+    try {
+      setSubmittingBaseSchedules(true);
+      await baseSchedulesApi.setup({
+        user_id: Number(onboardUserId),
+        items,
+      });
+      toast.success("Đã lưu khung lịch chuẩn cho nhân viên.");
+      setOnboardStep(2);
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Không thể lưu khung lịch.");
+    } finally {
+      setSubmittingBaseSchedules(false);
+    }
+  };
+
+  const handleActivateFirstWeek = async () => {
+    if (!onboardUserId) {
+      toast.error("Thiếu nhân viên để kích hoạt lịch.");
+      return;
+    }
+    if (!onboardStartDate) {
+      toast.error("Vui lòng chọn ngày bắt đầu đi làm.");
+      return;
+    }
+
+    try {
+      setActivatingFirstWeek(true);
+      const res = await workShiftsApi.activateFirstWeek({
+        user_id: Number(onboardUserId),
+        start_date: onboardStartDate,
+      });
+      const data = res.data?.data;
+      if (data) {
+        toast.success(
+          `Đã kích hoạt lịch tuần đầu: ${data.generated} ca làm, ${data.off_approved} ngày nghỉ phép, ${data.skipped} bỏ qua.`,
+        );
+      } else {
+        toast.success("Đã kích hoạt lịch tuần đầu cho nhân viên.");
+      }
+      setOnboardDialogOpen(false);
+      fetchShifts();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Không thể kích hoạt lịch tuần đầu.");
+    } finally {
+      setActivatingFirstWeek(false);
+    }
+  };
+
+  const handleTriggerGenerateNextWeek = async () => {
+    if (
+      !window.confirm(
+        "Bạn có chắc chắn muốn sinh lịch tuần kế tiếp ngay bây giờ? Job tự động đã chạy 00:00 Thứ 7 hàng tuần.",
+      )
+    ) {
+      return;
+    }
+    try {
+      setGeneratingNextWeek(true);
+      const res = await workShiftsApi.triggerGenerateNextWeek();
+      const data = res.data?.data;
+      if (data) {
+        toast.success(
+          `Sinh lịch tuần ${data.range.start} → ${data.range.end}: ${data.generated} ca, ${data.off_approved} nghỉ phép, ${data.skipped} bỏ qua.`,
+        );
+      } else {
+        toast.success("Đã sinh lịch tuần kế tiếp.");
+      }
+      fetchShifts();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Không thể sinh lịch tuần kế tiếp.");
+    } finally {
+      setGeneratingNextWeek(false);
     }
   };
 
@@ -381,6 +542,59 @@ export default function AttendanceManagement() {
     }
   };
 
+  const getWorkShiftTime = (shift: WorkShift) => {
+    const template = shift.shift || shiftTemplates.find((item) => item.id === shift.shift_id);
+    const start = template?.start_time || shift.start_time;
+    const end = template?.end_time || shift.end_time;
+    return start && end ? `${start.slice(0, 5)} - ${end.slice(0, 5)}` : "Chưa chọn ca";
+  };
+
+  // ============================================================
+  // Lọc danh sách nhân viên theo chi nhánh đang chọn.
+  // - Form "Thêm ca lẻ": dựa trên branch_id của form (selectedShift cho phép giữ user gốc).
+  // - Wizard onboarding: dựa trên chi nhánh đang lọc trên toolbar (filterBranchId).
+  // Nếu chi nhánh chưa được chọn ("" hoặc "all") -> hiển thị toàn bộ staff.
+  // ============================================================
+  const filterStaffByBranch = (
+    list: ApiUser[],
+    branchId: string,
+    keepUserId?: string,
+  ): ApiUser[] => {
+    if (!branchId || branchId === "all") return list;
+    return list.filter((u) => {
+      if (keepUserId && String(u.id) === keepUserId) return true; // Đảm bảo user đang chọn không bị ẩn
+      return String(u.staff?.branch_id ?? "") === branchId;
+    });
+  };
+
+  const staffForShiftForm = useMemo(
+    () => filterStaffByBranch(staffList, shiftForm.branch_id, shiftForm.user_id),
+    [staffList, shiftForm.branch_id, shiftForm.user_id],
+  );
+
+  const staffForOnboard = useMemo(
+    () => filterStaffByBranch(staffList, filterBranchId, onboardUserId),
+    [staffList, filterBranchId, onboardUserId],
+  );
+
+  const handleShiftBranchChange = (newBranchId: string) => {
+    setShiftForm((prev) => {
+      // Nếu user hiện tại không còn thuộc chi nhánh mới -> reset về staff đầu tiên trong CN.
+      const currentUser = staffList.find((u) => String(u.id) === prev.user_id);
+      const stillBelongs =
+        !!currentUser &&
+        String(currentUser.staff?.branch_id ?? "") === newBranchId;
+      const fallback = stillBelongs
+        ? prev.user_id
+        : staffList.find((u) => String(u.staff?.branch_id ?? "") === newBranchId)?.id;
+      return {
+        ...prev,
+        branch_id: newBranchId,
+        user_id: fallback ? String(fallback) : "",
+      };
+    });
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in-0 duration-500">
       {/* Title block */}
@@ -447,12 +661,38 @@ export default function AttendanceManagement() {
                 <CardDescription>Thời gian xếp ca: {new Date(filterDate).toLocaleDateString("vi-VN")}</CardDescription>
               </div>
               {!isStaff && (
-                <Button 
-                  onClick={handleOpenCreateShift}
-                  className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs h-9 px-4 rounded-xl shadow-sm"
-                >
-                  <Plus className="mr-1 h-4 w-4" /> Thêm ca trực mới
-                </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleTriggerGenerateNextWeek}
+                    disabled={generatingNextWeek}
+                    className="h-9 px-4 rounded-xl text-xs font-semibold border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                    title="Cron tự động đã chạy 00:00 Thứ 7 hàng tuần. Bấm để chạy thủ công khi cần test."
+                  >
+                    {generatingNextWeek ? (
+                      <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                    ) : (
+                      <CalendarPlus className="mr-1 h-4 w-4" />
+                    )}
+                    Sinh lịch tuần kế tiếp
+                  </Button>
+                  <Button
+                    onClick={handleOpenOnboardWizard}
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs h-9 px-4 rounded-xl shadow-sm"
+                  >
+                    <Sparkles className="mr-1 h-4 w-4" /> Tạo lịch cho nhân viên mới
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={handleOpenCreateShift}
+                    className="h-9 px-3 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100"
+                    title="Tạo ca lẻ bổ sung (advanced)"
+                  >
+                    <Plus className="mr-1 h-4 w-4" /> Thêm ca lẻ
+                  </Button>
+                </div>
               )}
             </CardHeader>
             <CardContent className="p-0">
@@ -491,7 +731,7 @@ export default function AttendanceManagement() {
                         </TableCell>
                         <TableCell>{shift.branch?.branch_name || `Mã CN: ${shift.branch_id}`}</TableCell>
                         <TableCell className="font-medium tabular-nums">
-                          {shift.start_time.slice(0, 5)} - {shift.end_time.slice(0, 5)}
+                          {getWorkShiftTime(shift)}
                         </TableCell>
                         <TableCell className="tabular-nums font-bold text-slate-700">
                           {isStaff ? (
@@ -648,20 +888,31 @@ export default function AttendanceManagement() {
                   <SelectValue placeholder="Chọn nhân viên" />
                 </SelectTrigger>
                 <SelectContent>
-                  {staffList.map((user) => (
-                    <SelectItem key={user.id} value={String(user.id)}>
-                      {user.full_name || user.email}
-                    </SelectItem>
-                  ))}
+                  {staffForShiftForm.length > 0 ? (
+                    staffForShiftForm.map((user) => (
+                      <SelectItem key={user.id} value={String(user.id)}>
+                        {user.full_name || user.email}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <div className="px-2 py-2 text-xs text-muted-foreground">
+                      Chi nhánh này chưa có nhân viên Staff nào.
+                    </div>
+                  )}
                 </SelectContent>
               </Select>
+              {!selectedShift && shiftForm.branch_id && staffForShiftForm.length === 0 && (
+                <p className="text-xs text-amber-600">
+                  Chi nhánh đang chọn chưa có nhân viên. Vui lòng chuyển chi nhánh hoặc gán nhân viên trước.
+                </p>
+              )}
             </div>
 
             <div className="space-y-1.5">
               <Label htmlFor="shift-branch">Chi nhánh làm việc *</Label>
               <Select 
                 value={shiftForm.branch_id} 
-                onValueChange={(v) => setShiftForm(prev => ({ ...prev, branch_id: v }))}
+                onValueChange={(v) => handleShiftBranchChange(v)}
                 disabled={!!selectedShift}
               >
                 <SelectTrigger id="shift-branch" className="bg-background">
@@ -708,27 +959,26 @@ export default function AttendanceManagement() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="shift-start">Giờ bắt đầu *</Label>
-                <Input 
-                  type="time" 
-                  id="shift-start" 
-                  value={shiftForm.start_time}
-                  onChange={(e) => setShiftForm(prev => ({ ...prev, start_time: e.target.value }))}
-                  required
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="shift-end">Giờ kết thúc *</Label>
-                <Input 
-                  type="time" 
-                  id="shift-end" 
-                  value={shiftForm.end_time}
-                  onChange={(e) => setShiftForm(prev => ({ ...prev, end_time: e.target.value }))}
-                  required
-                />
-              </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="shift-template">Ca trực *</Label>
+              <Select
+                value={shiftForm.shift_id}
+                onValueChange={(v) => setShiftForm(prev => ({ ...prev, shift_id: v }))}
+              >
+                <SelectTrigger id="shift-template" className="bg-background">
+                  <SelectValue placeholder="Chọn ca trực" />
+                </SelectTrigger>
+                <SelectContent>
+                  {shiftTemplates.map((template) => (
+                    <SelectItem key={template.id} value={String(template.id)}>
+                      {template.shift_name} ({template.start_time.slice(0, 5)} - {template.end_time.slice(0, 5)})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {shiftTemplates.length === 0 && (
+                <p className="text-xs text-amber-600">Chưa có ca mẫu trong hệ thống. Vui lòng tạo dữ liệu ca trong bảng shifts trước.</p>
+              )}
             </div>
 
             <div className="space-y-1.5">
@@ -859,6 +1109,236 @@ export default function AttendanceManagement() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal 3: Onboarding wizard - tạo lịch cho nhân viên mới (Step 1 + Step 2). */}
+      <Dialog
+        open={onboardDialogOpen}
+        onOpenChange={(open) => {
+          if (!submittingBaseSchedules && !activatingFirstWeek) {
+            setOnboardDialogOpen(open);
+          }
+        }}
+      >
+        <DialogContent className="max-w-2xl rounded-xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-emerald-600" />
+              Tạo lịch làm việc cho nhân viên mới
+            </DialogTitle>
+            <DialogDescription>
+              Quy trình 2 bước: Setup khung lịch chuẩn theo tuần, sau đó kích hoạt lịch tuần đầu để
+              hệ thống tự sinh các ca làm việc tương ứng.
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Stepper indicator */}
+          <div className="flex items-center gap-3 py-3">
+            <div
+              className={cn(
+                "flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold",
+                onboardStep === 1
+                  ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                  : "border-emerald-200 bg-emerald-50/50 text-emerald-600",
+              )}
+            >
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-white text-[10px]">
+                {onboardStep > 1 ? <CheckCircle className="h-3 w-3" /> : 1}
+              </span>
+              Khung lịch chuẩn
+            </div>
+            <ArrowRight className="h-4 w-4 text-muted-foreground" />
+            <div
+              className={cn(
+                "flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold",
+                onboardStep === 2
+                  ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                  : "border-slate-200 bg-slate-50 text-slate-500",
+              )}
+            >
+              <span
+                className={cn(
+                  "flex h-5 w-5 items-center justify-center rounded-full text-[10px] text-white",
+                  onboardStep === 2 ? "bg-emerald-500" : "bg-slate-300",
+                )}
+              >
+                2
+              </span>
+              Kích hoạt lịch tuần đầu
+            </div>
+          </div>
+
+          {onboardStep === 1 ? (
+            <div className="space-y-4 py-1">
+              <div className="space-y-1.5">
+                <Label htmlFor="onboard-user">Nhân viên *</Label>
+                <Select
+                  value={onboardUserId}
+                  onValueChange={(v) => setOnboardUserId(v)}
+                >
+                  <SelectTrigger id="onboard-user" className="bg-background">
+                    <SelectValue placeholder="Chọn nhân viên" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {staffForOnboard.length > 0 ? (
+                      staffForOnboard.map((u) => (
+                        <SelectItem key={u.id} value={String(u.id)}>
+                          {u.full_name || u.email}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <div className="px-2 py-2 text-xs text-muted-foreground">
+                        Chi nhánh này chưa có nhân viên Staff nào.
+                      </div>
+                    )}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {filterBranchId === "all"
+                    ? "Chỉ hiển thị nhân viên có role Staff. Chọn chi nhánh ở thanh lọc phía trên để giới hạn theo chi nhánh."
+                    : `Đang lọc theo chi nhánh: ${branches.find((b) => String(b.id) === filterBranchId)?.branch_name || "—"}.`}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Khung lịch tuần (Thứ 2 → Chủ Nhật) *</Label>
+                <p className="text-xs text-muted-foreground">
+                  Chọn ca trực tương ứng cho từng ngày làm việc. Để "Nghỉ cố định" với những ngày
+                  không đi làm; hệ thống sẽ không tạo work_shift cho ngày đó.
+                </p>
+                <div className="rounded-lg border divide-y">
+                  {onboardDays.map((d) => (
+                    <div
+                      key={d.day_of_week}
+                      className="flex items-center gap-3 px-3 py-2 hover:bg-slate-50/60"
+                    >
+                      <div className="w-20 text-sm font-semibold text-slate-700">
+                        {DAY_LABELS[d.day_of_week]}
+                      </div>
+                      <div className="flex-1">
+                        <Select
+                          value={d.shift_id === "" ? "off" : d.shift_id}
+                          onValueChange={(v) => handleOnboardDayChange(d.day_of_week, v)}
+                        >
+                          <SelectTrigger className="h-9 bg-background">
+                            <SelectValue placeholder="Chọn ca" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="off">
+                              <span className="text-slate-500">Nghỉ cố định</span>
+                            </SelectItem>
+                            {shiftTemplates.map((t) => (
+                              <SelectItem key={t.id} value={String(t.id)}>
+                                {t.shift_name} ({t.start_time.slice(0, 5)} - {t.end_time.slice(0, 5)})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {shiftTemplates.length === 0 && (
+                  <p className="text-xs text-amber-600">
+                    Chưa có ca mẫu trong hệ thống. Vui lòng tạo dữ liệu ca trong bảng shifts trước
+                    khi setup khung lịch.
+                  </p>
+                )}
+              </div>
+
+              <DialogFooter className="pt-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setOnboardDialogOpen(false)}
+                  disabled={submittingBaseSchedules}
+                  className="h-10 rounded-xl"
+                >
+                  Hủy
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleSubmitBaseSchedules}
+                  disabled={submittingBaseSchedules || shiftTemplates.length === 0}
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-10 rounded-xl"
+                >
+                  {submittingBaseSchedules ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                  ) : (
+                    <ArrowRight className="h-4 w-4 mr-1" />
+                  )}
+                  Lưu khung & Tiếp tục
+                </Button>
+              </DialogFooter>
+            </div>
+          ) : (
+            <div className="space-y-4 py-1">
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-4">
+                <div className="flex items-start gap-2 text-sm text-emerald-800">
+                  <CheckCircle className="h-5 w-5 mt-0.5 text-emerald-600" />
+                  <div>
+                    <div className="font-semibold">Đã lưu khung lịch chuẩn.</div>
+                    <div className="text-xs text-emerald-700 mt-1">
+                      Tiếp theo, chọn ngày bắt đầu đi làm để hệ thống sinh ca cho nhân viên từ ngày
+                      đó đến hết Chủ Nhật của tuần. Từ tuần kế tiếp, cron tự động sẽ tiếp tục sinh
+                      lịch.
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="onboard-start-date">Ngày bắt đầu đi làm *</Label>
+                <Input
+                  id="onboard-start-date"
+                  type="date"
+                  value={onboardStartDate}
+                  onChange={(e) => setOnboardStartDate(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Hệ thống sẽ sinh work_shifts từ ngày này đến hết Chủ Nhật cùng tuần, đối chiếu các
+                  đơn nghỉ phép đã duyệt.
+                </p>
+              </div>
+
+              <DialogFooter className="pt-3 flex-row justify-between gap-2 sm:justify-between">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setOnboardStep(1)}
+                  disabled={activatingFirstWeek}
+                  className="h-10 rounded-xl"
+                >
+                  ← Quay lại
+                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setOnboardDialogOpen(false)}
+                    disabled={activatingFirstWeek}
+                    className="h-10 rounded-xl"
+                  >
+                    Để sau
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleActivateFirstWeek}
+                    disabled={activatingFirstWeek}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold h-10 rounded-xl"
+                  >
+                    {activatingFirstWeek ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                    ) : (
+                      <CalendarCheck className="h-4 w-4 mr-1" />
+                    )}
+                    Kích hoạt lịch đi làm ngay
+                  </Button>
+                </div>
+              </DialogFooter>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
