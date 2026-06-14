@@ -2,7 +2,11 @@ import api from './axios';
 
 export interface Branch {
   id: number;
-  address: string;
+  branch_name?: string;
+  name?: string;
+  address?: string;
+  province?: string;
+  district?: string;
   [key: string]: any;
 }
 
