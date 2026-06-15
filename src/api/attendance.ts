@@ -20,6 +20,13 @@ export interface AttendanceRecord {
     start_time: string;
     end_time: string;
     branch_id: number;
+    shift_id?: number;
+    shift?: {
+      id: number;
+      shift_name: string;
+      start_time: string;
+      end_time: string;
+    };
     branch?: {
       id: number;
       branch_name: string;

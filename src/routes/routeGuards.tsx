@@ -43,10 +43,10 @@ export function DashboardRedirect() {
 
       if (role === "trainer") {
         redirectTo = "/trainer-join";
-      } else if (role === "branchmanager" || role === "staff") {
-        redirectTo = "/branchmanager";
-      } else if (["admin", "gym"].includes(role) || [1, 2, 3].includes(user?.role_id)) {
+      } else if (role === "admin" || [1, 2].includes(Number(user?.role_id))) {
         redirectTo = "/admin";
+      } else if (["branchmanager", "staff", "gym", "partner"].includes(role) || [3, 4].includes(Number(user?.role_id))) {
+        redirectTo = "/branchmanager";
       }
     } catch (e) {
       console.error("Error parsing user data", e);

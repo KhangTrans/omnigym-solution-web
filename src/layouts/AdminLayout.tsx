@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -17,12 +17,13 @@ import {
   Loader2,
   CircleHelp,
   ClipboardCheck,
-  PanelLeft,
-  ChevronLeft,
-  ChevronRight,
   QrCode,
   Calendar,
   UserPlus,
+  MessageSquareQuote,
+  KeyRound,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "../utils/cn";
@@ -35,7 +36,7 @@ type NavItem = {
   label: string;
   icon: LucideIcon;
   exact?: boolean;
-  group: "Insights" | "Operations" | "Content" | "Account";
+  group: "Insights" | "GymOps" | "HrOps" | "MemberOps" | "Content" | "Account";
 };
 
 const NAV: NavItem[] = [
@@ -58,78 +59,89 @@ const NAV: NavItem[] = [
     icon: Receipt,
     group: "Insights",
   },
-  { to: "/admin/users", label: "Người dùng", icon: Users, group: "Operations" },
+  {
+    to: "/admin/refunds",
+    label: "Hoàn tiền",
+    icon: RefreshCcw,
+    group: "Insights",
+  },
   {
     to: "/admin/gyms",
     label: "Phòng tập",
     icon: Building2,
-    group: "Operations",
-  },
-  {
-    to: "/admin/membership-packages",
-    label: "Gói thành viên",
-    icon: Dumbbell,
-    group: "Operations",
-  },
-  {
-    to: "/admin/trainer-packages",
-    label: "Gói PT",
-    icon: Dumbbell,
-    group: "Operations",
+    group: "GymOps",
   },
   {
     to: "/admin/branch-management",
     label: "Chi nhánh",
     icon: Building2,
-    group: "Operations",
+    group: "GymOps",
   },
   {
-    to: "/admin/trainer-applications",
-    label: "Duyệt Trainer",
-    icon: ClipboardCheck,
-    group: "Operations",
+    to: "/admin/membership-packages",
+    label: "Gói thành viên",
+    icon: Dumbbell,
+    group: "GymOps",
   },
   {
-    to: "/admin/trainers",
-    label: "Danh sách Trainer",
-    icon: Users,
-    group: "Operations",
-  },
-  {
-    to: "/admin/shift-attendance",
-    label: "Điểm danh ca trực",
-    icon: ClipboardCheck,
-    group: "Operations",
-  },
-  {
-    to: "/admin/attendance-management",
-    label: "Quản lý điểm danh",
-    icon: Calendar,
-    group: "Operations",
-  },
-  {
-    to: "/admin/customer-attendance",
-    label: "Check-in Hội viên",
-    icon: Users,
-    group: "Operations",
-  },
-  {
-    to: "/admin/staff-accounts",
-    label: "Tài khoản Staff",
-    icon: UserPlus,
-    group: "Operations",
+    to: "/admin/trainer-packages",
+    label: "Gói PT",
+    icon: Dumbbell,
+    group: "GymOps",
   },
   {
     to: "/admin/payouts",
     label: "Thanh toán chi nhánh",
     icon: Banknote,
-    group: "Operations",
+    group: "GymOps",
   },
   {
-    to: "/admin/refunds",
-    label: "Hoàn tiền",
-    icon: RefreshCcw,
-    group: "Operations",
+    to: "/admin/staff-accounts",
+    label: "Tài khoản Staff",
+    icon: UserPlus,
+    group: "HrOps",
+  },
+  {
+    to: "/admin/trainers",
+    label: "Danh sách Trainer",
+    icon: Users,
+    group: "HrOps",
+  },
+  {
+    to: "/admin/trainer-applications",
+    label: "Duyệt Trainer",
+    icon: ClipboardCheck,
+    group: "HrOps",
+  },
+  {
+    to: "/admin/shift-attendance",
+    label: "Điểm danh ca trực",
+    icon: ClipboardCheck,
+    group: "HrOps",
+  },
+  {
+    to: "/admin/attendance-management",
+    label: "Quản lý điểm danh",
+    icon: Calendar,
+    group: "HrOps",
+  },
+  {
+    to: "/admin/users",
+    label: "Người dùng",
+    icon: Users,
+    group: "MemberOps",
+  },
+  {
+    to: "/admin/customer-attendance",
+    label: "Check-in Hội viên",
+    icon: Users,
+    group: "MemberOps",
+  },
+  {
+    to: "/admin/reviews",
+    label: "Đánh giá hội viên",
+    icon: MessageSquareQuote,
+    group: "MemberOps",
   },
   {
     to: "/admin/moderation",
@@ -167,18 +179,28 @@ const NAV: NavItem[] = [
     icon: UserCog,
     group: "Account",
   },
+  {
+    to: "/admin/change-password",
+    label: "Đổi mật khẩu",
+    icon: KeyRound,
+    group: "Account",
+  },
 ];
 
 const GROUPS_LABELS: Record<string, string> = {
   Insights: "Số liệu & Báo cáo",
-  Operations: "Quản lý vận hành",
+  GymOps: "Quản lý Chi nhánh",
+  HrOps: "Quản lý Nhân sự",
+  MemberOps: "Quản lý Hội viên",
   Content: "Quản lý nội dung",
   Account: "Tài khoản",
 };
 
 const GROUPS: NavItem["group"][] = [
   "Insights",
-  "Operations",
+  "GymOps",
+  "HrOps",
+  "MemberOps",
   "Content",
   "Account",
 ];
@@ -188,7 +210,14 @@ const AdminLayout = () => {
   const navigate = useNavigate();
   const pathname = location.pathname;
   const [verifying, setVerifying] = useState(true);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+
+  const toggleGroup = (group: string) => {
+    setExpandedGroups((prev) => ({
+      ...prev,
+      [group]: !prev[group],
+    }));
+  };
 
   const userData = localStorage.getItem("user");
   let user = null;
@@ -217,6 +246,19 @@ const AdminLayout = () => {
     const verifySession = async () => {
       try {
         await authApi.getMe();
+        
+        // Kiểm tra quyền Admin
+        const userDataStr = localStorage.getItem("user");
+        const currentUser = userDataStr ? JSON.parse(userDataStr) : null;
+        const role = String(currentUser?.role || "").toLowerCase();
+        const isUserAdmin = role === "admin" || [1, 2].includes(Number(currentUser?.role_id));
+        
+        if (!isUserAdmin) {
+          toast.error("Bạn không có quyền truy cập trang quản trị");
+          navigate("/dashboard");
+          return;
+        }
+
         setVerifying(false);
       } catch (error) {
         console.error("Session verification failed", error);
@@ -259,21 +301,46 @@ const AdminLayout = () => {
       navigate("/login");
     }
   };
-  const filteredNav = NAV.filter((item) => {
-    if (item.to === "/admin/shift-attendance") {
-      return isStaff;
+
+  const filteredNav = useMemo(() => {
+    return NAV.filter((item) => {
+      if (item.to === "/admin/shift-attendance") {
+        return isStaff;
+      }
+      if (
+        item.to === "/admin/attendance-management" ||
+        item.to === "/admin/branch-management" ||
+        item.to === "/admin/trainer-applications" ||
+        item.to === "/admin/users" ||
+        item.to === "/admin/staff-accounts"
+      ) {
+        return !isStaff;
+      }
+      return true;
+    });
+  }, [isStaff]);
+
+  // Automatically expand the group containing the active route
+  useEffect(() => {
+    const activeGroup = GROUPS.find((group) =>
+      filteredNav.some(
+        (item) =>
+          item.group === group &&
+          (item.exact
+            ? pathname === item.to
+            : pathname === item.to || pathname.startsWith(item.to + "/"))
+      )
+    );
+    if (activeGroup) {
+      setExpandedGroups((prev) => {
+        if (prev[activeGroup]) return prev;
+        return {
+          ...prev,
+          [activeGroup]: true,
+        };
+      });
     }
-    if (
-      item.to === "/admin/attendance-management" ||
-      item.to === "/admin/branch-management" ||
-      item.to === "/admin/trainer-applications" ||
-      item.to === "/admin/users" ||
-      item.to === "/admin/staff-accounts"
-    ) {
-      return !isStaff;
-    }
-    return true;
-  });
+  }, [pathname, filteredNav]);
 
   const profile = {
     name: user?.full_name || "Quản trị viên",
@@ -300,143 +367,79 @@ const AdminLayout = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <div
-        className="grid min-h-screen w-full transition-[grid-template-columns] duration-300 ease-out lg:grid-cols-[96px_1fr]"
-        style={{
-          gridTemplateColumns: sidebarOpen
-            ? "300px minmax(0,1fr)"
-            : "96px minmax(0,1fr)",
-        }}
-      >
-        <aside
-          className={cn(
-            "group/sidebar sticky top-24 mx-3 mb-6 mt-24 hidden h-[calc(100vh-120px)] overflow-hidden bg-card shadow-[0_18px_50px_rgba(15,23,42,0.12)] transition-[border-radius] duration-200 lg:flex lg:flex-col",
-            sidebarOpen ? "rounded-[30px]" : "rounded-[24px]",
-          )}
-        >
-          <nav
-            className={cn(
-              "flex-1 overflow-y-auto no-scrollbar overflow-x-hidden py-8 transition-[padding] duration-300",
-              sidebarOpen ? "space-y-7 px-4" : "space-y-8 px-3",
-            )}
-          >
+      <div className="grid min-h-screen w-full grid-cols-1 lg:grid-cols-[260px_1fr]">
+        <aside className="hidden border-r border-slate-100 bg-card lg:flex lg:flex-col">
+          <div className="flex h-16 items-center gap-2 border-b border-slate-100 px-6">
+            <div className="grid h-8 w-8 place-items-center rounded-md bg-[#2f6b50] text-white font-bold">
+              O
+            </div>
+            <div className="leading-tight">
+              <div className="text-sm font-semibold">OmniGym Admin</div>
+              <div className="text-[11px] text-muted-foreground">Bảng điều khiển hệ thống</div>
+            </div>
+          </div>
+          <nav className="flex-1 space-y-2 overflow-y-auto p-3">
             {GROUPS.map((group) => {
               const groupItems = filteredNav.filter((n) => n.group === group);
               if (groupItems.length === 0) return null;
 
+              const isExpanded = !!expandedGroups[group];
+
               return (
-                <div
-                  key={group}
-                  className={cn("space-y-2", !sidebarOpen && "pt-0")}
-                >
-                  <div
-                    className={cn(
-                      "mx-auto my-4 flex h-4 w-full shrink-0 flex-col items-center justify-center gap-1 transition-all duration-200",
-                      sidebarOpen
-                        ? "h-0 overflow-hidden opacity-0"
-                        : "opacity-100",
-                    )}
-                    aria-hidden="true"
+                <div key={group} className="space-y-1">
+                  <button
+                    onClick={() => toggleGroup(group)}
+                    className="flex w-full items-center justify-between px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 hover:text-foreground transition-colors cursor-pointer"
                   >
-                    <span className="block h-px w-9 rounded-full bg-slate-300/80" />
-                    <span className="block h-px w-6 rounded-full bg-slate-300/50" />
-                  </div>
-                  <div
-                    className={cn(
-                      "overflow-hidden px-3 text-[11px] font-semibold uppercase tracking-[0.28em] text-muted-foreground/80 transition-all duration-200",
-                      sidebarOpen ? "h-7 opacity-100" : "h-0 opacity-0",
+                    <span>{GROUPS_LABELS[group]}</span>
+                    {isExpanded ? (
+                      <ChevronDown className="h-3.5 w-3.5" />
+                    ) : (
+                      <ChevronRight className="h-3.5 w-3.5" />
                     )}
-                  >
-                    {GROUPS_LABELS[group]}
-                  </div>
-                  {groupItems.map((item) => {
-                    const active = item.exact
-                      ? pathname === item.to
-                      : pathname === item.to ||
-                        pathname.startsWith(item.to + "/");
-                    const Icon = item.icon;
-                    return (
-                      <Link
-                        key={item.to}
-                        to={item.to}
-                        title={item.label}
-                        className={cn(
-                          "flex h-12 w-full items-center overflow-hidden rounded-lg text-base font-semibold transition-all duration-200",
-                          sidebarOpen
-                            ? "justify-start gap-4 px-3"
-                            : "justify-center px-0",
-                          sidebarOpen
-                            ? active
-                              ? "bg-[#2f6b50] text-white"
-                              : "text-foreground hover:bg-muted hover:text-foreground"
-                            : active
-                              ? "text-primary"
-                              : "text-foreground hover:text-primary",
-                        )}
-                      >
-                        <span className="grid h-7 w-7 shrink-0 place-items-center">
-                          <Icon
+                  </button>
+                  {isExpanded && (
+                    <div className="space-y-1 pl-1 transition-all">
+                      {groupItems.map((item) => {
+                        const active = item.exact
+                          ? pathname === item.to
+                          : pathname === item.to || pathname.startsWith(item.to + "/");
+                        const Icon = item.icon;
+                        return (
+                          <Link
+                            key={item.to}
+                            to={item.to}
                             className={cn(
-                              "h-5 w-5 shrink-0",
+                              "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                               active
-                                ? sidebarOpen
-                                  ? "text-white"
-                                  : "text-[#2f6b50]"
-                                : "text-foreground",
+                                ? "bg-[#2f6b50] text-white shadow-sm"
+                                : "text-muted-foreground hover:bg-muted hover:text-foreground",
                             )}
-                          />
-                        </span>
-                        <span
-                          className={cn(
-                            "overflow-hidden whitespace-nowrap transition-all duration-200",
-                            sidebarOpen
-                              ? "w-auto opacity-100"
-                              : "w-0 opacity-0",
-                          )}
-                        >
-                          {item.label}
-                        </span>
-                      </Link>
-                    );
-                  })}
+                          >
+                            <Icon className="h-4 w-4" />
+                            {item.label}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               );
             })}
           </nav>
-
-          <div
-            className={cn(
-              "border-t transition-[padding] duration-300",
-              sidebarOpen ? "p-4" : "p-3",
-            )}
-          >
+          <div className="border-t border-slate-100 p-3">
             <button
               onClick={handleLogout}
-              title="Đăng xuất"
-              className={cn(
-                "flex h-12 w-full items-center overflow-hidden rounded-xl text-base font-semibold text-red-500 transition-all duration-200 hover:bg-red-50",
-                sidebarOpen
-                  ? "justify-start gap-4 px-3"
-                  : "justify-center px-0",
-              )}
+              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors cursor-pointer"
             >
-              <span className="grid h-7 w-7 shrink-0 place-items-center">
-                <LogOut className="h-5 w-5 shrink-0" />
-              </span>
-              <span
-                className={cn(
-                  "overflow-hidden whitespace-nowrap transition-all duration-200",
-                  sidebarOpen ? "w-auto opacity-100" : "w-0 opacity-0",
-                )}
-              >
-                Đăng xuất
-              </span>
+              <LogOut className="h-4 w-4" />
+              Đăng xuất
             </button>
           </div>
         </aside>
 
         <div className="flex min-w-0 flex-col">
-          <header className="fixed left-0 right-0 top-0 z-30 flex h-20 items-center justify-between bg-card/80 shadow-[0_1px_8px_rgba(15,23,42,0.08)] px-4 backdrop-blur lg:px-8">
+          <header className="flex h-16 items-center justify-between border-b border-slate-100 bg-card/60 px-4 backdrop-blur lg:px-8">
             <div className="flex items-center gap-3 overflow-x-auto admin-scrollbar lg:hidden">
               {filteredNav.map((item) => {
                 const active = item.exact
@@ -449,7 +452,7 @@ const AdminLayout = () => {
                     className={cn(
                       "rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap",
                       active
-                        ? "bg-primary text-primary-foreground"
+                        ? "bg-[#2f6b50] text-white"
                         : "bg-muted text-muted-foreground",
                     )}
                   >
@@ -464,22 +467,9 @@ const AdminLayout = () => {
                 Đăng xuất
               </button>
             </div>
+            
             <div className="hidden items-center gap-4 lg:flex">
-              <button
-                type="button"
-                onClick={() => setSidebarOpen((open) => !open)}
-                className="flex h-11 items-center gap-2 rounded-xl border border-slate-200 bg-slate-100/80 px-3 text-slate-700 transition-colors hover:bg-slate-200"
-                aria-label={sidebarOpen ? "Thu gọn sidebar" : "Mở rộng sidebar"}
-                title={sidebarOpen ? "Thu gọn sidebar" : "Mở rộng sidebar"}
-              >
-                <PanelLeft className="h-5 w-5" />
-                {sidebarOpen ? (
-                  <ChevronLeft className="h-4 w-4" />
-                ) : (
-                  <ChevronRight className="h-4 w-4" />
-                )}
-              </button>
-              <div className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-2xl bg-white shadow-lg">
+              <div className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-lg bg-white shadow-sm border border-slate-100">
                 <img
                   src={logoOmnigym}
                   alt="OmniGym logo"
@@ -487,36 +477,34 @@ const AdminLayout = () => {
                 />
               </div>
               <div className="leading-tight">
-                <div className="text-xl font-semibold tracking-tight text-foreground">
-                  {isPartner ? "OmniGym Branch Manager" : "OmniGym Admin"}
+                <div className="text-base font-semibold tracking-tight text-foreground">
+                  OmniGym Admin Console
                 </div>
-                <div className="text-[11px] font-medium uppercase tracking-[0.28em] text-foreground">
-                  Platform
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Bảng quản trị hệ thống
                 </div>
-              </div>
-              <div className="ml-4 text-sm text-muted-foreground">
-                OmniGym Solution Platform · Quản trị viên
               </div>
             </div>
+
             <Link
               to="/admin/profile"
               className="flex items-center gap-3 rounded-full pl-3 pr-1 py-1 hover:bg-muted"
             >
               <div className="text-right leading-tight">
                 <div className="text-sm font-semibold">{profile.name}</div>
-                <div className="text-[11px] text-muted-foreground">
+                <div className="text-[11px] text-muted-foreground font-medium uppercase">
                   {profile.role}
                 </div>
               </div>
               <img
                 src={profile.avatar}
                 alt={profile.name}
-                className="h-9 w-9 rounded-full object-cover shadow-[0_2px_10px_rgba(15,23,42,0.16)]"
+                className="h-9 w-9 rounded-full object-cover shadow-sm ring-2 ring-[#2f6b50]/20"
               />
             </Link>
           </header>
 
-          <main className="flex-1 p-4 pt-24 lg:p-8 lg:pt-28">
+          <main className="flex-1 p-4 lg:p-8">
             <Outlet />
           </main>
         </div>

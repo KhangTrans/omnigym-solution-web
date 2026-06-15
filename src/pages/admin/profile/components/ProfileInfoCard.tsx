@@ -30,52 +30,60 @@ export function ProfileInfoCard({
         <CardTitle className="text-lg font-bold">Thông tin định danh</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        <ImageUpload
-          label="Ảnh đại diện"
-          value={profile?.avatar_url}
-          onChange={(v) => onUpdate("avatar_url", v)}
-          previewClassName="h-24 w-24 rounded-full border-2 border-slate-100 shadow-sm"
-          hint="Khuyên dùng ảnh vuông · tối đa 4MB"
-        />
+        <div className="flex flex-col lg:flex-row gap-8 items-start">
+          {/* Cột trái: Ảnh đại diện */}
+          <div className="w-full lg:w-[400px] shrink-0">
+            <ImageUpload
+              label="Ảnh đại diện"
+              value={profile?.avatar_url}
+              onChange={(v) => onUpdate("avatar_url", v)}
+              previewClassName="w-full aspect-[4/3] max-w-[400px] rounded-xl border-2 border-slate-100 shadow-sm"
+              variant="avatar"
+            />
+          </div>
 
-        <div className="grid gap-6 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label className="font-semibold text-slate-700">Họ và tên</Label>
-            <Input 
-              value={profile?.full_name || ""} 
-              onChange={(e) => onUpdate("full_name", e.target.value)}
-              className="bg-slate-50 border-slate-200 focus:bg-white transition-colors"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label className="font-semibold text-slate-700">Email</Label>
-            <Input 
-              type="email" 
-              value={profile?.email || ""} 
-              disabled
-              className="bg-slate-100 border-slate-200 cursor-not-allowed opacity-70"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label className="font-semibold text-slate-700">Số điện thoại</Label>
-            <Input 
-              value={profile?.phone_number || ""} 
-              onChange={(e) => onUpdate("phone_number", e.target.value)}
-              className="bg-slate-50 border-slate-200 focus:bg-white transition-colors"
-              placeholder="Chưa cập nhật"
-            />
-          </div>
-        </div>
+          {/* Cột phải: Form thông tin */}
+          <div className="flex-1 w-full space-y-6">
+            <div className="grid gap-6 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label className="font-semibold text-slate-700">Họ và tên</Label>
+                <Input 
+                  value={profile?.full_name || ""} 
+                  onChange={(e) => onUpdate("full_name", e.target.value)}
+                  className="bg-slate-50 border-slate-200 focus:bg-white transition-colors"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="font-semibold text-slate-700">Email</Label>
+                <Input 
+                  type="email" 
+                  value={profile?.email || ""} 
+                  disabled
+                  className="bg-slate-100 border-slate-200 cursor-not-allowed opacity-70"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="font-semibold text-slate-700">Số điện thoại</Label>
+                <Input 
+                  value={profile?.phone_number || ""} 
+                  onChange={(e) => onUpdate("phone_number", e.target.value)}
+                  className="bg-slate-50 border-slate-200 focus:bg-white transition-colors"
+                  placeholder="Chưa cập nhật"
+                />
+              </div>
+            </div>
 
-        <div className="space-y-2">
-          <Label className="font-semibold text-slate-700">Giới thiệu bản thân</Label>
-          <Textarea 
-            rows={4} 
-            value={profile?.bio || ""} 
-            onChange={(e) => onUpdate("bio", e.target.value)}
-            className="bg-slate-50 border-slate-200 focus:bg-white transition-colors"
-            placeholder="Chia sẻ một chút về vai trò hoặc kinh nghiệm của bạn..."
-          />
+            <div className="space-y-2">
+              <Label className="font-semibold text-slate-700">Giới thiệu bản thân</Label>
+              <Textarea 
+                rows={4} 
+                value={profile?.bio || ""} 
+                onChange={(e) => onUpdate("bio", e.target.value)}
+                className="bg-slate-50 border-slate-200 focus:bg-white transition-colors"
+                placeholder="Chia sẻ một chút về vai trò hoặc kinh nghiệm của bạn..."
+              />
+            </div>
+          </div>
         </div>
 
         <div className="pt-4 flex justify-end gap-3 border-t">

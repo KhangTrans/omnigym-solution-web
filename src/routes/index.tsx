@@ -13,6 +13,8 @@ import AdminLayout from "../layouts/AdminLayout";
 import CustomerLayout from "../layouts/CustomerLayout";
 import Dashboard from "../pages/admin/dashboard_management/Dashboard";
 import AdminProfile from "../pages/admin/profile/Profile";
+import AdminFaceRegistration from "../pages/admin/profile/FaceRegistration";
+import AdminChangePassword from "../pages/admin/profile/ChangePassword";
 import UsersManagement from "../pages/admin/users_management/Users";
 import Revenue from "../pages/admin/Revenue";
 import Transactions from "../pages/admin/transactions_management/Transactions";
@@ -54,6 +56,8 @@ import StaffAccounts from "../pages/admin/staff_accounts/StaffAccounts";
 import BranchManagerTrainers from "../pages/branchmanager/BranchManagerTrainers";
 import AdminTrainers from "../pages/admin/trainers/AdminTrainers";
 import TrainerDashboard from "../pages/trainer/TrainerDashboard";
+import ReviewsPage from "../pages/admin/reviews/Reviews";
+import BranchManagerReviews from "../pages/branchmanager/BranchManagerReviews";
 import { DashboardRedirect, RoleOnly } from "./routeGuards";
 
 export const routesConfig: RouteObject[] = [
@@ -150,6 +154,7 @@ export const routesConfig: RouteObject[] = [
       { path: "blogs", element: <PostManagement /> },
       { path: "faq", element: <FAQ /> },
       { path: "profile", element: <AdminProfile /> },
+      { path: "change-password", element: <AdminChangePassword /> },
       { path: "membership-packages", element: <MembershipPackage /> },
       { path: "trainer-packages", element: <TrainerPackages /> },
       { path: "trainer-applications", element: <TrainerApplicationList /> },
@@ -158,6 +163,7 @@ export const routesConfig: RouteObject[] = [
       { path: "customer-attendance", element: <CustomerAttendance /> },
       { path: "staff-accounts", element: <StaffAccounts /> },
       { path: "trainers", element: <AdminTrainers /> },
+      { path: "reviews", element: <ReviewsPage /> },
     ],
   },
   { path: "/dashboard", element: <DashboardRedirect /> },
@@ -210,6 +216,17 @@ export const routesConfig: RouteObject[] = [
         ),
       },
       { path: "revenue", element: <BranchManagerRevenue /> },
+      { path: "reviews", element: <BranchManagerReviews /> },
+      { path: "profile", element: <AdminProfile /> },
+      { path: "change-password", element: <AdminChangePassword /> },
+      {
+        path: "face-registration",
+        element: (
+          <RoleOnly allow={["staff"]}>
+            <AdminFaceRegistration />
+          </RoleOnly>
+        ),
+      },
     ],
   },
   {
