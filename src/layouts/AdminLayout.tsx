@@ -336,13 +336,21 @@ const AdminLayout = () => {
     <div className="h-screen overflow-hidden bg-background text-foreground">
       <div className="grid h-full w-full grid-cols-1 lg:grid-cols-[260px_1fr]">
         <aside className="hidden h-full border-r border-slate-100 bg-card lg:flex lg:flex-col overflow-hidden">
-          <div className="flex h-16 items-center gap-2 border-b border-slate-100 px-6">
-            <div className="grid h-8 w-8 place-items-center rounded-md bg-[#2f6b50] text-white font-bold">
-              O
+          <div className="flex h-16 items-center gap-2.5 border-b border-slate-100 px-4">
+            <div className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-lg bg-white shadow-sm border border-slate-100">
+              <img
+                src={logoOmnigym}
+                alt="OmniGym logo"
+                className="h-full w-full object-cover"
+              />
             </div>
-            <div className="leading-tight">
-              <div className="text-sm font-semibold">OmniGym Admin</div>
-              <div className="text-[11px] text-muted-foreground">Bảng điều khiển hệ thống</div>
+            <div className="min-w-0 leading-tight">
+              <div className="truncate text-sm font-semibold tracking-tight text-foreground">
+                OmniGym Admin
+              </div>
+              <div className="truncate text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Bảng quản trị hệ thống
+              </div>
             </div>
           </div>
           <nav className="flex-1 space-y-3 overflow-y-auto p-3 [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]">
@@ -422,41 +430,7 @@ const AdminLayout = () => {
                 Đăng xuất
               </button>
             </div>
-            
-            <div className="hidden items-center gap-4 lg:flex">
-              <div className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-lg bg-white shadow-sm border border-slate-100">
-                <img
-                  src={logoOmnigym}
-                  alt="OmniGym logo"
-                  className="h-full w-full object-cover"
-                />
-              </div>
-              <div className="leading-tight">
-                <div className="text-base font-semibold tracking-tight text-foreground">
-                  OmniGym Admin Console
-                </div>
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Bảng quản trị hệ thống
-                </div>
-              </div>
-            </div>
 
-            <Link
-              to="/admin/profile"
-              className="flex items-center gap-3 rounded-full pl-3 pr-1 py-1 hover:bg-muted"
-            >
-              <div className="text-right leading-tight">
-                <div className="text-sm font-semibold">{profile.name}</div>
-                <div className="text-[11px] text-muted-foreground font-medium uppercase">
-                  {profile.role}
-                </div>
-              </div>
-              <img
-                src={profile.avatar}
-                alt={profile.name}
-                className="h-9 w-9 rounded-full object-cover shadow-sm ring-2 ring-[#2f6b50]/20"
-              />
-            </Link>
           </header>
 
           <main className="flex-1 overflow-y-auto p-4 lg:p-8 [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]">
