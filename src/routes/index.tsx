@@ -1,4 +1,4 @@
-import { createBrowserRouter, Link, type RouteObject } from "react-router-dom";
+import { createBrowserRouter, Link, Navigate, type RouteObject } from "react-router-dom";
 import Register from "../pages/pubblic/Register";
 import Login from "../pages/pubblic/Login";
 import ForgotPassword from "../pages/pubblic/ForgotPassword";
@@ -56,6 +56,10 @@ import StaffAccounts from "../pages/admin/staff_accounts/StaffAccounts";
 import BranchManagerTrainers from "../pages/branchmanager/BranchManagerTrainers";
 import AdminTrainers from "../pages/admin/trainers/AdminTrainers";
 import TrainerDashboard from "../pages/trainer/TrainerDashboard";
+import ScheduleManager from "../pages/trainer/ScheduleManager";
+import ClientBookings from "../pages/trainer/ClientBookings";
+import ClientsList from "../pages/trainer/ClientsList";
+import TrainerProfileEditor from "../pages/trainer/TrainerProfileEditor";
 import ReviewsPage from "../pages/admin/reviews/Reviews";
 import BranchManagerReviews from "../pages/branchmanager/BranchManagerReviews";
 import { DashboardRedirect, RoleOnly } from "./routeGuards";
@@ -72,6 +76,13 @@ export const routesConfig: RouteObject[] = [
   {
     path: "/trainer",
     element: <TrainerDashboard />,
+    children: [
+      { index: true, element: <Navigate to="schedule" replace /> },
+      { path: "schedule", element: <ScheduleManager /> },
+      { path: "bookings", element: <ClientBookings /> },
+      { path: "clients", element: <ClientsList /> },
+      { path: "profile", element: <TrainerProfileEditor /> },
+    ],
   },
   {
     path: "/gyms",
