@@ -11,12 +11,21 @@ import {
 import { toast } from "sonner";
 import { trainerApplicationAPI } from "@/api/trainerApplications";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ApplicationDetailDialog } from "./components/ApplicationDetailDialog";
 import { ApplicationRejectDialog } from "./components/ApplicationRejectDialog";
 
-const STATUSES = ["draft", "pending", "approved", "rejected", "all"] as const;
+const STATUSES = ["pending", "approved", "rejected", "all"] as const;
 type StatusFilter = (typeof STATUSES)[number];
 export type ApplicationStatus = "draft" | "pending" | "approved" | "rejected";
 
@@ -190,12 +199,19 @@ export default function TrainerApplicationList() {
     const res = await trainerApplicationAPI.getOne(id);
     const app = res.data.data as TrainerApplication;
     setSelectedApplication(app);
-    if (app.status === "pending") setApprovedLevel(app.desired_level || "junior");
+    if (app.status === "pending")
+      setApprovedLevel(app.desired_level || "junior");
   }
 
   async function handleApprove(id: number) {
-    if (!approvedLevel) return toast.error("Vui lòng chọn level duyệt cho Trainer.");
-    if (!confirm(`Bạn chắc chắn muốn duyệt hồ sơ Trainer với level ${trainerLevelLabel[approvedLevel]}?`)) return;
+    if (!approvedLevel)
+      return toast.error("Vui lòng chọn level duyệt cho Trainer.");
+    if (
+      !confirm(
+        `Bạn chắc chắn muốn duyệt hồ sơ Trainer với level ${trainerLevelLabel[approvedLevel]}?`,
+      )
+    )
+      return;
     setProcessing(true);
     try {
       await trainerApplicationAPI.approve(id, approvedLevel);
@@ -280,116 +296,125 @@ export default function TrainerApplicationList() {
         />
       </div>
       <Card>
-        <CardContent className="space-y-4 p-5">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-wrap gap-2">
-              {STATUSES.map((status) => (
-                <button
-                  key={status}
-                  type="button"
-                  onClick={() => setStatusFilter(status)}
-                  className={
-                    statusFilter === status
-                      ? "rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
-                      : "rounded-full border border-input bg-background px-4 py-2 text-sm font-semibold text-muted-foreground hover:bg-background hover:text-foreground"
-                  }
-                >
-                  {statusLabel[status]} ({counts[status] ?? 0})
-                </button>
-              ))}
-            </div>
-            <div className="relative w-full lg:w-80">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <CardHeader className="space-y-3">
+          <CardTitle className="text-base">Danh sách hồ sơ ứng tuyển</CardTitle>
+          <div className="flex flex-wrap items-center gap-3">
+            <Tabs
+              value={statusFilter}
+              onValueChange={(value) => setStatusFilter(value as StatusFilter)}
+            >
+              <TabsList>
+                <TabsTrigger value="all">Tất cả ({counts.all})</TabsTrigger>
+                <TabsTrigger value="pending">
+                  Chờ duyệt ({counts.pending})
+                </TabsTrigger>
+                <TabsTrigger value="approved">
+                  Đã duyệt ({counts.approved})
+                </TabsTrigger>
+                <TabsTrigger value="rejected">
+                  Từ chối ({counts.rejected})
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+            <div className="relative w-full md:w-72">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Tìm theo tên, email, chuyên môn..."
-                className="pl-9"
+                placeholder="Tìm kiếm hồ sơ ứng tuyển..."
+                className="pl-8"
               />
             </div>
           </div>
-          <div className="overflow-hidden rounded-xl bg-card shadow-[0_2px_12px_rgba(15,23,42,0.08)]">
-            <div className="overflow-x-auto admin-scrollbar">
-              <table className="w-full min-w-[900px] text-sm">
-                <thead className="bg-muted/60 text-left text-xs uppercase tracking-wider text-muted-foreground">
-                  <tr>
-                    <th className="px-4 py-3">Hồ sơ</th>
-                    <th className="px-4 py-3">Người gửi</th>
-                    <th className="px-4 py-3">Chi nhánh</th>
-                    <th className="px-4 py-3">Chuyên môn</th>
-                    <th className="px-4 py-3">Level mong muốn</th>
-                    <th className="px-4 py-3">Liên hệ</th>
-                    <th className="px-4 py-3">Trạng thái</th>
-                    <th className="px-4 py-3">Ngày gửi</th>
-                    <th className="px-4 py-3 text-right">Thao tác</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border bg-card">
-                  {loading ? (
-                    <tr>
-                      <td
-                        colSpan={7}
-                        className="px-4 py-12 text-center text-muted-foreground"
-                      >
-                        <Loader2 className="mx-auto mb-2 h-6 w-6 animate-spin" />
-                        Đang tải danh sách hồ sơ...
-                      </td>
-                    </tr>
-                  ) : filteredApplications.length === 0 ? (
-                    <tr>
-                      <td
-                        colSpan={7}
-                        className="px-4 py-12 text-center text-muted-foreground"
-                      >
-                        Không có hồ sơ phù hợp.
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredApplications.map((app) => (
-                      <tr key={app.id} className="hover:bg-muted/30">
-                        <td className="px-4 py-4 font-semibold">#{app.id}</td>
-                        <td className="px-4 py-4">
-                          <div className="font-semibold text-foreground">
-                            {applicantName(app)}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {app.user?.email || "-"}
-                          </div>
-                        </td>
-                        <td className="max-w-[220px] truncate px-4 py-4">
-                          {app.branch?.branch_name || (app.branch_id ? `#${app.branch_id}` : "-")}
-                        </td>
-                        <td className="max-w-[220px] truncate px-4 py-4">
-                          {app.specialization || "-"}
-                        </td>
-                        <td className="px-4 py-4">
-                          {app.desired_level ? trainerLevelLabel[app.desired_level] : "-"}
-                        </td>
-                        <td className="px-4 py-4">
-                          {app.phone_number || app.user?.phone_number || "-"}
-                        </td>
-                        <td className="px-4 py-4">
-                          <StatusBadge status={app.status} />
-                        </td>
-                        <td className="px-4 py-4">
-                          {formatDate(app.submitted_at)}
-                        </td>
-                        <td className="px-4 py-4 text-right">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openDetail(app.id)}
-                          >
-                            <Eye className="h-4 w-4" />
-                            Chi tiết
-                          </Button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="rounded-xl bg-card shadow-[0_2px_12px_rgba(15,23,42,0.08)] overflow-x-auto border-0">
+            <Table className="min-w-[900px]">
+              <TableHeader className="bg-muted/60">
+                <TableRow>
+                  <TableHead className="px-4 py-3">Hồ sơ</TableHead>
+                  <TableHead className="px-4 py-3">Người gửi</TableHead>
+                  <TableHead className="px-4 py-3">Chi nhánh</TableHead>
+                  <TableHead className="px-4 py-3">Chuyên môn</TableHead>
+                  <TableHead className="px-4 py-3">Level mong muốn</TableHead>
+                  <TableHead className="px-4 py-3">Liên hệ</TableHead>
+                  <TableHead className="px-4 py-3">Trạng thái</TableHead>
+                  <TableHead className="px-4 py-3">Ngày gửi</TableHead>
+                  <TableHead className="px-4 py-3 text-right">
+                    Thao tác
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody className="bg-card">
+                {loading ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={7}
+                      className="px-4 py-12 text-center text-muted-foreground"
+                    >
+                      <Loader2 className="mx-auto mb-2 h-6 w-6 animate-spin" />
+                      Đang tải danh sách hồ sơ...
+                    </TableCell>
+                  </TableRow>
+                ) : filteredApplications.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={7}
+                      className="px-4 py-12 text-center text-muted-foreground"
+                    >
+                      Không có hồ sơ phù hợp.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredApplications.map((app) => (
+                    <TableRow key={app.id} className="hover:bg-muted/50">
+                      <TableCell className="px-4 py-4 font-semibold">
+                        #{app.id}
+                      </TableCell>
+                      <TableCell className="px-4 py-4">
+                        <div className="font-semibold text-foreground">
+                          {applicantName(app)}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {app.user?.email || "-"}
+                        </div>
+                      </TableCell>
+                      <TableCell className="max-w-[220px] truncate px-4 py-4">
+                        {app.branch?.branch_name ||
+                          (app.branch_id ? `#${app.branch_id}` : "-")}
+                      </TableCell>
+                      <TableCell className="max-w-[220px] truncate px-4 py-4">
+                        {app.specialization || "-"}
+                      </TableCell>
+                      <TableCell className="px-4 py-4">
+                        {app.desired_level
+                          ? trainerLevelLabel[app.desired_level]
+                          : "-"}
+                      </TableCell>
+                      <TableCell className="px-4 py-4">
+                        {app.phone_number || app.user?.phone_number || "-"}
+                      </TableCell>
+                      <TableCell className="px-4 py-4">
+                        <StatusBadge status={app.status} />
+                      </TableCell>
+                      <TableCell className="px-4 py-4">
+                        {formatDate(app.submitted_at)}
+                      </TableCell>
+                      <TableCell className="px-4 py-4 text-right">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => openDetail(app.id)}
+                          title="Xem chi tiết"
+                        >
+                          <Eye className="h-4 w-4 text-slate-700" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </div>
         </CardContent>
       </Card>
