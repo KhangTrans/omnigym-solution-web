@@ -17,13 +17,10 @@ import {
   Loader2,
   CircleHelp,
   ClipboardCheck,
-  QrCode,
   Calendar,
   UserPlus,
   MessageSquareQuote,
   KeyRound,
-  ChevronDown,
-  ChevronRight,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "../utils/cn";
@@ -210,14 +207,6 @@ const AdminLayout = () => {
   const navigate = useNavigate();
   const pathname = location.pathname;
   const [verifying, setVerifying] = useState(true);
-  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
-
-  const toggleGroup = (group: string) => {
-    setExpandedGroups((prev) => ({
-      ...prev,
-      [group]: !prev[group],
-    }));
-  };
 
   const userData = localStorage.getItem("user");
   let user = null;
@@ -320,28 +309,6 @@ const AdminLayout = () => {
     });
   }, [isStaff]);
 
-  // Automatically expand the group containing the active route
-  useEffect(() => {
-    const activeGroup = GROUPS.find((group) =>
-      filteredNav.some(
-        (item) =>
-          item.group === group &&
-          (item.exact
-            ? pathname === item.to
-            : pathname === item.to || pathname.startsWith(item.to + "/"))
-      )
-    );
-    if (activeGroup) {
-      setExpandedGroups((prev) => {
-        if (prev[activeGroup]) return prev;
-        return {
-          ...prev,
-          [activeGroup]: true,
-        };
-      });
-    }
-  }, [pathname, filteredNav]);
-
   const profile = {
     name: user?.full_name || "Quản trị viên",
     role: isPartner
@@ -366,9 +333,9 @@ const AdminLayout = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <div className="grid min-h-screen w-full grid-cols-1 lg:grid-cols-[260px_1fr]">
-        <aside className="hidden border-r border-slate-100 bg-card lg:flex lg:flex-col">
+    <div className="h-screen overflow-hidden bg-background text-foreground">
+      <div className="grid h-full w-full grid-cols-1 lg:grid-cols-[260px_1fr]">
+        <aside className="hidden h-full border-r border-slate-100 bg-card lg:flex lg:flex-col overflow-hidden">
           <div className="flex h-16 items-center gap-2 border-b border-slate-100 px-6">
             <div className="grid h-8 w-8 place-items-center rounded-md bg-[#2f6b50] text-white font-bold">
               O
@@ -378,51 +345,39 @@ const AdminLayout = () => {
               <div className="text-[11px] text-muted-foreground">Bảng điều khiển hệ thống</div>
             </div>
           </div>
-          <nav className="flex-1 space-y-2 overflow-y-auto p-3">
+          <nav className="flex-1 space-y-3 overflow-y-auto p-3 [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]">
             {GROUPS.map((group) => {
               const groupItems = filteredNav.filter((n) => n.group === group);
               if (groupItems.length === 0) return null;
 
-              const isExpanded = !!expandedGroups[group];
-
               return (
                 <div key={group} className="space-y-1">
-                  <button
-                    onClick={() => toggleGroup(group)}
-                    className="flex w-full items-center justify-between px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 hover:text-foreground transition-colors cursor-pointer"
-                  >
-                    <span>{GROUPS_LABELS[group]}</span>
-                    {isExpanded ? (
-                      <ChevronDown className="h-3.5 w-3.5" />
-                    ) : (
-                      <ChevronRight className="h-3.5 w-3.5" />
-                    )}
-                  </button>
-                  {isExpanded && (
-                    <div className="space-y-1 pl-1 transition-all">
-                      {groupItems.map((item) => {
-                        const active = item.exact
-                          ? pathname === item.to
-                          : pathname === item.to || pathname.startsWith(item.to + "/");
-                        const Icon = item.icon;
-                        return (
-                          <Link
-                            key={item.to}
-                            to={item.to}
-                            className={cn(
-                              "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                              active
-                                ? "bg-[#2f6b50] text-white shadow-sm"
-                                : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                            )}
-                          >
-                            <Icon className="h-4 w-4" />
-                            {item.label}
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  )}
+                  <div className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                    {GROUPS_LABELS[group]}
+                  </div>
+                  <div className="space-y-1">
+                    {groupItems.map((item) => {
+                      const active = item.exact
+                        ? pathname === item.to
+                        : pathname === item.to || pathname.startsWith(item.to + "/");
+                      const Icon = item.icon;
+                      return (
+                        <Link
+                          key={item.to}
+                          to={item.to}
+                          className={cn(
+                            "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium",
+                            active
+                              ? "bg-[#2f6b50] text-white shadow-sm"
+                              : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                          )}
+                        >
+                          <Icon className="h-4 w-4" />
+                          {item.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
                 </div>
               );
             })}
@@ -438,7 +393,7 @@ const AdminLayout = () => {
           </div>
         </aside>
 
-        <div className="flex min-w-0 flex-col">
+        <div className="flex h-full min-w-0 flex-col overflow-hidden">
           <header className="flex h-16 items-center justify-between border-b border-slate-100 bg-card/60 px-4 backdrop-blur lg:px-8">
             <div className="flex items-center gap-3 overflow-x-auto admin-scrollbar lg:hidden">
               {filteredNav.map((item) => {
@@ -504,7 +459,7 @@ const AdminLayout = () => {
             </Link>
           </header>
 
-          <main className="flex-1 p-4 lg:p-8">
+          <main className="flex-1 overflow-y-auto p-4 lg:p-8 [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]">
             <Outlet />
           </main>
         </div>
