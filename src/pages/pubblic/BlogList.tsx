@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Navbar } from "../../components/site/Navbar";
 import { Footer } from "../../components/site/Footer";
 import { ScrollProgressButton } from "../../components/site/ScrollProgressButton";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,17 @@ import {
   PaginationItem,
 } from "@/components/ui/pagination";
 import { postsApi, type Post } from "@/api/posts";
-import { Search, Calendar, BookOpen, ArrowRight, RefreshCw, AlertTriangle, Eye } from "lucide-react";
+import {
+  Search,
+  Calendar,
+  BookOpen,
+  ArrowRight,
+  RefreshCw,
+  AlertTriangle,
+  Eye,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { extractThumbnail, formatPostDate, formatViewCount, stripHtml } from "@/utils/blogUtils";
@@ -38,7 +48,7 @@ export default function BlogList() {
   const limit = 12;
 
   // Fetch blogs from API
-  const fetchBlogs = async () => {
+  const fetchBlogs = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -64,7 +74,7 @@ export default function BlogList() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, limit, debouncedSearch, selectedCategory, sortBy]);
 
   // Debounced search trigger: only update state, do not call API directly here.
   useEffect(() => {
@@ -77,8 +87,9 @@ export default function BlogList() {
 
   // Fetch data from a single effect to avoid duplicate /api/posts calls on first load/search.
   useEffect(() => {
-    fetchBlogs();
-  }, [page, selectedCategory, sortBy, debouncedSearch]);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- guest blog list must fetch on filter/page/search change
+    void fetchBlogs();
+  }, [fetchBlogs]);
 
   // Reset page helper
   const handleCategoryChange = (cat: string) => {
@@ -117,63 +128,107 @@ export default function BlogList() {
     <div className="min-h-screen bg-background text-foreground font-sans flex flex-col">
       <Navbar />
 
-      <main className="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        {/* Banner Section */}
-        <div className="relative mb-12 rounded-3xl overflow-hidden bg-gradient-to-r from-slate-900 via-emerald-950 to-slate-900 p-8 md:p-12 text-center shadow-xl">
-          <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] opacity-20" />
+      <main className="flex-grow mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
+        <article className="mb-16 grid gap-8 lg:grid-cols-2 lg:gap-12 group">
           <motion.div
-            initial={{ opacity: 0, y: -10 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="relative z-10 space-y-4"
+            transition={{ duration: 0.5 }}
           >
-            <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white border-none px-3 py-1 text-xs uppercase tracking-widest">
-              OmniGym Blog
+            <Badge variant="outline" className="mb-3 w-fit bg-primary/10 text-primary border-primary/20">
+              OmniGym Journal
             </Badge>
-            <h1 className="text-3xl md:text-5xl font-black text-white tracking-tight leading-tight">
-              Chia sẻ kiến thức & phong cách sống lành mạnh
+            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl leading-tight">
+              Train smarter. Recover better. Live stronger.
             </h1>
-            <p className="text-slate-300 max-w-2xl mx-auto text-sm md:text-base font-normal">
-              Cập nhật những bí quyết luyện tập, chế độ dinh dưỡng khoa học và câu chuyện truyền cảm hứng từ các huấn luyện viên chuyên nghiệp.
+            <p className="mt-4 text-base leading-relaxed text-muted-foreground sm:text-lg">
+              Practical guides from our coaches, dietitians, and members — no fluff, no gimmicks.
             </p>
+            <div className="mt-6 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5">
+                <Calendar className="h-3.5 w-3.5" /> Training tips
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <Eye className="h-3.5 w-3.5" /> Published insights
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <BookOpen className="h-3.5 w-3.5" /> Community stories
+              </span>
+            </div>
+            <a
+              href="/blog"
+              className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-primary transition-all hover:gap-3"
+            >
+              Read article <ArrowRight className="h-4 w-4" />
+            </a>
           </motion.div>
-        </div>
 
-        {/* Filter Section */}
-        <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between mb-8 pb-6 border-b border-border">
-          {/* Categories Tab Layout */}
+          <a
+            href={posts[0] ? `/blog/${slugify(posts[0].title || "")}-${posts[0].id}` : "/blog"}
+            className="block overflow-hidden rounded-2xl border border-border bg-card shadow-card"
+          >
+            <div className="aspect-[16/10] overflow-hidden bg-muted">
+              <img
+                src={(posts[0] ? extractThumbnail(posts[0]) : null) || "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1200&q=80"}
+                alt={posts[0]?.title || "Featured blog"}
+                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+                loading="lazy"
+              />
+            </div>
+            <div className="space-y-3 p-5 sm:p-6">
+              <Badge variant="outline" className="w-fit bg-primary/15 text-primary border-primary/20">
+                {posts[0]?.category || "Featured"}
+              </Badge>
+              <h2 className="text-2xl font-bold tracking-tight leading-tight sm:text-3xl">
+                {posts[0]?.title || "Loading featured article"}
+              </h2>
+              <p className="text-muted-foreground leading-relaxed">
+                {posts[0] ? stripHtml(posts[0].content).slice(0, 160) + "..." : "Explore the latest training, nutrition, and recovery advice."}
+              </p>
+              <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+                <span className="font-medium text-foreground">{posts[0]?.user?.full_name || "OmniGym Team"}</span>
+                <span className="inline-flex items-center gap-1.5">
+                  <Calendar className="h-3.5 w-3.5" /> {posts[0] ? formatPostDate(posts[0].created_at) : "Today"}
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-current text-[10px] leading-none">6</span>
+                </span>
+              </div>
+            </div>
+          </a>
+        </article>
+
+        <div className="mb-8 flex flex-col gap-6 border-b border-border pb-6 md:flex-row md:items-center md:justify-between">
           <div className="flex flex-wrap gap-2">
             {CATEGORIES.map((cat) => (
               <button
                 key={cat}
                 onClick={() => handleCategoryChange(cat)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${selectedCategory === cat
-                    ? "bg-primary text-primary-foreground shadow-md scale-105"
-                    : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
-                  }`}
+                className={`rounded-full px-4 py-2 text-sm font-medium transition-all duration-200 ${selectedCategory === cat
+                  ? "bg-primary text-primary-foreground shadow-md scale-105"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+                }`}
               >
                 {cat}
               </button>
             ))}
           </div>
 
-          {/* Search and Sort */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
-            {/* Search Input */}
+          <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center md:w-auto">
             <div className="relative flex-grow sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Tìm bài viết..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 bg-card border-border"
+                className="border-border bg-card pl-9"
               />
             </div>
 
             <select
               value={sortBy}
               onChange={(e) => handleSortChange(e.target.value)}
-              className="h-10 rounded-md border border-input bg-card px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 w-full sm:w-44 cursor-pointer"
+              className="h-10 w-full cursor-pointer rounded-md border border-input bg-card px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:w-44"
             >
               <option value="newest">Mới nhất</option>
               <option value="oldest">Cũ nhất</option>
@@ -182,47 +237,43 @@ export default function BlogList() {
           </div>
         </div>
 
-        {/* Main Content Area */}
         <AnimatePresence mode="wait">
           {error ? (
-            /* Error State */
             <motion.div
               key="error-state"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="flex flex-col items-center justify-center text-center py-16 px-4 bg-muted/20 border border-dashed rounded-2xl"
+              className="flex flex-col items-center justify-center rounded-2xl border border-dashed bg-muted/20 px-4 py-16 text-center"
             >
-              <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
-              <h3 className="text-xl font-bold mb-2">Đã xảy ra lỗi</h3>
-              <p className="text-muted-foreground max-w-md mb-6">{error}</p>
+              <AlertTriangle className="mb-4 h-12 w-12 text-destructive" />
+              <h3 className="mb-2 text-xl font-bold">Đã xảy ra lỗi</h3>
+              <p className="mb-6 max-w-md text-muted-foreground">{error}</p>
               <Button onClick={fetchBlogs} className="gap-2">
                 <RefreshCw className="h-4 w-4" /> Thử lại
               </Button>
             </motion.div>
           ) : loading ? (
-            /* Loading State */
             <motion.div
               key="loading-state"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+              className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3"
             >
               {renderSkeletons()}
             </motion.div>
           ) : posts.length === 0 ? (
-            /* Empty State */
             <motion.div
               key="empty-state"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="flex flex-col items-center justify-center text-center py-20 px-4 bg-muted/10 border border-dashed rounded-2xl"
+              className="flex flex-col items-center justify-center rounded-2xl border border-dashed bg-muted/10 px-4 py-20 text-center"
             >
-              <BookOpen className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-xl font-bold mb-1">Không tìm thấy bài viết nào</h3>
-              <p className="text-muted-foreground max-w-md mb-4">
+              <BookOpen className="mb-4 h-12 w-12 text-muted-foreground" />
+              <h3 className="mb-1 text-xl font-bold">Không tìm thấy bài viết nào</h3>
+              <p className="mb-4 max-w-md text-muted-foreground">
                 Hiện tại không có bài viết nào thuộc chủ đề này hoặc kết quả tìm kiếm của bạn trống.
               </p>
               <Button
@@ -236,7 +287,6 @@ export default function BlogList() {
               </Button>
             </motion.div>
           ) : (
-            /* Blog Grid */
             <motion.div
               key="grid-state"
               initial={{ opacity: 0 }}
@@ -244,93 +294,74 @@ export default function BlogList() {
               exit={{ opacity: 0 }}
               className="space-y-12"
             >
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {posts.map((post) => {
-                  const thumbnail = extractThumbnail(post);
-                  const postCategory = post.category || "General";
-                  const summary = stripHtml(post.content).slice(0, 120) + "...";
-                  const createdDate = formatPostDate(post.created_at);
+              <section>
+                <h2 className="mb-6 text-xl font-bold">Latest posts</h2>
+                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                  {posts.map((post) => {
+                    const thumbnail = extractThumbnail(post);
+                    const postCategory = post.category || "General";
+                    const summary = stripHtml(post.content).slice(0, 120) + "...";
+                    const authorName = post.user?.full_name || "OmniGym Team";
 
-                  return (
-                    <motion.div
-                      key={post.id}
-                      whileHover={{ y: -6 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      <Card
-                        className="h-full flex flex-col overflow-hidden border border-border bg-card hover:shadow-lg transition-shadow duration-300 cursor-pointer"
-                        onClick={() => navigate(`/blog/${slugify(post.title || "")}-${post.id}`)}
+                    return (
+                      <motion.div
+                        key={post.id}
+                        whileHover={{ y: -4 }}
+                        transition={{ duration: 0.2 }}
+                        className="h-full"
                       >
-                        {/* Cover Image */}
-                        <div className="relative h-48 w-full overflow-hidden bg-muted">
-                          {thumbnail ? (
-                            <img
-                              src={thumbnail}
-                              alt={post.title}
-                              className="h-full w-full object-cover transition-transform duration-500 hover:scale-105"
-                              onError={(e) => {
-                                // Fallback if image fails to load
-                                (e.target as HTMLImageElement).style.display = "none";
-                              }}
-                            />
-                          ) : (
-                            /* Visual Fallback Image */
-                            <div className="w-full h-full bg-gradient-to-br from-emerald-600 via-emerald-800 to-slate-900 flex flex-col justify-between p-4 text-white relative">
-                              <div className="flex justify-between items-start">
-                                <Badge className="bg-white/25 backdrop-blur-md text-white border-none">
-                                  {postCategory}
-                                </Badge>
+                        <div
+                          onClick={() => navigate(`/blog/${slugify(post.title || "")}-${post.id}`)}
+                          className="group flex h-full cursor-pointer flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-all hover:border-primary/30 hover:shadow-card"
+                        >
+                          <div className="aspect-[16/10] overflow-hidden bg-muted">
+                            {thumbnail ? (
+                              <img
+                                src={thumbnail}
+                                alt={post.title}
+                                loading="lazy"
+                                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).style.display = "none";
+                                }}
+                              />
+                            ) : (
+                              <div className="flex h-full w-full flex-col justify-between bg-gradient-to-br from-emerald-600 via-emerald-800 to-slate-900 p-4 text-white">
                                 <BookOpen className="h-6 w-6 text-white/40" />
-                              </div>
-                              <div>
-                                <h4 className="font-bold text-lg line-clamp-2 leading-tight">
+                                <h4 className="text-lg font-bold leading-tight line-clamp-2">
                                   {post.title}
                                 </h4>
                               </div>
-                            </div>
-                          )}
-                          {thumbnail && (
-                            <Badge className="absolute top-3 left-3 bg-emerald-600 hover:bg-emerald-700 text-white border-none shadow">
+                            )}
+                          </div>
+
+                          <div className="flex flex-1 flex-col p-5">
+                            <Badge
+                              variant="outline"
+                              className="mb-3 w-fit bg-primary/10 text-primary border-primary/20"
+                            >
                               {postCategory}
                             </Badge>
-                          )}
-                        </div>
-
-                        {/* Card Contents */}
-                        <CardHeader className="p-4 pb-2">
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-                            <Calendar className="h-3.5 w-3.5" />
-                            <span>{createdDate}</span>
+                            <h3 className="text-lg font-semibold leading-snug transition-colors line-clamp-2 group-hover:text-primary">
+                              {post.title}
+                            </h3>
+                            <p className="mt-2 text-sm text-muted-foreground line-clamp-2">
+                              {summary}
+                            </p>
+                            <div className="mt-auto flex items-center justify-between pt-4 text-xs text-muted-foreground">
+                              <span className="font-medium text-foreground">{authorName}</span>
+                              <span className="inline-flex items-center gap-1">
+                                <Eye className="h-3 w-3" /> {formatViewCount(post.view_count)}
+                              </span>
+                            </div>
                           </div>
-                          <CardTitle className="text-lg font-bold line-clamp-2 leading-snug hover:text-primary transition-colors">
-                            {post.title}
-                          </CardTitle>
-                        </CardHeader>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              </section>
 
-                        <CardContent className="p-4 pt-0 flex-grow">
-                          <p className="text-sm text-muted-foreground line-clamp-3 leading-relaxed">
-                            {summary}
-                          </p>
-                        </CardContent>
-
-                        {/* Card Footer with Stats */}
-                        <CardFooter className="p-4 pt-3 border-t border-border flex items-center justify-between text-xs text-muted-foreground bg-muted/10">
-                          <span className="text-primary font-semibold flex items-center gap-1 group">
-                            Đọc tiếp
-                            <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
-                          </span>
-                          <span className="flex items-center gap-1 text-muted-foreground">
-                            <Eye className="h-3.5 w-3.5" />
-                            <span>{formatViewCount(post.view_count)}</span>
-                          </span>
-                        </CardFooter>
-                      </Card>
-                    </motion.div>
-                  );
-                })}
-              </div>
-
-              {/* Pagination Section */}
               {totalPages > 1 && (
                 <div className="pt-6">
                   <Pagination>
@@ -339,9 +370,9 @@ export default function BlogList() {
                         <button
                           onClick={() => setPage((p) => Math.max(p - 1, 1))}
                           disabled={page === 1}
-                          className="flex h-9 items-center justify-center rounded-md border border-input bg-card px-3 text-sm font-medium shadow-sm hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50 gap-1 pl-2.5 cursor-pointer"
+                          className="flex h-9 cursor-pointer items-center justify-center gap-1 rounded-md border border-input bg-card px-3 pl-2.5 text-sm font-medium shadow-sm hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50"
                         >
-                          <ChevronLeftIcon className="h-4 w-4" />
+                          <ChevronLeft className="h-4 w-4" />
                           <span>Previous</span>
                         </button>
                       </PaginationItem>
@@ -352,10 +383,10 @@ export default function BlogList() {
                           <PaginationItem key={pageNum}>
                             <button
                               onClick={() => setPage(pageNum)}
-                              className={`flex h-9 w-9 items-center justify-center rounded-md text-sm font-medium shadow-sm border cursor-pointer transition-colors ${page === pageNum
-                                  ? "bg-primary text-primary-foreground border-primary hover:bg-primary/95"
-                                  : "bg-card border-input hover:bg-accent hover:text-accent-foreground"
-                                }`}
+                              className={`flex h-9 w-9 cursor-pointer items-center justify-center rounded-md border text-sm font-medium shadow-sm transition-colors ${page === pageNum
+                                ? "border-primary bg-primary text-primary-foreground hover:bg-primary/95"
+                                : "border-input bg-card hover:bg-accent hover:text-accent-foreground"
+                              }`}
                             >
                               {pageNum}
                             </button>
@@ -367,10 +398,10 @@ export default function BlogList() {
                         <button
                           onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
                           disabled={page === totalPages}
-                          className="flex h-9 items-center justify-center rounded-md border border-input bg-card px-3 text-sm font-medium shadow-sm hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50 gap-1 pr-2.5 cursor-pointer"
+                          className="flex h-9 cursor-pointer items-center justify-center gap-1 rounded-md border border-input bg-card px-3 pr-2.5 text-sm font-medium shadow-sm hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50"
                         >
                           <span>Next</span>
-                          <ChevronRightIcon className="h-4 w-4" />
+                          <ChevronRight className="h-4 w-4" />
                         </button>
                       </PaginationItem>
                     </PaginationContent>
@@ -384,46 +415,6 @@ export default function BlogList() {
 
       <Footer />
       <ScrollProgressButton />
-
     </div>
-  );
-}
-
-// Simple Helper Components for Pagination Icons
-function ChevronLeftIcon(props: React.ComponentProps<"svg">) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      {...props}
-    >
-      <path d="m15 18-6-6 6-6" />
-    </svg>
-  );
-}
-
-function ChevronRightIcon(props: React.ComponentProps<"svg">) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      {...props}
-    >
-      <path d="m9 18 6-6-6-6" />
-    </svg>
   );
 }

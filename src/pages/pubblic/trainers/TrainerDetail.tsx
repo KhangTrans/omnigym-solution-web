@@ -28,10 +28,10 @@ import { TrainerSchedule } from "./components/TrainerSchedule";
 
 
 
-/**
- * Kiểm tra user có đang đăng nhập không bằng localStorage —
- * đồng nhất với pattern hiện đang dùng ở Navbar / CustomerLayout.
- */
+
+
+
+
 const hasLoggedInUser = (): boolean => {
   const userData = localStorage.getItem("user");
   const token = localStorage.getItem("token");
@@ -380,8 +380,8 @@ export default function TrainerDetail() {
   }
 
   const avatar =
-    trainer.avatar_url ||
     trainer.user?.avatar_url ||
+    trainer.avatar_url ||
     buildAvatarFallback(trainer.full_name);
 
   const ratingDisplay =

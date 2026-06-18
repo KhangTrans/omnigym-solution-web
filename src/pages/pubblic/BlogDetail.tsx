@@ -76,7 +76,7 @@ export default function BlogDetail() {
 
         if (typeof result.viewCount === "number") {
           setDisplayViewCount(result.viewCount);
-          setPost((current) => current?.id === post.id ? { ...current, view_count: result.viewCount } : current);
+          setPost((current) => (current?.id === post.id ? { ...current, view_count: result.viewCount } : current));
         }
       })
       .catch((err) => {
@@ -122,50 +122,51 @@ export default function BlogDetail() {
   const authorName = post?.user?.full_name || "Huấn luyện viên";
   const authorAvatar = post?.user?.avatar_url;
   const authorRole = post?.user?.role?.role_name || post?.user?.role?.name;
-  const contentHtml = heroImage.source === "content"
-    ? removeFirstImageFromContent(post?.content)
-    : post?.content || "";
+  const contentHtml = heroImage.source === "content" ? removeFirstImageFromContent(post?.content) : post?.content || "";
 
   return (
-    <div className="min-h-screen bg-background text-foreground font-sans flex flex-col">
+    <div className="min-h-screen bg-background text-foreground">
       <Navbar />
 
-      <main className="flex-grow">
-        {loading ? renderLoading() : error || !post ? renderError() : (
+      <main className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
+        <Button variant="ghost" asChild className="mb-8 gap-2 pl-0 hover:pl-2 transition-all">
+          <Link to="/blog">
+            <ArrowLeft className="h-4 w-4" /> Quay lại danh sách blog
+          </Link>
+        </Button>
+
+        {loading ? (
+          renderLoading()
+        ) : error || !post ? (
+          renderError()
+        ) : (
           <motion.article
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35 }}
-            className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10"
+            className="space-y-10"
           >
-            <Button variant="ghost" asChild className="mb-8 gap-2 pl-0 hover:pl-2 transition-all">
-              <Link to="/blog">
-                <ArrowLeft className="h-4 w-4" /> Quay lại danh sách blog
-              </Link>
-            </Button>
-
-            <header className="space-y-6 mb-8">
-              <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100/85 border-none">
-                  {post.category || "General"}
-                </Badge>
-                <span className="hidden sm:inline">•</span>
-                <span className="flex items-center gap-1.5">
-                  <Calendar className="h-4 w-4" />
-                  {formatPostDate(post.created_at)}
-                </span>
-                <span className="hidden sm:inline">•</span>
-                <span className="flex items-center gap-1.5">
-                  <Eye className="h-4 w-4" />
-                  {formatViewCount(displayViewCount ?? post.view_count)} lượt xem
-                </span>
-              </div>
+            <header className="space-y-6 text-center max-w-4xl mx-auto">
+              <Badge variant="outline" className="w-fit bg-primary/10 text-primary border-primary/20 mx-auto">
+                {post.category || "General"}
+              </Badge>
 
               <h1 className="text-3xl md:text-5xl font-black tracking-tight leading-tight text-foreground">
                 {post.title || "Bài viết không có tiêu đề"}
               </h1>
 
-              <div className="flex items-center gap-3 rounded-2xl border bg-card/80 p-4 shadow-sm">
+              <div className="flex flex-wrap items-center justify-center gap-3 text-sm text-muted-foreground">
+                <span className="inline-flex items-center gap-1.5">
+                  <Calendar className="h-4 w-4" />
+                  {formatPostDate(post.created_at)}
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <Eye className="h-4 w-4" />
+                  {formatViewCount(displayViewCount ?? post.view_count)} lượt xem
+                </span>
+              </div>
+
+              <div className="flex items-center justify-center gap-3 rounded-2xl border bg-card/80 p-4 shadow-sm text-left max-w-md mx-auto">
                 {authorAvatar ? (
                   <img
                     src={authorAvatar}
@@ -186,17 +187,13 @@ export default function BlogDetail() {
             </header>
 
             {heroImage.url && (
-              <div className="relative h-64 md:h-[460px] w-full rounded-3xl overflow-hidden border bg-muted shadow-sm mb-8">
-                <img
-                  src={heroImage.url}
-                  alt={post.title || "Ảnh bài viết"}
-                  className="h-full w-full object-cover"
-                />
+              <div className="relative h-64 md:h-[460px] w-full rounded-3xl overflow-hidden border bg-muted shadow-sm">
+                <img src={heroImage.url} alt={post.title || "Ảnh bài viết"} className="h-full w-full object-cover" />
               </div>
             )}
 
             {post.images?.length > 1 && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {post.images.slice(1).map((image) => (
                   <div key={image.id} className="h-32 rounded-xl overflow-hidden border bg-muted">
                     <img
