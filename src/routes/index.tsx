@@ -1,4 +1,5 @@
 import { createBrowserRouter, Link, Navigate, type RouteObject } from "react-router-dom";
+import { useEffect, useState } from "react";
 import Register from "../pages/pubblic/Register";
 import Login from "../pages/pubblic/Login";
 import ForgotPassword from "../pages/pubblic/ForgotPassword";
@@ -63,6 +64,30 @@ import TrainerProfileEditor from "../pages/trainer/TrainerProfileEditor";
 import ReviewsPage from "../pages/admin/reviews/Reviews";
 import BranchManagerReviews from "../pages/branchmanager/BranchManagerReviews";
 import { DashboardRedirect, RoleOnly } from "./routeGuards";
+import { authApi } from "@/api/auth";
+
+function TrainerRouteGuard() {
+  const [allowed, setAllowed] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const response = await authApi.getMe();
+        const trainer = response.data?.trainer;
+        if (mounted) setAllowed(Boolean(trainer && trainer.is_active === true));
+      } catch {
+        if (mounted) setAllowed(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  if (allowed === null) return null;
+  return allowed ? <TrainerDashboard /> : <Navigate to="/trainer-join" replace />;
+}
 
 export const routesConfig: RouteObject[] = [
   {
@@ -75,7 +100,7 @@ export const routesConfig: RouteObject[] = [
   },
   {
     path: "/trainer",
-    element: <TrainerDashboard />,
+    element: <TrainerRouteGuard />,
     children: [
       { index: true, element: <Navigate to="schedule" replace /> },
       { path: "schedule", element: <ScheduleManager /> },
