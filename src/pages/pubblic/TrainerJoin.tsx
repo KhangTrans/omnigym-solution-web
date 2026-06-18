@@ -101,6 +101,7 @@ export default function TrainerJoin() {
   const [checkingApplication, setCheckingApplication] = useState(true);
   const [savingDraft, setSavingDraft] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [autoRedirecting, setAutoRedirecting] = useState(false);
   const [branches, setBranches] = useState<BranchOption[]>([]);
   const [loadingBranches, setLoadingBranches] = useState(false);
 
@@ -182,6 +183,15 @@ export default function TrainerJoin() {
       avatar_url: f.avatar_url || user.avatar_url || user.avatar || "",
     }));
   }, [user]);
+
+  useEffect(() => {
+    if (application?.status !== "approved") return;
+    if (autoRedirecting) return;
+
+    setAutoRedirecting(true);
+    navigate("/trainer", { replace: true });
+
+  }, [application?.status, application?.approved_level, autoRedirecting, navigate]);
 
   useEffect(() => {
     if (!loaded || !user) return;

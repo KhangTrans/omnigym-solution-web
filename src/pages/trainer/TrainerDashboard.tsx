@@ -1,5 +1,6 @@
 import { Link, useNavigate, useLocation, Outlet } from "react-router-dom";
 import { useEffect, useState, useMemo } from "react";
+import { Navigate } from "react-router-dom";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -49,6 +50,7 @@ export default function TrainerDashboard() {
   const [loaded, setLoaded] = useState(false);
   const [trainerProfile, setTrainerProfile] = useState<any>(null);
   const [profileTick, setProfileTick] = useState(0);
+  const [accessChecked, setAccessChecked] = useState(false);
 
   useEffect(() => {
     try {
@@ -71,14 +73,17 @@ export default function TrainerDashboard() {
 
         if (!data?.trainer || data.trainer.is_active !== true) {
           toast.error("Tài khoản Trainer của bạn chưa được duyệt.");
-          navigate("/trainer-join");
+          setAccessChecked(true);
+          navigate("/trainer-join", { replace: true });
           return;
         }
 
         setTrainerProfile(data.trainer);
+        setAccessChecked(true);
       } catch (error) {
         console.error("Failed to load trainer profile", error);
-        navigate("/trainer-join");
+        setAccessChecked(true);
+        navigate("/trainer-join", { replace: true });
       }
     }
 
@@ -181,8 +186,8 @@ export default function TrainerDashboard() {
     }
   };
 
-  if (!loaded) return null;
-  if (!trainerProfile) return null;
+  if (!loaded || !accessChecked) return null;
+  if (!trainerProfile) return <Navigate to="/trainer-join" replace />;
 
   const status = getTrainerStatus(trainer as any);
 
