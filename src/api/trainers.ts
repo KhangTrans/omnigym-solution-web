@@ -102,6 +102,18 @@ export interface PublicTrainerDetail {
   reviews: PublicTrainerReview[];
 }
 
+export interface TrainerScheduleShift {
+  id: number;
+  date: string;
+  status: string;
+  shift: {
+    id: number;
+    shift_name: string;
+    start_time: string;
+    end_time: string;
+  } | null;
+}
+
 export const trainersApi = {
   getApproved: () => {
     return api.get<{ status: string; data: Trainer[] }>("/trainers/approved");
@@ -114,4 +126,16 @@ export const trainersApi = {
   },
   getById: (id: number | string) =>
     api.get<{ message: string; data: PublicTrainerDetail }>(`/trainers/${id}`),
+  getSchedule: (id: number | string, startDate?: string, endDate?: string) =>
+    api.get<{ message: string; data: TrainerScheduleShift[] }>(
+      `/trainers/${id}/schedule`,
+      { params: { start_date: startDate, end_date: endDate } }
+    ),
+  bookSlot: (payload: { trainer_id: number; date: string; time: string }) =>
+    api.post<{ message: string; data: any }>("/bookings", payload),
+  getBookedSlots: (trainerId: number | string, startDate?: string, endDate?: string) =>
+    api.get<{ message: string; data: any[] }>(
+      `/bookings/trainers/${trainerId}`,
+      { params: { start_date: startDate, end_date: endDate } }
+    ),
 };

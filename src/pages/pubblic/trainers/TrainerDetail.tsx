@@ -11,8 +11,6 @@ import {
   Phone,
   Star,
   Tag,
-  Calendar,
-  CheckCircle2,
   ImageOff,
 } from "lucide-react";
 import { Navbar } from "@/components/site/Navbar";
@@ -20,11 +18,15 @@ import { Footer } from "@/components/site/Footer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { trainersApi, type PublicTrainerDetail } from "@/api/trainers";
+import { trainersApi, type PublicTrainerDetail, type TrainerScheduleShift } from "@/api/trainers";
 import { favoriteTrainerAPI } from "@/api/favoriteTrainers";
 import { slugify } from "@/utils/slugify";
 import { notify } from "@/utils/notify";
 import { cn } from "@/utils/cn";
+import { TrainerSchedule } from "./components/TrainerSchedule";
+
+
+
 
 /**
  * Kiểm tra user có đang đăng nhập không bằng localStorage —
@@ -65,6 +67,13 @@ const buildAvatarFallback = (name: string | null | undefined): string => {
   )}&background=4F8A74&color=fff&size=400`;
 };
 
+const formatLocalDate = (d: Date): string => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 export default function TrainerDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -73,10 +82,76 @@ export default function TrainerDetail() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
 
+  // Lịch làm việc state
+  const [schedule, setSchedule] = useState<TrainerScheduleShift[]>([]);
+  const [scheduleLoading, setScheduleLoading] = useState(false);
+  const [weekStart, setWeekStart] = useState<Date>(() => {
+    const x = new Date();
+    const diff = (x.getDay() + 6) % 7; // Monday = 0
+    x.setDate(x.getDate() - diff);
+    x.setHours(0, 0, 0, 0);
+    return x;
+  });
+  const [selectedDay, setSelectedDay] = useState<string>(() =>
+    formatLocalDate(new Date())
+  );
+
   // Favorite state — chỉ load khi user đã đăng nhập.
   const [isFavorited, setIsFavorited] = useState(false);
   const [favoriteToggling, setFavoriteToggling] = useState(false);
   const isAuthenticated = hasLoggedInUser();
+
+  // Local storage state for closures, days off, and bookings
+  const [closures, setClosures] = useState<any[]>([]);
+  const [daysOff, setDaysOff] = useState<any[]>([]);
+  const [bookings, setBookings] = useState<any[]>([]);
+
+  useEffect(() => {
+    try {
+      const rawClosures = localStorage.getItem("gym_trainer_closures_v1");
+      const rawDaysOff = localStorage.getItem("gym_trainer_days_off_v1");
+
+      setClosures(rawClosures ? JSON.parse(rawClosures) : []);
+      setDaysOff(rawDaysOff ? JSON.parse(rawDaysOff) : []);
+    } catch (e) {
+      console.error(e);
+    }
+  }, [id]);
+
+  const handleBookSlot = async (date: string, slot: string) => {
+    if (!isAuthenticated) {
+      notify.info("Vui lòng đăng nhập để đặt lịch tập.");
+      sessionStorage.setItem("postLoginRedirect", `/trainers/${id}`);
+      navigate("/login");
+      return;
+    }
+
+    const confirmBook = window.confirm(`Bạn muốn đặt lịch tập vào ngày ${formatDate(date)} lúc ${slot} chứ?`);
+    if (!confirmBook) return;
+
+    try {
+      // Gọi API đặt lịch phía Backend
+      await trainersApi.bookSlot({
+        trainer_id: Number(id),
+        date,
+        time: slot
+      });
+
+      // Tải lại danh sách đặt lịch mới nhất từ Backend
+      const start_date = formatLocalDate(weekStart);
+      const future = new Date(weekStart);
+      future.setDate(weekStart.getDate() + 6);
+      const end_date = formatLocalDate(future);
+
+      const bookingsResponse = await trainersApi.getBookedSlots(id!, start_date, end_date);
+      setBookings(bookingsResponse.data.data);
+
+      notify.success(`Đặt lịch thành công vào lúc ${slot} ngày ${formatDate(date)}!`);
+    } catch (error: any) {
+      const errorMsg = error?.response?.data?.message || "Không thể đặt lịch. Vui lòng thử lại.";
+      notify.error(errorMsg);
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -116,6 +191,39 @@ export default function TrainerDetail() {
       cancelled = true;
     };
   }, [id]);
+
+  // Load lịch làm việc và lịch bận của trainer trong tuần được chọn
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    async function loadScheduleAndBookings() {
+      try {
+        setScheduleLoading(true);
+        const start_date = formatLocalDate(weekStart);
+
+        const future = new Date(weekStart);
+        future.setDate(weekStart.getDate() + 6); // Lấy 7 ngày tiếp theo
+        const end_date = formatLocalDate(future);
+
+        const [scheduleRes, bookingsRes] = await Promise.all([
+          trainersApi.getSchedule(id!, start_date, end_date),
+          trainersApi.getBookedSlots(id!, start_date, end_date)
+        ]);
+
+        if (cancelled) return;
+        setSchedule(scheduleRes.data.data);
+        setBookings(bookingsRes.data.data);
+      } catch (error) {
+        console.error("Không thể tải lịch trực và lịch đặt của trainer", error);
+      } finally {
+        if (!cancelled) setScheduleLoading(false);
+      }
+    }
+    loadScheduleAndBookings();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, weekStart]);
 
   // Load trạng thái favorite khi đã có trainer + user đã login.
   useEffect(() => {
@@ -576,6 +684,27 @@ export default function TrainerDetail() {
               ))}
             </div>
           )}
+        </section>
+
+        {/* Lịch làm việc */}
+        <section className="mt-16">
+          <SectionHeader
+            title="Lịch tuần làm việc"
+            subtitle="Xem khung giờ làm việc của huấn luyện viên và đặt lịch tập (mỗi buổi 1h30 phút)."
+          />
+          <TrainerSchedule
+            trainerId={id!}
+            schedule={schedule}
+            scheduleLoading={scheduleLoading}
+            weekStart={weekStart}
+            setWeekStart={setWeekStart}
+            selectedDay={selectedDay}
+            setSelectedDay={setSelectedDay}
+            daysOff={daysOff}
+            bookings={bookings}
+            closures={closures}
+            handleBookSlot={handleBookSlot}
+          />
         </section>
 
         {/* Reviews */}
