@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Mail, Phone, StickyNote, MoreHorizontal, CheckCircle2 } from "lucide-react";
+import { Mail, Phone, StickyNote, MoreHorizontal, CheckCircle2, Ban } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -20,22 +20,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
-import { BOOKINGS_EVT, getBookings, updateBooking, type PTBooking } from "@/lib/pt-membership";
+import { trainersApi } from "@/api/trainers";
+import { type PTBooking } from "@/lib/pt-membership";
 import { useOutletContext } from "react-router-dom";
-
-function useBookingsTick() {
-  const [tick, setTick] = useState(0);
-  useEffect(() => {
-    const bump = () => setTick((t) => t + 1);
-    window.addEventListener(BOOKINGS_EVT, bump);
-    window.addEventListener("storage", bump);
-    return () => {
-      window.removeEventListener(BOOKINGS_EVT, bump);
-      window.removeEventListener("storage", bump);
-    };
-  }, []);
-  return tick;
-}
 
 function bookingDateTime(b: PTBooking) {
   return new Date(`${b.date}T${b.time}:00`);
@@ -106,13 +93,43 @@ function BookingStatusBadge({
 export default function ClientBookings() {
   const { trainer } = useOutletContext<any>();
   const trainerId = trainer.id;
-  const tick = useBookingsTick();
-  const bookings = useMemo(() => getBookings(trainerId), [trainerId, tick]);
+
+  const [bookings, setBookings] = useState<PTBooking[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [filter, setFilter] = useState<"upcoming" | "past" | "all">("upcoming");
   const [query, setQuery] = useState("");
   const [editingNote, setEditingNote] = useState<PTBooking | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
+
+  const fetchTrainerBookings = async () => {
+    try {
+      setLoading(true);
+      const res = await trainersApi.getTrainerBookings();
+      const mapped = res.data.data.map((b: any) => ({
+        id: String(b.id),
+        trainerId: String(b.trainer_id),
+        date: typeof b.date === 'string' ? b.date.slice(0, 10) : new Date(b.date).toISOString().slice(0, 10),
+        time: b.time.slice(0, 5), // Keep HH:mm
+        status: b.status,
+        customerName: b.user?.full_name || "Khách vãng lai",
+        customerEmail: b.user?.email || "",
+        customerPhone: b.user?.phone_number || "",
+        customerAvatar: b.user?.avatar_url || "",
+        note: b.note || "",
+      }));
+      setBookings(mapped);
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Không thể tải danh sách lịch hẹn.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTrainerBookings();
+  }, [trainerId]);
 
   const now = Date.now();
 
@@ -150,17 +167,27 @@ export default function ClientBookings() {
     (b) => b.status === "cancelled",
   ).length;
 
-  const markComplete = (b: PTBooking) => {
-    updateBooking(b.id, { status: "completed" });
-    toast.success("Đã ghi nhận buổi tập hoàn thành.");
+  const markComplete = async (b: PTBooking) => {
+    try {
+      await trainersApi.updateBooking(Number(b.id), { status: "completed" });
+      toast.success("Đã ghi nhận buổi tập hoàn thành.");
+      fetchTrainerBookings();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Không thể cập nhật trạng thái.");
+    }
   };
 
-  const saveNote = () => {
+  const saveNote = async () => {
     if (!editingNote) return;
-    updateBooking(editingNote.id, { note: noteDraft.trim() });
-    setEditingNote(null);
-    setNoteDraft("");
-    toast.success("Đã lưu nhận xét buổi tập.");
+    try {
+      await trainersApi.updateBooking(Number(editingNote.id), { note: noteDraft.trim() });
+      toast.success("Đã lưu nhận xét buổi tập.");
+      setEditingNote(null);
+      setNoteDraft("");
+      fetchTrainerBookings();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Không thể lưu nhận xét.");
+    }
   };
 
   return (
@@ -311,13 +338,29 @@ export default function ClientBookings() {
                           <StickyNote className="mr-2 h-4 w-4" /> Ghi chú buổi học
                         </DropdownMenuItem>
                         {b.status !== "completed" && b.status !== "cancelled" && (
-                          <DropdownMenuItem
-                            onClick={() => markComplete(b)}
-                            className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
-                          >
-                            <CheckCircle2 className="mr-2 h-4 w-4" /> Hoàn thành
-                            buổi học
-                          </DropdownMenuItem>
+                          <>
+                            <DropdownMenuItem
+                              onClick={() => markComplete(b)}
+                              className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                            >
+                              <CheckCircle2 className="mr-2 h-4 w-4" /> Hoàn thành
+                              buổi học
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={async () => {
+                                try {
+                                  await trainersApi.updateBooking(Number(b.id), { status: "cancelled" });
+                                  toast.success("Đã hủy lịch tập.");
+                                  fetchTrainerBookings();
+                                } catch (err: any) {
+                                  toast.error(err.response?.data?.message || "Không thể hủy lịch tập.");
+                                }
+                              }}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <Ban className="mr-2 h-4 w-4" /> Hủy buổi học
+                            </DropdownMenuItem>
+                          </>
                         )}
                       </DropdownMenuContent>
                     </DropdownMenu>

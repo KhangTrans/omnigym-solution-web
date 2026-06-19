@@ -1,6 +1,7 @@
 import { Link, useNavigate, useLocation, Outlet } from "react-router-dom";
 import { useEffect, useState, useMemo } from "react";
 import { Navigate } from "react-router-dom";
+import { NotificationBell } from "@/components/NotificationBell";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -202,7 +203,7 @@ export default function TrainerDashboard() {
         aria-hidden
       />
 
-      <header className="relative border-b border-border bg-white/70 backdrop-blur-md z-10">
+      <header className="relative border-b border-border bg-white/70 backdrop-blur-md z-20">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
           <Link
             to="/"
@@ -211,6 +212,7 @@ export default function TrainerDashboard() {
             <ArrowLeft className="h-4 w-4" /> Quay lại trang chủ
           </Link>
           <div className="flex items-center gap-3">
+            <NotificationBell />
             <span className="hidden text-sm font-medium text-slate-600 sm:inline">
               {trainer.name}
             </span>

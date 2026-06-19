@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { trainerSlug } from "@/utils/slugify";
 import { Heart, MapPin, Star, Award, Trash2, Loader2 } from "lucide-react";
 import {
   favoriteTrainerAPI,
@@ -146,7 +147,7 @@ function FavoriteCard({
   return (
     <div className="group relative flex flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
       <Link
-        to={`/trainers/${trainer.id}`}
+        to={`/trainers/${trainerSlug(trainerName, trainer.id)}`}
         className="flex flex-col"
         aria-label={`Xem chi tiết ${trainerName}`}
       >

@@ -3,6 +3,7 @@ import { Menu, X, Dumbbell, Globe, LogOut, User as UserIcon } from "lucide-react
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { authApi } from "../../api/auth";
 import logoOmnigym from "@/assets/logo-omnigym.png";
+import { NotificationBell } from "../NotificationBell";
 
 const useLang = () => ({
   lang: "vi",
@@ -138,6 +139,7 @@ export function Navbar() {
 
           {user ? (
             <div className="flex items-center gap-4">
+              <NotificationBell />
               <div className="group relative flex cursor-pointer items-center gap-2">
                 <img src={user.avatar_url} alt={user.full_name} referrerPolicy="no-referrer" className="h-9 w-9 rounded-full border border-white/20 object-cover ring-2 ring-transparent transition-colors group-hover:ring-white/20" onError={(e) => {
                   const target = e.target as HTMLImageElement;
@@ -185,9 +187,12 @@ export function Navbar() {
             </>
           )}
         </div>
-        <button aria-label="Toggle menu" className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-border text-foreground md:hidden" onClick={() => setOpen((o) => !o)}>
-          {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </button>
+        <div className="flex items-center gap-2 md:hidden">
+          {user && <NotificationBell />}
+          <button aria-label="Toggle menu" className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-border text-foreground" onClick={() => setOpen((o) => !o)}>
+            {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+        </div>
       </div>
       {open && (
         <div className="border-t border-border bg-background md:hidden">
