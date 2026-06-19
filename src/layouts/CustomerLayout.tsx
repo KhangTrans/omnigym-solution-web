@@ -10,6 +10,7 @@ import {
   Loader2,
   UserCheck,
   Heart,
+  Calendar,
 } from "lucide-react";
 import { cn } from "../utils/cn";
 import { Navbar } from "../components/site/Navbar";
@@ -80,6 +81,11 @@ export default function CustomerLayout() {
       label: "Trainer yêu thích",
       path: "/favorites/trainers",
       icon: Heart,
+    },
+    {
+      label: "Lịch tập của tôi",
+      path: "/my-bookings",
+      icon: Calendar,
     },
     {
       label: "Đổi mật khẩu",
