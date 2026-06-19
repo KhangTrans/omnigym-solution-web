@@ -781,8 +781,8 @@ export default function GymDetail() {
                   const trainerName =
                     trainer.user?.full_name?.trim() || "Huấn luyện viên";
                   const avatar =
-                    trainer.avatar_url ||
                     trainer.user?.avatar_url ||
+                    trainer.avatar_url ||
                     buildAvatarFallback(trainerName);
                   const specialization = trainer.specialization || null;
                   const ratingNum = Number(trainer.rating ?? 0);

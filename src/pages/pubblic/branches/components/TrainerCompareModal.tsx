@@ -185,8 +185,8 @@ export function TrainerCompareModal({
                     const fullName =
                       trainer.user?.full_name?.trim() || "Huấn luyện viên";
                     const avatar =
-                      trainer.avatar_url ||
                       trainer.user?.avatar_url ||
+                      trainer.avatar_url ||
                       buildAvatarFallback(fullName);
                     return (
                       <th
