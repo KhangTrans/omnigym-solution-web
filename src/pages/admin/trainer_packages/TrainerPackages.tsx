@@ -21,6 +21,7 @@ const emptyDraft: Partial<TrainerPackage> = {
   package_name: '',
   session_count: 1,
   package_price: 0,
+  duration_days: 30,
   trainer_level: 'junior',
   mode: '1-on-1',
   description: '',
@@ -101,6 +102,10 @@ function TrainerPackages() {
         toast.error('Giá gói phải lớn hơn hoặc bằng 0');
         return;
       }
+      if (!draft.duration_days || draft.duration_days <= 0) {
+        toast.error('Thời hạn phải lớn hơn 0');
+        return;
+      }
       if (!draft.trainer_level) {
         toast.error('Chọn cấp độ huấn luyện viên');
         return;
@@ -117,6 +122,7 @@ function TrainerPackages() {
         trainer_level: draft.trainer_level,
         mode: draft.mode,
         description: draft.description,
+        duration_days: draft.duration_days,
         is_active: draft.is_active,
       };
 
@@ -179,6 +185,7 @@ function TrainerPackages() {
                   <TableHead>Cấp độ</TableHead>
                   <TableHead>Hình thức</TableHead>
                   <TableHead className="text-right">Số buổi</TableHead>
+                  <TableHead className="text-right">Thời hạn</TableHead>
                   <TableHead className="text-right">Giá/buổi</TableHead>
                   <TableHead className="text-right">Tổng giá</TableHead>
                   <TableHead>Trạng thái</TableHead>
@@ -201,6 +208,7 @@ function TrainerPackages() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right tabular-nums">{pkg.session_count}</TableCell>
+                    <TableCell className="text-right tabular-nums">{pkg.duration_days} ngày</TableCell>
                     <TableCell className="text-right tabular-nums text-muted-foreground">
                       {formatVND(pkg.price_per_session)}
                     </TableCell>

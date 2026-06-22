@@ -9,6 +9,7 @@ export interface TrainerPackage {
   trainer_level: 'junior' | 'senior' | 'master';
   mode: '1-on-1' | 'group';
   description?: string;
+  duration_days: number;
   is_active: boolean;
   created_at: string;
   updated_at: string;
