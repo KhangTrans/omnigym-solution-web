@@ -87,6 +87,12 @@ const NAV: NavItem[] = [
     group: "GymOps",
   },
   {
+    to: "/admin/branch-managers",
+    label: "Tài khoản Quản lý",
+    icon: UserPlus,
+    group: "HrOps",
+  },
+  {
     to: "/admin/payouts",
     label: "Thanh toán chi nhánh",
     icon: Banknote,
@@ -267,6 +273,7 @@ const AdminLayout = () => {
       "/admin/trainer-applications",
       "/admin/users",
       "/admin/staff-accounts",
+      "/admin/branch-managers",
     ];
     const isRestricted = blockedForPartner.some(
       (path) => pathname === path || pathname.startsWith(path + "/"),
@@ -291,23 +298,22 @@ const AdminLayout = () => {
     }
   };
 
-  const filteredNav = useMemo(() => {
-    return NAV.filter((item) => {
-      if (item.to === "/admin/shift-attendance") {
-        return isStaff;
-      }
-      if (
-        item.to === "/admin/attendance-management" ||
-        item.to === "/admin/branch-management" ||
-        item.to === "/admin/trainer-applications" ||
-        item.to === "/admin/users" ||
-        item.to === "/admin/staff-accounts"
-      ) {
-        return !isStaff;
-      }
-      return true;
-    });
-  }, [isStaff]);
+  const filteredNav = NAV.filter((item) => {
+    if (item.to === "/admin/shift-attendance") {
+      return isStaff;
+    }
+    if (
+      item.to === "/admin/attendance-management" ||
+      item.to === "/admin/branch-management" ||
+      item.to === "/admin/trainer-applications" ||
+      item.to === "/admin/users" ||
+      item.to === "/admin/staff-accounts" ||
+      item.to === "/admin/branch-managers"
+    ) {
+      return !isStaff;
+    }
+    return true;
+  });
 
   const profile = {
     name: user?.full_name || "Quản trị viên",

@@ -51,6 +51,7 @@ export type UserListParams = {
   role?: string;
   /** Status: 'active' | 'locked' — omit to get all statuses */
   status?: string;
+  branch_id?: number;
 };
 
 export const usersApi = {
