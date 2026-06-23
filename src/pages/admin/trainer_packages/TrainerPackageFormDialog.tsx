@@ -44,24 +44,39 @@ export function TrainerPackageFormDialog({
             <div>
               <Label>Số buổi</Label>
               <Input
-                type="number"
-                min={1}
-                value={draft.session_count ?? 0}
-                onChange={(e) => setDraft({ ...draft, session_count: Number(e.target.value) })}
+                type="text"
+                value={draft.session_count ?? ''}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '');
+                  setDraft({ ...draft, session_count: val ? Number(val) : 0 });
+                }}
+                placeholder="Ví dụ: 24"
               />
             </div>
             <div>
-              <Label>Giá gói (VND)</Label>
+              <Label>Thời hạn (ngày)</Label>
               <Input
                 type="text"
-                value={draft.package_price ? draft.package_price.toLocaleString('vi-VN') : ''}
+                value={draft.duration_days ?? ''}
                 onChange={(e) => {
-                  const formatted = e.target.value.replace(/\D/g, '');
-                  setDraft({ ...draft, package_price: formatted ? Number(formatted) : 0 });
+                  const val = e.target.value.replace(/\D/g, '');
+                  setDraft({ ...draft, duration_days: val ? Number(val) : 0 });
                 }}
-                placeholder="e.g. 12.000.000"
+                placeholder="Ví dụ: 30"
               />
             </div>
+          </div>
+          <div>
+            <Label>Giá gói (VND)</Label>
+            <Input
+              type="text"
+              value={draft.package_price ? draft.package_price.toLocaleString('vi-VN') : ''}
+              onChange={(e) => {
+                const formatted = e.target.value.replace(/\D/g, '');
+                setDraft({ ...draft, package_price: formatted ? Number(formatted) : 0 });
+              }}
+              placeholder="e.g. 12.000.000"
+            />
           </div>
           <div>
             <Label className="flex items-center gap-2">
