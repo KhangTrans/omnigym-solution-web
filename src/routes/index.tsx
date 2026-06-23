@@ -1,4 +1,5 @@
-import { createBrowserRouter, Link, type RouteObject } from "react-router-dom";
+import { createBrowserRouter, Link, Navigate, type RouteObject } from "react-router-dom";
+import { useEffect, useState } from "react";
 import Register from "../pages/pubblic/Register";
 import Login from "../pages/pubblic/Login";
 import ForgotPassword from "../pages/pubblic/ForgotPassword";
@@ -13,6 +14,8 @@ import AdminLayout from "../layouts/AdminLayout";
 import CustomerLayout from "../layouts/CustomerLayout";
 import Dashboard from "../pages/admin/dashboard_management/Dashboard";
 import AdminProfile from "../pages/admin/profile/Profile";
+import AdminFaceRegistration from "../pages/admin/profile/FaceRegistration";
+import AdminChangePassword from "../pages/admin/profile/ChangePassword";
 import UsersManagement from "../pages/admin/users_management/Users";
 import Revenue from "../pages/admin/Revenue";
 import Transactions from "../pages/admin/transactions_management/Transactions";
@@ -26,6 +29,7 @@ import PostManagement from "../pages/admin/post_management";
 import FAQ from "../pages/admin/faq_management/FAQ";
 import CustomerProfile from "../pages/customers/Profile";
 import FavoriteTrainers from "../pages/customers/FavoriteTrainers";
+import MyBookings from "../pages/customers/MyBookings";
 import BranchList from "../pages/admin/branch_management/BranchList";
 import CreateBranch from "../pages/admin/branch_management/CreateBranch";
 import MembershipPackage from "@/pages/admin/membership_packages/MembershipPackage";
@@ -38,6 +42,8 @@ import ShiftAttendance from "../pages/staffs/ShiftAttendance";
 import StaffSchedule from "../pages/staffs/StaffSchedule";
 import AttendanceManagement from "../pages/admin/attendance_management/AttendanceManagement";
 import Checkout from "../pages/customers/transaction/Checkout";
+import CheckoutTrainerPackage from "../pages/customers/transaction/CheckoutTrainerPackage";
+import CheckoutSlot from "../pages/customers/transaction/CheckoutSlot";
 import PaymentSuccess from "../pages/customers/transaction/PaymentSuccess";
 import PaymentCancel from "../pages/customers/transaction/PaymentCancel";
 import CustomerAttendance from "../pages/admin/attendance_management/CustomerAttendance";
@@ -55,7 +61,37 @@ import BranchManagerAccounts from "../pages/admin/branch_manager_accounts/Branch
 import BranchManagerTrainers from "../pages/branchmanager/BranchManagerTrainers";
 import AdminTrainers from "../pages/admin/trainers/AdminTrainers";
 import TrainerDashboard from "../pages/trainer/TrainerDashboard";
+import ScheduleManager from "../pages/trainer/ScheduleManager";
+import ClientBookings from "../pages/trainer/ClientBookings";
+import ClientsList from "../pages/trainer/ClientsList";
+import TrainerProfileEditor from "../pages/trainer/TrainerProfileEditor";
+import ReviewsPage from "../pages/admin/reviews/Reviews";
+import BranchManagerReviews from "../pages/branchmanager/BranchManagerReviews";
 import { DashboardRedirect, RoleOnly } from "./routeGuards";
+import { authApi } from "@/api/auth";
+
+function TrainerRouteGuard() {
+  const [allowed, setAllowed] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const response = await authApi.getMe();
+        const trainer = response.data?.trainer;
+        if (mounted) setAllowed(Boolean(trainer && trainer.is_active === true));
+      } catch {
+        if (mounted) setAllowed(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  if (allowed === null) return null;
+  return allowed ? <TrainerDashboard /> : <Navigate to="/trainer-join" replace />;
+}
 
 export const routesConfig: RouteObject[] = [
   {
@@ -68,7 +104,14 @@ export const routesConfig: RouteObject[] = [
   },
   {
     path: "/trainer",
-    element: <TrainerDashboard />,
+    element: <TrainerRouteGuard />,
+    children: [
+      { index: true, element: <Navigate to="schedule" replace /> },
+      { path: "schedule", element: <ScheduleManager /> },
+      { path: "bookings", element: <ClientBookings /> },
+      { path: "clients", element: <ClientsList /> },
+      { path: "profile", element: <TrainerProfileEditor /> },
+    ],
   },
   {
     path: "/gyms",
@@ -79,7 +122,7 @@ export const routesConfig: RouteObject[] = [
     element: <GymDetail />,
   },
   {
-    path: "/trainers/:id",
+    path: "/trainers/:slug",
     element: <TrainerDetail />,
   },
   {
@@ -113,11 +156,23 @@ export const routesConfig: RouteObject[] = [
         path: "/favorites/trainers",
         element: <FavoriteTrainers />,
       },
+      {
+        path: "/my-bookings",
+        element: <MyBookings />,
+      },
     ],
   },
   {
     path: "/checkout/:packageId",
     element: <Checkout />,
+  },
+  {
+    path: "/checkout-trainer-package/:trainerId/:packageId",
+    element: <CheckoutTrainerPackage />,
+  },
+  {
+    path: "/checkout-slot/:trainerId/:date/:time",
+    element: <CheckoutSlot />,
   },
   {
     path: "/payment/success",
@@ -151,6 +206,7 @@ export const routesConfig: RouteObject[] = [
       { path: "blogs", element: <PostManagement /> },
       { path: "faq", element: <FAQ /> },
       { path: "profile", element: <AdminProfile /> },
+      { path: "change-password", element: <AdminChangePassword /> },
       { path: "membership-packages", element: <MembershipPackage /> },
       { path: "trainer-packages", element: <TrainerPackages /> },
       { path: "trainer-applications", element: <TrainerApplicationList /> },
@@ -160,6 +216,7 @@ export const routesConfig: RouteObject[] = [
       { path: "staff-accounts", element: <StaffAccounts /> },
       { path: "branch-managers", element: <BranchManagerAccounts /> },
       { path: "trainers", element: <AdminTrainers /> },
+      { path: "reviews", element: <ReviewsPage /> },
     ],
   },
   { path: "/dashboard", element: <DashboardRedirect /> },
@@ -212,6 +269,17 @@ export const routesConfig: RouteObject[] = [
         ),
       },
       { path: "revenue", element: <BranchManagerRevenue /> },
+      { path: "reviews", element: <BranchManagerReviews /> },
+      { path: "profile", element: <AdminProfile /> },
+      { path: "change-password", element: <AdminChangePassword /> },
+      {
+        path: "face-registration",
+        element: (
+          <RoleOnly allow={["staff"]}>
+            <AdminFaceRegistration />
+          </RoleOnly>
+        ),
+      },
     ],
   },
   {

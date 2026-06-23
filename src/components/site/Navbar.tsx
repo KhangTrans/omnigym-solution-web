@@ -3,6 +3,7 @@ import { Menu, X, Dumbbell, Globe, LogOut, User as UserIcon } from "lucide-react
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { authApi } from "../../api/auth";
 import logoOmnigym from "@/assets/logo-omnigym.png";
+import { NotificationBell } from "../NotificationBell";
 
 const useLang = () => ({
   lang: "vi",
@@ -138,6 +139,7 @@ export function Navbar() {
 
           {user ? (
             <div className="flex items-center gap-4">
+              <NotificationBell />
               <div className="group relative flex cursor-pointer items-center gap-2">
                 <img src={user.avatar_url} alt={user.full_name} referrerPolicy="no-referrer" className="h-9 w-9 rounded-full border border-white/20 object-cover ring-2 ring-transparent transition-colors group-hover:ring-white/20" onError={(e) => {
                   const target = e.target as HTMLImageElement;
@@ -154,12 +156,17 @@ export function Navbar() {
                         <UserIcon className="h-4 w-4" />
                         <span className="font-medium">Hồ sơ cá nhân</span>
                       </Link>
-                      {(user.role === 'Admin' || user.role === 'Staff' || user.role === 'Partner' || user.role === 'Gym' || [1, 2, 3].includes(user?.role_id ?? 0)) && (
+                      {(user.role === 'Admin' || [1, 2].includes(user?.role_id ?? 0)) ? (
                         <Link to="/admin" className="flex w-full items-center gap-3 px-4 py-2 text-sm text-muted-foreground transition-all hover:bg-primary/5 hover:text-primary">
                           <Dumbbell className="h-4 w-4" />
                           <span className="font-medium">Trang quản trị</span>
                         </Link>
-                      )}
+                      ) : (user.role === 'BranchManager' || user.role === 'Staff' || user.role === 'Partner' || user.role === 'Gym' || [3, 4].includes(user?.role_id ?? 0)) ? (
+                        <Link to="/branchmanager" className="flex w-full items-center gap-3 px-4 py-2 text-sm text-muted-foreground transition-all hover:bg-primary/5 hover:text-primary">
+                          <Dumbbell className="h-4 w-4" />
+                          <span className="font-medium">Khu vực làm việc</span>
+                        </Link>
+                      ) : null}
                     </div>
                     <div className="mt-1 py-1">
                       <button onClick={signOut} type="button" className="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-red-500 transition-all hover:bg-red-50 hover:text-red-600">
@@ -180,9 +187,12 @@ export function Navbar() {
             </>
           )}
         </div>
-        <button aria-label="Toggle menu" className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-border text-foreground md:hidden" onClick={() => setOpen((o) => !o)}>
-          {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </button>
+        <div className="flex items-center gap-2 md:hidden">
+          {user && <NotificationBell />}
+          <button aria-label="Toggle menu" className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-border text-foreground" onClick={() => setOpen((o) => !o)}>
+            {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+        </div>
       </div>
       {open && (
         <div className="border-t border-border bg-background md:hidden">

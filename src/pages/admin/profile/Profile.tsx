@@ -7,16 +7,11 @@ import { toast } from "sonner";
 // Import subcomponents
 import { ProfileInfoCard } from "./components/ProfileInfoCard";
 import { WorkInfoCard } from "./components/WorkInfoCard";
-import { FaceRegistrationCard } from "./components/FaceRegistrationCard";
-import { PasswordCard } from "./components/PasswordCard";
-import { FaceRegisterModal } from "./components/FaceRegisterModal";
 
 function AdminProfilePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [initialProfile, setInitialProfile] = useState<any>(null);
-  const [changingPass, setChangingPass] = useState(false);
-  const [faceModalOpen, setFaceModalOpen] = useState(false);
   const [profile, setProfile] = useState<any>(() => {
     const saved = localStorage.getItem('user');
     return saved ? JSON.parse(saved) : null;
@@ -94,27 +89,12 @@ function AdminProfilePage() {
   };
 
   const isDirty = 
-    profile?.full_name !== initialProfile?.full_name ||
-    profile?.phone_number !== (initialProfile?.phone_number || "") ||
-    profile?.avatar_url !== initialProfile?.avatar_url ||
-    profile?.bio !== (initialProfile?.bio || "");
+    (profile?.full_name || "") !== (initialProfile?.full_name || "") ||
+    (profile?.phone_number || "") !== (initialProfile?.phone_number || "") ||
+    (profile?.avatar_url || "") !== (initialProfile?.avatar_url || "") ||
+    (profile?.bio || "") !== (initialProfile?.bio || "");
 
-  const handleChangePassword = async (passwords: any): Promise<boolean> => {
-    setChangingPass(true);
-    try {
-      await authApi.changePassword({
-        oldPassword: passwords.oldPassword,
-        newPassword: passwords.newPassword
-      });
-      toast.success("Đổi mật khẩu thành công");
-      return true;
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || "Đổi mật khẩu thất bại");
-      return false;
-    } finally {
-      setChangingPass(false);
-    }
-  };
+
 
   if (loading) {
     return (
@@ -153,25 +133,6 @@ function AdminProfilePage() {
       {isStaff && (
         <WorkInfoCard profile={profile} />
       )}
-
-      {/* Face Registration status Card */}
-      <FaceRegistrationCard
-        isFaceRegistered={!!profile?.face_embedding}
-        onOpenModal={() => setFaceModalOpen(true)}
-      />
-
-      {/* Security/Password change Card */}
-      <PasswordCard
-        changingPass={changingPass}
-        onSubmit={handleChangePassword}
-      />
-
-      {/* Face Registration Camera Modal */}
-      <FaceRegisterModal
-        open={faceModalOpen}
-        onOpenChange={setFaceModalOpen}
-        onSuccess={fetchProfile}
-      />
     </div>
   );
 }

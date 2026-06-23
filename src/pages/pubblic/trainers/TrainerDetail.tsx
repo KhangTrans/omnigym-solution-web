@@ -5,31 +5,48 @@ import {
   ArrowRight,
   Award,
   Building2,
+  Calendar,
+  CheckCircle2,
   ExternalLink,
   Heart,
   MapPin,
   Phone,
   Star,
   Tag,
-  Calendar,
-  CheckCircle2,
   ImageOff,
+  CreditCard,
+  Info,
+  Loader2,
 } from "lucide-react";
 import { Navbar } from "@/components/site/Navbar";
 import { Footer } from "@/components/site/Footer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { trainersApi, type PublicTrainerDetail } from "@/api/trainers";
+import { trainersApi, type PublicTrainerDetail, type TrainerScheduleShift } from "@/api/trainers";
 import { favoriteTrainerAPI } from "@/api/favoriteTrainers";
-import { slugify } from "@/utils/slugify";
+import { slugify, trainerSlug, extractIdFromSlug } from "@/utils/slugify";
 import { notify } from "@/utils/notify";
 import { cn } from "@/utils/cn";
+import { TrainerSchedule } from "./components/TrainerSchedule";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
-/**
- * Kiểm tra user có đang đăng nhập không bằng localStorage —
- * đồng nhất với pattern hiện đang dùng ở Navbar / CustomerLayout.
- */
+
+
+
+
+
+
+
 const hasLoggedInUser = (): boolean => {
   const userData = localStorage.getItem("user");
   const token = localStorage.getItem("token");
@@ -65,18 +82,127 @@ const buildAvatarFallback = (name: string | null | undefined): string => {
   )}&background=4F8A74&color=fff&size=400`;
 };
 
+const formatLocalDate = (d: Date): string => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 export default function TrainerDetail() {
-  const { id } = useParams<{ id: string }>();
+  const { slug } = useParams<{ slug: string }>();
+  const id = slug ? String(extractIdFromSlug(slug)) : undefined;
   const navigate = useNavigate();
   const [trainer, setTrainer] = useState<PublicTrainerDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
 
+  // Lịch làm việc state
+  const [schedule, setSchedule] = useState<TrainerScheduleShift[]>([]);
+  const [scheduleLoading, setScheduleLoading] = useState(false);
+  const [weekStart, setWeekStart] = useState<Date>(() => {
+    const x = new Date();
+    const diff = (x.getDay() + 6) % 7; // Monday = 0
+    x.setDate(x.getDate() - diff);
+    x.setHours(0, 0, 0, 0);
+    return x;
+  });
+  const [selectedDay, setSelectedDay] = useState<string>(() =>
+    formatLocalDate(new Date())
+  );
+
   // Favorite state — chỉ load khi user đã đăng nhập.
   const [isFavorited, setIsFavorited] = useState(false);
   const [favoriteToggling, setFavoriteToggling] = useState(false);
   const isAuthenticated = hasLoggedInUser();
+
+  const [closures, setClosures] = useState<any[]>([]);
+  const [daysOff, setDaysOff] = useState<any[]>([]);
+
+  // States quản lý AlertDialog xác nhận đặt lịch
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingSlot, setPendingSlot] = useState<{ date: string; slot: string } | null>(null);
+  const [bookingError, setBookingError] = useState<string | null>(null);
+  const [bookingLoading, setBookingLoading] = useState(false);
+  const [selectedSlots, setSelectedSlots] = useState<Array<{ date: string; time: string }>>([]);
+
+  useEffect(() => {
+    try {
+      const rawClosures = localStorage.getItem("gym_trainer_closures_v1");
+      const rawDaysOff = localStorage.getItem("gym_trainer_days_off_v1");
+
+      setClosures(rawClosures ? JSON.parse(rawClosures) : []);
+      setDaysOff(rawDaysOff ? JSON.parse(rawDaysOff) : []);
+    } catch (e) {
+      console.error(e);
+    }
+  }, [id]);
+
+  const handleToggleSlot = (date: string, time: string) => {
+    if (!isAuthenticated) {
+      notify.info("Vui lòng đăng nhập để đặt lịch tập.");
+      sessionStorage.setItem("postLoginRedirect", `/trainers/${slug}`);
+      navigate("/login");
+      return;
+    }
+    setSelectedSlots((prev) => {
+      const exists = prev.some((s) => s.date === date && s.time === time);
+      if (exists) {
+        return prev.filter((s) => !(s.date === date && s.time === time));
+      } else {
+        return [...prev, { date, time }];
+      }
+    });
+  };
+
+  const handleBookSlot = (date: string, slot: string) => {
+    if (!isAuthenticated) {
+      notify.info("Vui lòng đăng nhập để đặt lịch tập.");
+      sessionStorage.setItem("postLoginRedirect", `/trainers/${slug}`);
+      navigate("/login");
+      return;
+    }
+    // Backward compatibility for single click
+    setSelectedSlots([{ date, time: slot }]);
+    setConfirmOpen(true);
+  };
+
+  const executeBooking = async () => {
+    if (selectedSlots.length === 0) return;
+    setBookingLoading(true);
+    try {
+      // Gọi API đặt lịch hàng loạt phía Backend
+      await trainersApi.bookSlot({
+        trainer_id: Number(id),
+        slots: selectedSlots
+      });
+
+      // Tải lại lịch (schedule giờ đã bao gồm trạng thái booked/available)
+      const start_date = formatLocalDate(weekStart);
+      const future = new Date(weekStart);
+      future.setDate(weekStart.getDate() + 6);
+      const end_date = formatLocalDate(future);
+
+      const scheduleRes = await trainersApi.getSchedule(id!, start_date, end_date);
+      setSchedule(scheduleRes.data.data);
+
+      const count = selectedSlots.length;
+      notify.success(`Đặt thành công ${count} lịch tập với HLV!`);
+      setConfirmOpen(false);
+      setSelectedSlots([]);
+      setBookingError(null);
+    } catch (error: any) {
+      const errorMsg = error?.response?.data?.message || "";
+      if (errorMsg.includes("Vui lòng mua gói tập hoặc mua lẻ") || errorMsg.includes("Bạn không có buổi tập nào còn lại")) {
+        setBookingError("Bạn hiện chưa đăng ký đủ số buổi tập PT còn hiệu lực với huấn luyện viên này. Vui lòng mua gói tập mới hoặc chọn phương thức mua lẻ từng buổi.");
+      } else {
+        setBookingError(errorMsg || "Không thể đặt lịch. Vui lòng thử lại.");
+      }
+    } finally {
+      setBookingLoading(false);
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -117,6 +243,35 @@ export default function TrainerDetail() {
     };
   }, [id]);
 
+  // Load lịch làm việc và lịch bận của trainer trong tuần được chọn
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    async function loadSchedule() {
+      try {
+        setScheduleLoading(true);
+        const start_date = formatLocalDate(weekStart);
+
+        const future = new Date(weekStart);
+        future.setDate(weekStart.getDate() + 6); // Lấy 7 ngày tiếp theo
+        const end_date = formatLocalDate(future);
+
+        const scheduleRes = await trainersApi.getSchedule(id!, start_date, end_date);
+
+        if (cancelled) return;
+        setSchedule(scheduleRes.data.data);
+      } catch (error) {
+        console.error("Không thể tải lịch trực của trainer", error);
+      } finally {
+        if (!cancelled) setScheduleLoading(false);
+      }
+    }
+    loadSchedule();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, weekStart]);
+
   // Load trạng thái favorite khi đã có trainer + user đã login.
   useEffect(() => {
     if (!id || !isAuthenticated) {
@@ -147,7 +302,7 @@ export default function TrainerDetail() {
       notify.info("Vui lòng đăng nhập để lưu huấn luyện viên yêu thích.");
       sessionStorage.setItem(
         "postLoginRedirect",
-        `/trainers/${trainer.id}`,
+        `/trainers/${trainerSlug(trainer.full_name, trainer.id)}`,
       );
       navigate("/login");
       return;
@@ -272,8 +427,8 @@ export default function TrainerDetail() {
   }
 
   const avatar =
-    trainer.avatar_url ||
     trainer.user?.avatar_url ||
+    trainer.avatar_url ||
     buildAvatarFallback(trainer.full_name);
 
   const ratingDisplay =
@@ -517,7 +672,7 @@ export default function TrainerDetail() {
         </section>
 
         {/* Packages */}
-        <section className="mt-16">
+        <section id="trainer-packages-section" className="mt-16">
           <SectionHeader
             title="Gói tập với huấn luyện viên"
             subtitle={
@@ -564,9 +719,16 @@ export default function TrainerDetail() {
                     </div>
                     <Button
                       type="button"
-                      disabled
-                      title="Tính năng đặt gói đang phát triển."
-                      className="mt-4 w-full bg-primary hover:bg-primary/95 text-primary-foreground rounded-xl disabled:opacity-60 disabled:cursor-not-allowed"
+                      onClick={() => {
+                        if (!isAuthenticated) {
+                          notify.info("Vui lòng đăng nhập để đặt gói tập.");
+                          sessionStorage.setItem("postLoginRedirect", `/trainers/${slug}`);
+                          navigate("/login");
+                          return;
+                        }
+                        navigate(`/checkout-trainer-package/${trainer.id}/${pkg.id}`);
+                      }}
+                      className="mt-4 w-full bg-primary hover:bg-primary/95 text-primary-foreground rounded-xl"
                     >
                       Đặt gói tập
                       <ArrowRight className="ml-2 h-4 w-4" />
@@ -575,6 +737,75 @@ export default function TrainerDetail() {
                 </Card>
               ))}
             </div>
+          )}
+        </section>
+
+        {/* Lịch làm việc */}
+        <section className="mt-16">
+          <SectionHeader
+            title="Lịch tuần làm việc"
+            subtitle="Xem khung giờ làm việc của huấn luyện viên và đặt lịch tập (mỗi buổi 1h30 phút)."
+          />
+          <TrainerSchedule
+            trainerId={id!}
+            schedule={schedule}
+            scheduleLoading={scheduleLoading}
+            weekStart={weekStart}
+            setWeekStart={setWeekStart}
+            selectedDay={selectedDay}
+            setSelectedDay={setSelectedDay}
+            daysOff={daysOff}
+            closures={closures}
+            handleBookSlot={handleBookSlot}
+            selectedSlots={selectedSlots}
+            onToggleSlot={handleToggleSlot}
+            bookedTimes={schedule.reduce<Record<string, string[]>>((acc, entry) => {
+              const dateKey = entry.date.split("T")[0];
+              if (!acc[dateKey]) acc[dateKey] = [];
+              entry.slots.filter(s => s.status === "booked").forEach(s => acc[dateKey].push(s.start_time));
+              return acc;
+            }, {})}
+          />
+
+          {selectedSlots.length > 0 && (
+            <Card className="mt-6 border border-emerald-100 bg-emerald-50/20 p-5 rounded-2xl shadow-sm">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div className="flex-1">
+                  <h4 className="font-bold text-slate-800 text-base">
+                    Bạn đã chọn {selectedSlots.length} buổi tập
+                  </h4>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Danh sách các buổi tập đăng ký:
+                  </p>
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {selectedSlots.map((slot, index) => (
+                      <Badge
+                        key={`${slot.date}-${slot.time}-${index}`}
+                        variant="secondary"
+                        className="bg-white border border-slate-200 text-slate-700 font-semibold py-1 px-2.5 rounded-xl flex items-center gap-1.5 shadow-sm text-xs"
+                      >
+                        <span>{formatDate(slot.date)} - {slot.time}</span>
+                        <button
+                          onClick={() => handleToggleSlot(slot.date, slot.time)}
+                          className="text-slate-400 hover:text-rose-500 transition-colors focus:outline-none font-bold text-xs"
+                          title="Hủy chọn"
+                        >
+                          ✕
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+                <Button
+                  onClick={() => {
+                    setConfirmOpen(true);
+                  }}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-2.5 rounded-xl shadow-md shrink-0 w-full md:w-auto"
+                >
+                  Xác nhận đặt lịch ({selectedSlots.length} buổi)
+                </Button>
+              </div>
+            </Card>
           )}
         </section>
 
@@ -622,6 +853,147 @@ export default function TrainerDetail() {
           )}
         </section>
       </div>
+
+      {/* Dialog đặt lịch & chọn hình thức thanh toán */}
+      <AlertDialog
+        open={confirmOpen}
+        onOpenChange={(open) => {
+          setConfirmOpen(open);
+          if (!open) {
+            setBookingError(null);
+          }
+        }}
+      >
+        <AlertDialogContent className="max-w-md rounded-2xl border-0 p-6 shadow-lg bg-white">
+          <AlertDialogHeader className="space-y-3">
+            <AlertDialogTitle className="text-xl font-bold text-slate-800 flex items-center gap-2">
+              Đặt lịch tập với HLV {trainer?.full_name}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-500 text-sm">
+              {selectedSlots.length === 1 ? (
+                <span>
+                  Khung giờ: <strong className="text-slate-700">{selectedSlots[0].time}</strong> ngày <strong className="text-slate-700">{formatDate(selectedSlots[0].date)}</strong>
+                </span>
+              ) : (
+                <span className="block">
+                  Số lượng buổi chọn: <strong className="text-slate-700">{selectedSlots.length} buổi</strong>
+                  <span className="block mt-2 max-h-28 overflow-y-auto bg-slate-50 p-2 rounded-lg text-xs space-y-1">
+                    {selectedSlots.map((s, idx) => (
+                      <span key={idx} className="block text-slate-600 font-medium">
+                        • {formatDate(s.date)} vào lúc {s.time}
+                      </span>
+                    ))}
+                  </span>
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          {bookingError && (
+            <div className="mt-3 p-3.5 bg-rose-50 border border-rose-100 rounded-xl text-xs text-rose-600 font-medium leading-relaxed flex gap-2 items-start animate-in fade-in slide-in-from-top-1">
+              <Info className="h-4.5 w-4.5 text-rose-500 shrink-0 mt-0.5" />
+              <span>{bookingError}</span>
+            </div>
+          )}
+
+          <div className="mt-5 space-y-3">
+            {/* Option A: Dùng gói tập */}
+            <button
+              type="button"
+              onClick={executeBooking}
+              disabled={bookingLoading}
+              className="w-full flex items-start gap-3 p-4 rounded-xl border border-slate-100 bg-slate-50 hover:bg-slate-100 hover:border-slate-200 transition-all text-left group disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              <div className="mt-0.5 rounded-lg bg-emerald-100 p-2 text-emerald-700 group-hover:scale-105 transition-transform shrink-0">
+                {bookingLoading ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Tag className="h-5 w-5" />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-slate-800 text-sm">
+                  {bookingLoading ? "Đang đặt lịch…" : `Đặt bằng gói tập PT (${selectedSlots.length} buổi)`}
+                </p>
+                <p className="text-slate-400 text-xs mt-0.5 leading-normal">
+                  {bookingLoading
+                    ? "Vui lòng chờ trong giây lát…"
+                    : `Sử dụng ${selectedSlots.length} buổi từ gói tập đã mua của bạn.`}
+                </p>
+              </div>
+            </button>
+
+            {/* Option B: Mua lẻ */}
+            {selectedSlots.length === 1 ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmOpen(false);
+                  if (selectedSlots.length > 0) {
+                    navigate(
+                      `/checkout-slot/${trainer?.id}/${selectedSlots[0].date}/${selectedSlots[0].time}`,
+                    );
+                  }
+                }}
+                disabled={bookingLoading}
+                className="w-full flex items-start gap-3 p-4 rounded-xl border border-slate-100 bg-slate-50 hover:bg-slate-100 hover:border-slate-200 transition-all text-left group disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                <div className="mt-0.5 rounded-lg bg-blue-100 p-2 text-blue-700 group-hover:scale-105 transition-transform">
+                  <CreditCard className="h-5 w-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex justify-between items-baseline gap-2">
+                    <p className="font-semibold text-slate-800 text-sm">Mua lẻ slot này</p>
+                    <span className="text-xs font-bold text-primary">
+                      {formatPrice(trainer?.hourly_rate)}
+                    </span>
+                  </div>
+                  <p className="text-slate-400 text-xs mt-0.5 leading-normal">
+                    Thanh toán trực tiếp cho buổi tập này qua cổng PayOS.
+                  </p>
+                </div>
+              </button>
+            ) : (
+              <div className="p-3.5 bg-blue-50/50 border border-blue-100 rounded-xl text-xs text-blue-700 font-medium leading-relaxed flex gap-2 items-start">
+                <Info className="h-4.5 w-4.5 text-blue-500 shrink-0 mt-0.5" />
+                <span>Để đặt lịch bằng hình thức mua lẻ (PayOS), vui lòng chọn và đặt riêng từng buổi một. Đặt lịch hàng loạt chỉ hỗ trợ trừ số buổi từ Gói tập PT đã mua.</span>
+              </div>
+            )}
+          </div>
+
+          <AlertDialogFooter className="flex flex-col sm:flex-row gap-2 pt-5 mt-4 border-t border-slate-50">
+            <AlertDialogCancel
+              onClick={() => {
+                setConfirmOpen(false);
+                setBookingError(null);
+              }}
+              className="h-10 sm:flex-1 rounded-xl border border-slate-200 bg-white text-slate-700 font-medium hover:bg-slate-50 order-2 sm:order-1"
+            >
+              Đóng
+            </AlertDialogCancel>
+
+            {bookingError && (
+              <Button
+                type="button"
+                onClick={() => {
+                  setConfirmOpen(false);
+                  setPendingSlot(null);
+                  setBookingError(null);
+                  const packagesSection = document.getElementById(
+                    "trainer-packages-section",
+                  );
+                  if (packagesSection) {
+                    packagesSection.scrollIntoView({ behavior: "smooth" });
+                  }
+                }}
+                className="h-10 sm:flex-1 rounded-xl bg-primary text-white font-medium hover:bg-primary/95 order-1 sm:order-2"
+              >
+                Xem các gói PT
+              </Button>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Footer />
     </div>

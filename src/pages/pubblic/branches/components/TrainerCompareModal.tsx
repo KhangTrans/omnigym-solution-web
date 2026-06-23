@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
+import { trainerSlug } from "@/utils/slugify";
 import {
   Award,
   ExternalLink,
@@ -185,8 +186,8 @@ export function TrainerCompareModal({
                     const fullName =
                       trainer.user?.full_name?.trim() || "Huấn luyện viên";
                     const avatar =
-                      trainer.avatar_url ||
                       trainer.user?.avatar_url ||
+                      trainer.avatar_url ||
                       buildAvatarFallback(fullName);
                     return (
                       <th
@@ -233,7 +234,7 @@ export function TrainerCompareModal({
                             className="h-7 px-3 text-xs border-slate-200 hover:bg-slate-50 text-slate-700 rounded-full"
                           >
                             <Link
-                              to={`/trainers/${trainer.id}`}
+                              to={`/trainers/${trainerSlug(fullName, trainer.id)}`}
                               onClick={() => onOpenChange(false)}
                             >
                               Xem hồ sơ

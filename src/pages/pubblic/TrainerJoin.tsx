@@ -23,15 +23,32 @@ import { Footer } from "@/components/site/Footer";
 import { useBrands } from "@/lib/gym-store";
 import { trainerApplicationAPI } from "@/api/trainerApplications";
 import { branchesApi } from "@/api/branches";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type TrainerLevel = "junior" | "senior" | "master";
-const TRAINER_LEVEL_OPTIONS: Array<{ value: TrainerLevel; label: string; description: string }> = [
+const TRAINER_LEVEL_OPTIONS: Array<{
+  value: TrainerLevel;
+  label: string;
+  description: string;
+}> = [
   { value: "junior", label: "Junior", description: "Kinh nghiệm cơ bản" },
   { value: "senior", label: "Senior", description: "Kinh nghiệm tốt" },
   { value: "master", label: "Master", description: "Chuyên gia/cấp cao" },
 ];
-type BranchOption = { id: number; branch_name?: string | null; address?: string | null; province?: string | null; district?: string | null; status?: string | null; };
+type BranchOption = {
+  id: number;
+  branch_name?: string | null;
+  address?: string | null;
+  province?: string | null;
+  district?: string | null;
+  status?: string | null;
+};
 
 type ApplicationCertificate = {
   cert_name: string;
@@ -84,6 +101,7 @@ export default function TrainerJoin() {
   const [checkingApplication, setCheckingApplication] = useState(true);
   const [savingDraft, setSavingDraft] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [autoRedirecting, setAutoRedirecting] = useState(false);
   const [branches, setBranches] = useState<BranchOption[]>([]);
   const [loadingBranches, setLoadingBranches] = useState(false);
 
@@ -117,7 +135,6 @@ export default function TrainerJoin() {
     }
   }, []);
 
-
   useEffect(() => {
     async function fetchBranches() {
       try {
@@ -137,7 +154,9 @@ export default function TrainerJoin() {
                   : [];
         setBranches(list.filter((branch: BranchOption) => branch?.id));
       } catch (error: any) {
-        toast.error(error.response?.data?.message || "Không thể tải danh sách chi nhánh.");
+        toast.error(
+          error.response?.data?.message || "Không thể tải danh sách chi nhánh.",
+        );
       } finally {
         setLoadingBranches(false);
       }
@@ -164,6 +183,15 @@ export default function TrainerJoin() {
       avatar_url: f.avatar_url || user.avatar_url || user.avatar || "",
     }));
   }, [user]);
+
+  useEffect(() => {
+    if (application?.status !== "approved") return;
+    if (autoRedirecting) return;
+
+    setAutoRedirecting(true);
+    navigate("/trainer", { replace: true });
+
+  }, [application?.status, application?.approved_level, autoRedirecting, navigate]);
 
   useEffect(() => {
     if (!loaded || !user) return;
@@ -288,7 +316,8 @@ export default function TrainerJoin() {
 
     try {
       setSavingDraft(true);
-      const response = await trainerApplicationAPI.saveDraft(buildDraftPayload());
+      const response =
+        await trainerApplicationAPI.saveDraft(buildDraftPayload());
       setApplication(response.data.data);
       toast.success("Draft saved.");
     } catch (error: any) {
@@ -305,8 +334,10 @@ export default function TrainerJoin() {
 
     if (!user) return toast.error("Please sign in to apply.");
     if (!brand) return toast.error("No gym is available right now.");
-    if (!form.branch_id) return toast.error("Vui lòng chọn chi nhánh muốn ứng tuyển.");
-    if (!form.desired_level) return toast.error("Vui lòng chọn level muốn ứng tuyển.");
+    if (!form.branch_id)
+      return toast.error("Vui lòng chọn chi nhánh muốn ứng tuyển.");
+    if (!form.desired_level)
+      return toast.error("Vui lòng chọn level muốn ứng tuyển.");
     if (!form.full_name.trim()) return toast.error("Full name is required");
     if (!form.email.trim()) return toast.error("Email is required");
     if (!form.avatar_url) return toast.error("Profile photo is required");
@@ -394,11 +425,11 @@ export default function TrainerJoin() {
             <Dumbbell className="h-6 w-6" />
           </div>
           <h1 className="mt-4 text-3xl font-bold tracking-tight">
-            Apply to become a Personal Trainer
+            Đăng Ký Trở Thành Huấn Luyện Viên Cá Nhân
           </h1>
           <p className="mt-2 text-muted-foreground">
-            Submit your trainer application and certificates. After staff
-            approval, your trainer profile will be activated.
+            Gửi đơn đăng ký và chứng chỉ huấn luyện viên của bạn. Sau khi nhân
+            viên phê duyệt, hồ sơ huấn luyện viên của bạn sẽ được kích hoạt.
           </p>
         </div>
 
@@ -443,7 +474,8 @@ export default function TrainerJoin() {
                   Hồ sơ Trainer đã được gửi
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  OmniGym đang kiểm tra thông tin và chứng chỉ của bạn. Trong thời gian này, bạn không cần gửi lại hồ sơ.
+                  OmniGym đang kiểm tra thông tin và chứng chỉ của bạn. Trong
+                  thời gian này, bạn không cần gửi lại hồ sơ.
                 </p>
 
                 <div className="mt-6 space-y-3 rounded-2xl bg-muted/40 p-5 text-sm">
@@ -455,14 +487,17 @@ export default function TrainerJoin() {
                     <div className="flex items-center justify-between gap-4">
                       <span className="text-muted-foreground">Ngày gửi</span>
                       <span className="font-medium">
-                        {new Date(application.submitted_at).toLocaleString("vi-VN")}
+                        {new Date(application.submitted_at).toLocaleString(
+                          "vi-VN",
+                        )}
                       </span>
                     </div>
                   )}
                 </div>
 
                 <p className="mt-4 text-xs text-muted-foreground">
-                  Nếu hồ sơ cần bổ sung, staff sẽ từ chối kèm lý do để bạn chỉnh sửa và gửi lại.
+                  Nếu hồ sơ cần bổ sung, staff sẽ từ chối kèm lý do để bạn chỉnh
+                  sửa và gửi lại.
                 </p>
               </div>
             </CardContent>
@@ -506,14 +541,16 @@ export default function TrainerJoin() {
                       Applying to
                     </div>
                     <div className="font-semibold">{brand.name}</div>
-                    <div className="text-xs text-muted-foreground">Chọn chi nhánh cụ thể bên dưới</div>
+                    <div className="text-xs text-muted-foreground">
+                      Chọn chi nhánh cụ thể bên dưới
+                    </div>
                   </div>
                 </div>
               )}
 
               <Section
                 title="Account contact"
-                description="Basic information copied from your user account."
+                description="Thông tin cơ bản được sao chép từ tài khoản người dùng của bạn."
               >
                 <div className="sm:col-span-2">
                   <Label>Avatar / profile photo *</Label>
@@ -553,13 +590,28 @@ export default function TrainerJoin() {
                 description="These fields map to trainer_applications."
               >
                 <Field label="Chi nhánh muốn ứng tuyển *" full>
-                  <Select value={form.branch_id} onValueChange={(value) => setField("branch_id", value)} disabled={loadingBranches}>
-                    <SelectTrigger><SelectValue placeholder={loadingBranches ? "Đang tải chi nhánh..." : "Chọn chi nhánh OmniGym"} /></SelectTrigger>
+                  <Select
+                    value={form.branch_id}
+                    onValueChange={(value) => setField("branch_id", value)}
+                    disabled={loadingBranches}
+                  >
+                    <SelectTrigger>
+                      <SelectValue
+                        placeholder={
+                          loadingBranches
+                            ? "Đang tải chi nhánh..."
+                            : "Chọn chi nhánh OmniGym"
+                        }
+                      />
+                    </SelectTrigger>
                     <SelectContent>
                       {branches.length ? (
                         branches.map((branch) => (
                           <SelectItem key={branch.id} value={String(branch.id)}>
-                            {branch.branch_name || `Chi nhánh #${branch.id}`}{branch.district || branch.province ? ` - ${[branch.district, branch.province].filter(Boolean).join(", ")}` : ""}
+                            {branch.branch_name || `Chi nhánh #${branch.id}`}
+                            {branch.district || branch.province
+                              ? ` - ${[branch.district, branch.province].filter(Boolean).join(", ")}`
+                              : ""}
                           </SelectItem>
                         ))
                       ) : (
@@ -571,20 +623,33 @@ export default function TrainerJoin() {
                   </Select>
                   {!loadingBranches && branches.length === 0 && (
                     <p className="mt-1 text-xs text-red-600">
-                      Chưa tìm thấy chi nhánh active. Vui lòng tạo/kích hoạt chi nhánh trong trang quản trị.
+                      Chưa tìm thấy chi nhánh active. Vui lòng tạo/kích hoạt chi
+                      nhánh trong trang quản trị.
                     </p>
                   )}
                 </Field>
                 <Field label="Level muốn ứng tuyển *" full>
-                  <Select value={form.desired_level} onValueChange={(value) => setField("desired_level", value as TrainerLevel)}>
-                    <SelectTrigger><SelectValue placeholder="Chọn level mong muốn" /></SelectTrigger>
+                  <Select
+                    value={form.desired_level}
+                    onValueChange={(value) =>
+                      setField("desired_level", value as TrainerLevel)
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Chọn level mong muốn" />
+                    </SelectTrigger>
                     <SelectContent>
                       {TRAINER_LEVEL_OPTIONS.map((level) => (
-                        <SelectItem key={level.value} value={level.value}>{level.label} - {level.description}</SelectItem>
+                        <SelectItem key={level.value} value={level.value}>
+                          {level.label} - {level.description}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  <p className="mt-1 text-xs text-muted-foreground">Đây là level mong muốn. Level chính thức sẽ do quản lý chi nhánh duyệt.</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Đây là level mong muốn. Level chính thức sẽ do quản lý chi
+                    nhánh duyệt.
+                  </p>
                 </Field>
                 <Field label="Specialization *" full>
                   <Input
@@ -809,7 +874,9 @@ function LoadingApplicationCard() {
     <Card className="mt-10 border-0 shadow-none animate-in fade-in-0 duration-300">
       <CardContent className="p-10 text-center">
         <div className="mx-auto h-9 w-9 rounded-full border-2 border-muted border-t-foreground/70 animate-spin" />
-        <p className="mt-4 text-sm text-muted-foreground">Đang tải trạng thái hồ sơ...</p>
+        <p className="mt-4 text-sm text-muted-foreground">
+          Đang tải trạng thái hồ sơ...
+        </p>
       </CardContent>
     </Card>
   );

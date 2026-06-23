@@ -35,6 +35,14 @@ export const paymentsApi = {
     return api.post<CheckoutResponse>('/payments/checkout-membership', { packageId });
   },
 
+  checkoutTrainerPackage: (trainerId: number, packageId: number) => {
+    return api.post<CheckoutResponse>('/payments/checkout-trainer-package', { trainerId, packageId });
+  },
+
+  checkoutSlot: (trainerId: number, date: string, time: string) => {
+    return api.post<CheckoutResponse>('/payments/checkout-slot', { trainerId, date, time });
+  },
+
   getTransactionStatus: (transactionId: number) => {
     return api.get<Transaction>(`/payments/status/${transactionId}`);
   },

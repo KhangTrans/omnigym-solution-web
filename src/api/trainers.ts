@@ -102,6 +102,24 @@ export interface PublicTrainerDetail {
   reviews: PublicTrainerReview[];
 }
 
+export interface TrainerScheduleSlot {
+  start_time: string;
+  end_time: string;
+  status: "available" | "booked";
+}
+
+export interface TrainerScheduleShift {
+  date: string;
+  work_shift_id: number;
+  shift: {
+    id: number;
+    shift_name: string;
+    start_time: string;
+    end_time: string;
+  } | null;
+  slots: TrainerScheduleSlot[];
+}
+
 export const trainersApi = {
   getApproved: () => {
     return api.get<{ status: string; data: Trainer[] }>("/trainers/approved");
@@ -114,4 +132,27 @@ export const trainersApi = {
   },
   getById: (id: number | string) =>
     api.get<{ message: string; data: PublicTrainerDetail }>(`/trainers/${id}`),
+  getSchedule: (id: number | string, startDate?: string, endDate?: string) =>
+    api.get<{ message: string; data: TrainerScheduleShift[] }>(
+      `/trainers/${id}/schedule`,
+      { params: { start_date: startDate, end_date: endDate } }
+    ),
+  bookSlot: (payload: {
+    trainer_id: number;
+    date?: string;
+    time?: string;
+    slots?: Array<{ date: string; time: string }>;
+  }) => api.post<{ message: string; data: any }>("/bookings", payload),
+  rescheduleBooking: (bookingId: number, payload: { new_date: string; new_time: string }) =>
+    api.put<{ message: string; data: any }>(`/bookings/${bookingId}/reschedule`, payload),
+  getMyBookings: () =>
+    api.get<{ message: string; data: any[] }>("/bookings/my-bookings"),
+  cancelBooking: (bookingId: number) =>
+    api.post<{ message: string }>(`/bookings/${bookingId}/cancel`),
+  getTrainerBookings: (startDate?: string, endDate?: string) =>
+    api.get<{ message: string; data: any[] }>("/bookings/trainer", {
+      params: { start_date: startDate, end_date: endDate }
+    }),
+  updateBooking: (bookingId: number, payload: { status?: string; note?: string }) =>
+    api.put<{ message: string; data: any }>(`/bookings/${bookingId}`, payload),
 };
