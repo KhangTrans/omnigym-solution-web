@@ -120,6 +120,12 @@ const NAV: NavItem[] = [
     group: "Operations",
   },
   {
+    to: "/admin/branch-managers",
+    label: "Tài khoản Quản lý",
+    icon: UserPlus,
+    group: "Operations",
+  },
+  {
     to: "/admin/payouts",
     label: "Thanh toán chi nhánh",
     icon: Banknote,
@@ -236,6 +242,7 @@ const AdminLayout = () => {
       "/admin/trainer-applications",
       "/admin/users",
       "/admin/staff-accounts",
+      "/admin/branch-managers",
     ];
     const isRestricted = blockedForPartner.some(
       (path) => pathname === path || pathname.startsWith(path + "/"),
@@ -268,7 +275,8 @@ const AdminLayout = () => {
       item.to === "/admin/branch-management" ||
       item.to === "/admin/trainer-applications" ||
       item.to === "/admin/users" ||
-      item.to === "/admin/staff-accounts"
+      item.to === "/admin/staff-accounts" ||
+      item.to === "/admin/branch-managers"
     ) {
       return !isStaff;
     }

@@ -16,7 +16,11 @@ export default function BranchManagerStaff() {
     (async () => {
       try {
         setLoading(true);
-        const res = await usersApi.list({ role: "Staff" });
+        const userData = localStorage.getItem("user");
+        const user = userData ? JSON.parse(userData) : null;
+        const branch_id = user?.branch_id;
+        
+        const res = await usersApi.list({ role: "Staff", branch_id });
         setItems(res.data.data ?? []);
       } catch (e: any) {
         toast.error(e.response?.data?.message || "Không tải được danh sách nhân sự.");
