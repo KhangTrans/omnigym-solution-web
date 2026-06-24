@@ -6,7 +6,8 @@ import {
   Loader2,
   Trash2,
   Info,
-  CalendarDays
+  CalendarDays,
+  Check
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +16,13 @@ import { trainersApi } from "@/api/trainers";
 import { notify } from "@/utils/notify";
 import { CancelBookingDialog } from "./components/CancelBookingDialog";
 import { RescheduleBookingDialog } from "./components/RescheduleBookingDialog";
+import {
+  formatDateDisplay,
+  calculateEndTime,
+  isBookingReschedulable,
+  isBookingCancellable,
+  getBookingDateTime
+} from "@/utils/bookingUtils";
 
 interface BookingItem {
   id: number;
@@ -102,73 +110,14 @@ export default function MyBookings() {
     }
   };
 
-  const formatDateDisplay = (dateStr: string): string => {
-    try {
-      return new Date(dateStr).toLocaleDateString("vi-VN", {
-        weekday: "long",
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      });
-    } catch {
-      return dateStr;
-    }
-  };
 
-  const calculateEndTime = (startTime: string): string => {
-    try {
-      const [h, m] = startTime.split(":").map(Number);
-      let totalMin = h * 60 + m + 90;
-      let newH = Math.floor(totalMin / 60) % 24;
-      let newM = totalMin % 60;
-      return `${String(newH).padStart(2, "0")}:${String(newM).padStart(2, "0")}`;
-    } catch {
-      return "";
-    }
-  };
-
-  // Đổi lịch yêu cầu tối thiểu trước 2 tiếng
-  const isReschedulable = (booking: BookingItem): boolean => {
-    if (booking.status !== "confirmed") return false;
-    try {
-      const now = new Date();
-      const scheduledDateTime = new Date(booking.date);
-      const [hours, minutes] = booking.time.split(":");
-      scheduledDateTime.setHours(Number(hours), Number(minutes), 0, 0);
-
-      const diffMs = scheduledDateTime.getTime() - now.getTime();
-      const diffHours = diffMs / (1000 * 60 * 60);
-      return diffHours >= 2;
-    } catch {
-      return false;
-    }
-  };
-
-  // Hủy lịch yêu cầu tối thiểu trước 4 tiếng theo quy định BE
-  const isCancellable = (booking: BookingItem): boolean => {
-    if (booking.status !== "confirmed") return false;
-    try {
-      const now = new Date();
-      const scheduledDateTime = new Date(booking.date);
-      const [hours, minutes] = booking.time.split(":");
-      scheduledDateTime.setHours(Number(hours), Number(minutes), 0, 0);
-
-      const diffMs = scheduledDateTime.getTime() - now.getTime();
-      const diffHours = diffMs / (1000 * 60 * 60);
-      return diffHours >= 4;
-    } catch {
-      return false;
-    }
-  };
 
   const now = new Date();
   
   // Phân loại bookings
   const categorized = bookings.reduce(
     (acc: { upcoming: BookingItem[]; past: BookingItem[] }, b) => {
-      const scheduledDateTime = new Date(b.date);
-      const [hours, minutes] = b.time.split(":");
-      scheduledDateTime.setHours(Number(hours), Number(minutes), 0, 0);
+      const scheduledDateTime = getBookingDateTime(b.date, b.time);
 
       const isPast = scheduledDateTime < now || b.status === "cancelled" || b.status === "completed";
       if (isPast) {
@@ -201,9 +150,7 @@ export default function MyBookings() {
         </Badge>
       );
     }
-    const scheduledDateTime = new Date(b.date);
-    const [hours, minutes] = b.time.split(":");
-    scheduledDateTime.setHours(Number(hours), Number(minutes), 0, 0);
+    const scheduledDateTime = getBookingDateTime(b.date, b.time);
 
     if (scheduledDateTime < now) {
       if (!b.customer_confirmed_completed) {
@@ -303,8 +250,8 @@ export default function MyBookings() {
             const trainerUser = booking.trainer?.user;
             const trainerName = trainerUser?.full_name || "Huấn luyện viên";
             const avatar = booking.trainer?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(trainerName)}&background=4F8A74&color=fff`;
-            const reschedulable = isReschedulable(booking);
-            const cancellable = isCancellable(booking);
+            const reschedulable = isBookingReschedulable(booking.date, booking.time, booking.status);
+            const cancellable = isBookingCancellable(booking.date, booking.time, booking.status);
 
             return (
               <Card key={booking.id} className="border border-slate-100 hover:border-slate-200 shadow-sm transition-all overflow-hidden bg-white/70 backdrop-blur-xl">
@@ -341,7 +288,7 @@ export default function MyBookings() {
                   </div>
 
                   <div className="flex items-center gap-2.5 self-end md:self-center shrink-0">
-                    {booking.status === "confirmed" && new Date(`${booking.date.slice(0, 10)}T${booking.time}:00`) < now && !booking.customer_confirmed_completed && (
+                    {booking.status === "confirmed" && getBookingDateTime(booking.date, booking.time) < now && !booking.customer_confirmed_completed && (
                       <Button
                         onClick={() => handleConfirmCompletion(booking.id)}
                         disabled={confirmLoading === booking.id}
@@ -390,7 +337,6 @@ export default function MyBookings() {
         booking={cancellingBooking}
         onConfirm={handleCancelBooking}
         loading={cancelLoading}
-        formatDateDisplay={formatDateDisplay}
       />
 
       {/* Reschedule Dialog */}
@@ -399,8 +345,6 @@ export default function MyBookings() {
         onClose={() => setReschedulingBooking(null)}
         booking={reschedulingBooking}
         onSuccess={fetchBookings}
-        formatDateDisplay={formatDateDisplay}
-        calculateEndTime={calculateEndTime}
       />
     </div>
   );

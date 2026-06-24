@@ -19,6 +19,7 @@ import {
   Clock,
   MapPin
 } from "lucide-react";
+import { formatDateDisplay, calculateEndTime } from "@/utils/bookingUtils";
 
 export default function CheckoutSlot() {
   const { trainerId, date, time } = useParams<{ trainerId: string; date: string; time: string }>();
@@ -105,32 +106,7 @@ export default function CheckoutSlot() {
   const hourlyRate = trainer.hourly_rate || 0;
   const formattedPrice = hourlyRate.toLocaleString("vi-VN");
 
-  // Format date display
-  const formatDateDisplay = (rawDate: string): string => {
-    try {
-      return new Date(rawDate).toLocaleDateString("vi-VN", {
-        weekday: "long",
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      });
-    } catch {
-      return rawDate;
-    }
-  };
 
-  // Calculate end time (90 minutes duration)
-  const calculateEndTime = (startTime: string): string => {
-    try {
-      const [h, m] = startTime.split(":").map(Number);
-      let totalMin = h * 60 + m + 90;
-      let newH = Math.floor(totalMin / 60) % 24;
-      let newM = totalMin % 60;
-      return `${String(newH).padStart(2, "0")}:${String(newM).padStart(2, "0")}`;
-    } catch {
-      return "";
-    }
-  };
 
   const endTime = calculateEndTime(time);
 

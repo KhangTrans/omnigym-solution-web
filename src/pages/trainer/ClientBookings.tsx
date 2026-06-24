@@ -23,10 +23,7 @@ import { toast } from "sonner";
 import { trainersApi } from "@/api/trainers";
 import { type PTBooking } from "@/lib/pt-membership";
 import { useOutletContext } from "react-router-dom";
-
-function bookingDateTime(b: PTBooking) {
-  return new Date(`${b.date}T${b.time}:00`);
-}
+import { getBookingDateTime, formatDateShort, formatDateLong } from "@/utils/bookingUtils";
 
 function StatCard({
   label,
@@ -155,8 +152,8 @@ export default function ClientBookings() {
 
   const enriched = bookings.map((b) => ({
     ...b,
-    when: bookingDateTime(b),
-    isPast: bookingDateTime(b).getTime() < now,
+    when: getBookingDateTime(b.date, b.time),
+    isPast: getBookingDateTime(b.date, b.time).getTime() < now,
   }));
 
   const filtered = enriched
@@ -310,11 +307,7 @@ export default function ClientBookings() {
                       {/* Mobile Date and Time (shown inside client info area on mobile) */}
                       <div className="mt-2 flex items-center gap-2 sm:hidden">
                         <span className="text-xs font-bold text-slate-700">
-                          {b.when.toLocaleDateString("vi-VN", {
-                            weekday: "short",
-                            day: "numeric",
-                            month: "short",
-                          })}
+                          {formatDateShort(b.when)}
                         </span>
                         <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
                           {b.time}
@@ -333,11 +326,7 @@ export default function ClientBookings() {
                     {/* Desktop Date and Time */}
                     <div className="hidden sm:block text-right min-w-[120px]">
                       <div className="text-sm font-bold text-slate-800">
-                        {b.when.toLocaleDateString("vi-VN", {
-                          weekday: "short",
-                          day: "numeric",
-                          month: "short",
-                        })}
+                        {formatDateShort(b.when)}
                       </div>
                       <div className="text-xs font-mono font-bold text-emerald-600 mt-0.5 bg-emerald-50 px-2 py-0.5 rounded inline-block">
                         {b.time}
@@ -425,11 +414,7 @@ export default function ClientBookings() {
                   {editingNote.customerName ?? "Khách vãng lai"}
                 </div>
                 <div className="text-xs text-slate-500 mt-0.5">
-                  {new Date(editingNote.date).toLocaleDateString("vi-VN", {
-                    weekday: "long",
-                    day: "numeric",
-                    month: "long",
-                  })}{" "}
+                  {formatDateLong(editingNote.date)}{" "}
                   · {editingNote.time}
                 </div>
               </div>
