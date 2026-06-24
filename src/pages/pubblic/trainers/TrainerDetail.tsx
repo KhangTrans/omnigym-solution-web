@@ -151,6 +151,37 @@ export default function TrainerDetail() {
       if (exists) {
         return prev.filter((s) => !(s.date === date && s.time === time));
       } else {
+        // 1. Ràng buộc: Mỗi ngày tối đa 1 ca
+        const hasSlotForDay = prev.some((s) => s.date === date);
+        if (hasSlotForDay) {
+          const formattedDate = date.split('-').reverse().join('/');
+          notify.warning(`Mỗi ngày bạn chỉ được đăng ký tối đa 1 ca tập. Ngày ${formattedDate} đã có ca được chọn.`);
+          return prev;
+        }
+
+        // 2. Ràng buộc: Mỗi tuần tối đa 4 ca
+        const getStartOfWeekTime = (dateStr: string): number => {
+          const target = new Date(dateStr);
+          const day = target.getDay();
+          const offset = day === 0 ? -6 : 1 - day;
+          const monday = new Date(target);
+          monday.setDate(target.getDate() + offset);
+          monday.setHours(0, 0, 0, 0);
+          return monday.getTime();
+        };
+
+        const targetWeek = getStartOfWeekTime(date);
+        const slotsInSameWeek = prev.filter((s) => getStartOfWeekTime(s.date) === targetWeek);
+        if (slotsInSameWeek.length >= 4) {
+          const monday = new Date(targetWeek);
+          const sunday = new Date(monday);
+          sunday.setDate(monday.getDate() + 6);
+          const formattedMonday = monday.toLocaleDateString("vi-VN", { day: '2-digit', month: '2-digit' });
+          const formattedSunday = sunday.toLocaleDateString("vi-VN", { day: '2-digit', month: '2-digit' });
+          notify.warning(`Bạn chỉ được chọn tối đa 4 buổi tập trong cùng một tuần (từ ngày ${formattedMonday} đến ngày ${formattedSunday}).`);
+          return prev;
+        }
+
         return [...prev, { date, time }];
       }
     });

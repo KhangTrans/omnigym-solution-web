@@ -3,13 +3,13 @@ import { getMessaging, getToken, onMessage } from "firebase/messaging";
 import axios from "axios";
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyBTgPn9DbyjEDD6cDjTH4S8Z3bqEw8wrtQ",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "omnigym-solution.firebaseapp.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "omnigym-solution",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "omnigym-solution.firebasestorage.app",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "595710961751",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:595710961751:web:e19445f1ab18ceaf419b12",
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "G-D6H82W3ENY"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
 // Initialize Firebase
@@ -31,7 +31,7 @@ export const requestNotificationPermissionAndGetToken = async () => {
         console.log("[Firebase] FCM Registration Token obtained:", token);
         
         // Save FCM token to backend database for current user session
-        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api";
+        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
         const authToken = localStorage.getItem("token");
         if (authToken) {
           await axios.post(

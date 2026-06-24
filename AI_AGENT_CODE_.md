@@ -1,130 +1,147 @@
 # AI Agent Code Style Guide - OmniGym Project
 
-File này dùng cho AI Agent/dev đọc trước khi code chức năng mới để giữ style code đồng nhất với project. Ưu tiên follow style của module **Trainer Application** vì module này đang có cấu trúc tương đối rõ nhất.
+> File này là chuẩn làm việc cho AI Agent/dev khi code hoặc refactor OmniGym. Chuẩn hiện tại ưu tiên kiến trúc **middleware-first**: auth, role check và input validation nằm ở middleware; controller mỏng; service giữ business logic và persistence.
+>
+> Khi có mâu thuẫn giữa code cũ và file này, ưu tiên refactor dần về file này. Không cần sửa toàn bộ project một lần nếu task nhỏ, nhưng code mới phải đi theo chuẩn này.
 
 ---
 
-## 1. Nguyên tắc chung
+## 1. Core Principles
 
-- Code theo flow rõ ràng: **Frontend Page/Component → API layer → Backend Route → Controller → Service → Entity/Database**.
-- Không gọi API trực tiếp rải rác trong UI nếu có thể tách vào `src/api/*`.
-- Backend không để business logic dài trong route/controller. Controller chỉ nhận request, validate cơ bản, gọi service, trả response.
-- Service là nơi xử lý nghiệp vụ chính.
-- Nếu có trạng thái nghiệp vụ, dùng enum thay vì hard-code string nhiều nơi.
-- Message nên ưu tiên tiếng Việt cho backend response và toast nếu màn hình đang dùng tiếng Việt.
-- Không dùng `any` nếu có thể định nghĩa type/interface rõ ràng.
+- Luồng chuẩn: **Frontend Page/Component -> API layer -> Backend Route -> Middlewares -> Controller -> Service -> Entity/Database**.
+- **Route** khai báo endpoint và thứ tự middleware.
+- **Middleware** xử lý request-level concerns: auth, role, params/query/body validation, normalize dữ liệu.
+- **Controller** chỉ orchestration: lấy dữ liệu đã qua middleware, gọi service, trả response, catch error.
+- **Service** xử lý domain-level concerns: business rule, ownership/resource scope nếu cần DB, transaction, persistence.
+- Mỗi loại check chỉ nằm ở một tầng để tránh duplicate và lệch message/status.
+- Dùng `enum` cho status nghiệp vụ nếu đã có enum; không hard-code string rải rác.
+- Ưu tiên tiếng Việt cho backend response/toast nếu màn hình đang tiếng Việt.
+- Hạn chế `any`; ưu tiên `type`/`interface`, `unknown` + narrowing cho error.
 
 ---
 
-## 2. Cấu trúc frontend chuẩn
+## 2. Single Source Of Truth - Middleware First
 
-Khi thêm chức năng mới, nên có các phần:
-
-```txt
-src/pages/.../FeaturePage.tsx
-src/api/feature.ts
-src/components/.../FeatureComponent.tsx  // nếu component dùng lại được
-src/types/...                         // nếu type lớn hoặc dùng nhiều nơi
-```
-
-Ví dụ style tốt:
+### 2.1. Phân tầng trách nhiệm
 
 ```txt
-src/pages/pubblic/TrainerJoin.tsx
-src/api/trainerApplications.ts
-src/components/site/ImageUpload.tsx
+Route       -> khai báo endpoint + middleware chain + handler
+Middleware  -> auth + pure role gate + request validation + normalization
+Controller  -> gọi service + response
+Service     -> business rule + DB + transaction
+Entity/DTO   -> data model / TypeScript contract
 ```
 
-### 2.1 API layer frontend
+### 2.2. Bảng phân loại check
 
-Không gọi `axios` trực tiếp trong page nếu API đó dùng cho chức năng riêng. Tạo file trong `src/api`.
+| Loại check               | Ví dụ                                       | Tầng chuẩn                               |
+| ------------------------ | ------------------------------------------- | ---------------------------------------- |
+| Auth                     | Có Bearer token hợp lệ không                | Middleware `isAuthenticated`             |
+| Pure role gate           | Chỉ `Admin`, `Staff` được vào route         | Middleware `authorizeRole([...])`        |
+| Params validation        | `:id` phải là số nguyên dương               | Middleware `validateParams(...)`         |
+| Query validation         | `page`, `limit`, `date`, `status`           | Middleware `validateQuery(...)`          |
+| Body validation          | Required/type/format của payload            | Middleware `validateBody(...)`           |
+| Normalize request        | trim string, Number(id), default page/limit | Middleware validation                    |
+| Ownership/resource scope | User chỉ sửa dữ liệu của mình               | Service hoặc middleware preload resource |
+| Branch scope             | BranchManager chỉ xử lý branch mình quản lý | Service hoặc middleware preload resource |
+| State transition         | Chỉ approve khi `pending`                   | Service                                  |
+| Unique/FK constraint     | Email trùng, branch không tồn tại           | Service                                  |
+| Cross-table rule         | Trùng lịch, vượt hạn mức nghỉ               | Service                                  |
+| Transaction              | Tạo/cập nhật nhiều bảng                     | Service                                  |
 
-Ví dụ:
+### 2.3. `authorizeRole([...])` có còn dùng không?
+
+Có. `authorizeRole(["Admin", "BranchManager", "Staff"])` vẫn là cách đúng vì đây là **middleware configuration**, không phải controller/service tự check role.
+
+Ví dụ đúng:
 
 ```ts
-import api from "./axios";
-
-export const trainerApplicationAPI = {
-  saveDraft: (payload: any) => api.post("/trainer-applications/draft", payload),
-  submit: (payload: any) => api.post("/trainer-applications", payload),
-  getMe: () => api.get("/trainer-applications/me"),
-  approve: (id: number) => api.patch(`/trainer-applications/${id}/approve`),
-  reject: (id: number, rejection_reason: string) =>
-    api.patch(`/trainer-applications/${id}/reject`, { rejection_reason }),
-};
+router.get(
+  "/approved",
+  isAuthenticated,
+  authorizeRole(["Admin", "BranchManager", "Staff"]),
+  getApprovedTrainersHandler,
+);
 ```
 
-Khi code mới, nên hạn chế `payload: any`; nếu có thời gian thì tạo type:
+Giải thích:
+
+- `authorizeRole([...])` là middleware nhận danh sách role được phép.
+- Mảng `[...]` chỉ là config cho middleware.
+- Không được hiểu là router đang tự business-check; router chỉ khai báo middleware chain.
+- Cái cần tránh là check tay trong controller/service kiểu:
 
 ```ts
-type CreateFeaturePayload = {
-  name: string;
-  description?: string;
-};
-```
-
-### 2.2 Page/component frontend
-
-Trong page nên tách rõ:
-
-```txt
-state
-useEffect load data
-helper setField/buildPayload
-handler submit/save/update/delete
-render theo status/loading/error
-```
-
-Style handler:
-
-```ts
-async function submit() {
-  if (submitting) return;
-
-  if (!requiredField.trim()) {
-    return toast.error("Vui lòng nhập thông tin bắt buộc.");
-  }
-
-  try {
-    setSubmitting(true);
-    const response = await featureAPI.create(payload);
-    setData(response.data.data);
-    toast.success("Thao tác thành công.");
-  } catch (error: any) {
-    const message = error.response?.data?.message || "Thao tác thất bại.";
-    toast.error(message);
-  } finally {
-    setSubmitting(false);
-  }
+if (req.user?.role !== "Admin") {
+  return res.status(403).json({ message: "Bạn không có quyền." });
 }
 ```
 
-### 2.3 Upload ảnh frontend
+hoặc duplicate trong service:
 
-Nếu chức năng cần upload ảnh, dùng lại component:
-
-```txt
-src/components/site/ImageUpload.tsx
+```ts
+if (currentUser.role !== "Admin" && currentUser.role !== "BranchManager") {
+  throw new Error("Bạn không có quyền.");
+}
 ```
 
-Flow chuẩn:
+### 2.4. Pure role gate vs resource scope
+
+Phân biệt rõ:
 
 ```txt
-User chọn ảnh
-→ ImageUpload validate file ảnh và dung lượng
-→ uploadImageToCloudinary(file)
-→ Cloudinary trả secure_url
-→ set URL vào form state
-→ submit form chỉ gửi URL ảnh về backend
+Pure role gate       -> middleware authorizeRole([...])
+Ownership/resource   -> service hoặc middleware preload resource
+Branch scope         -> service hoặc middleware preload resource
 ```
 
-Không tự viết upload mới nếu không cần. Backend hiện tại chỉ lưu URL ảnh, không nhận file binary.
+Ví dụ pure role gate:
+
+```ts
+router.patch(
+  "/:id/approve",
+  isAuthenticated,
+  authorizeRole(["Admin", "BranchManager"]),
+  validateParams(idParamSchema),
+  approveTrainerApplicationHandler,
+);
+```
+
+Ví dụ resource scope vẫn có thể ở service:
+
+```ts
+if (
+  currentUser.role === "BranchManager" &&
+  application.branch_id !== managerBranchId
+) {
+  throw new AppError(
+    "Bạn chỉ được xử lý hồ sơ thuộc chi nhánh mình quản lý.",
+    403,
+  );
+}
+```
+
+Nếu muốn scope cũng ở middleware, phải có middleware preload resource rõ ràng:
+
+```ts
+router.put(
+  "/:id",
+  isAuthenticated,
+  authorizeRole(["Admin", "BranchManager"]),
+  validateParams(idParamSchema),
+  loadBranchById,
+  checkBranchManagerScope,
+  updateBranchHandler,
+);
+```
+
+Không preload resource thì scope check nên để service để tránh query DB trùng/lệch logic.
 
 ---
 
-## 3. Cấu trúc backend chuẩn
+## 3. Backend Architecture
 
-Khi thêm chức năng mới, tạo/tách theo pattern:
+### 3.1. File structure khi thêm feature
 
 ```txt
 src/routes/feature.routes.ts
@@ -132,641 +149,381 @@ src/controllers/feature.controller.ts
 src/services/feature.service.ts
 src/dtos/feature.dto.ts
 src/models/feature.entity.ts
+src/middlewares/validators/feature.validator.ts   // nếu validate nhiều hoặc schema lớn
 ```
 
-Sau đó mount route trong:
-
-```txt
-src/app.ts
-```
-
-Ví dụ:
+Mount route trong `src/app.ts`:
 
 ```ts
-app.use("/api/trainer-applications", trainerApplicationRoutes);
+app.use("/api/features", featureRoutes);
 ```
 
----
+### 3.2. Route style
 
-## 4. Backend route style
-
-Route chỉ khai báo endpoint + middleware + handler.
-
-Ví dụ:
+Route là nơi nhìn vào phải thấy endpoint cần auth/role/validate gì.
 
 ```ts
-router.post("/", isAuthenticated, createFeatureHandler);
+router.post(
+  "/",
+  isAuthenticated,
+  authorizeRole(["Admin"]),
+  validateBody(createFeatureSchema),
+  createFeatureHandler,
+);
 
 router.get(
   "/",
   isAuthenticated,
   authorizeRole(["Admin", "Staff"]),
+  validateQuery(listFeatureQuerySchema),
   getFeaturesHandler,
 );
 
 router.patch(
   "/:id/approve",
   isAuthenticated,
-  authorizeRole(["Admin", "Staff"]),
+  authorizeRole(["Admin", "BranchManager"]),
+  validateParams(idParamSchema),
   approveFeatureHandler,
 );
 ```
 
-Quy tắc:
+Quy tắc route:
 
-- API public thật sự mới không dùng `isAuthenticated`.
-- API của user đã đăng nhập dùng `isAuthenticated`.
-- API quản trị dùng thêm `authorizeRole([...])`.
-- Không check role trùng lặp trong service nếu middleware đã check, trừ khi đó là business rule như giới hạn theo chi nhánh.
+- Public thật sự -> không dùng `isAuthenticated`.
+- Chỉ cần đăng nhập -> `isAuthenticated`.
+- Cần role -> `isAuthenticated` + `authorizeRole([...])`.
+- Có `:id` -> thêm `validateParams(...)`.
+- Có query filter/pagination -> thêm `validateQuery(...)`.
+- Có body -> thêm `validateBody(...)`.
+- Không viết logic `if` trong route file.
 
----
+### 3.3. Middleware style
 
-## 5. Controller style
-
-Controller nên làm các việc:
+Các middleware chuẩn nên có:
 
 ```txt
-1. Lấy params/body/user (do route middleware gắn vào req.user)
-2. Validate cơ bản
-3. Gọi service
-4. Trả response
-5. Catch error và trả status phù hợp
+isAuthenticated
+authorizeRole([...])
+validateBody(schemaOrFn)
+validateParams(schemaOrFn)
+validateQuery(schemaOrFn)
 ```
 
-Ví dụ:
+Middleware validate chịu trách nhiệm:
+
+- Check required/type/format.
+- Convert string query/params sang type đúng nếu cần.
+- Trim/normalize field đơn giản.
+- Gắn dữ liệu đã validate vào `req.body`, `req.query`, `req.params` hoặc `req.validated` tùy convention project.
+- Trả `400` nếu input sai.
+
+Ví dụ middleware validate dạng function:
+
+```ts
+type Validator<T> = (input: unknown) => T;
+
+export const validateBody = <T>(validator: Validator<T>) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    try {
+      req.body = validator(req.body);
+      next();
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Dữ liệu không hợp lệ.";
+      return res.status(400).json({ message });
+    }
+  };
+};
+```
+
+Ví dụ validator:
+
+```ts
+export const createFeatureBody = (body: unknown): CreateFeatureDto => {
+  const data = body as Partial<CreateFeatureDto>;
+
+  if (!data.name || !data.name.trim()) {
+    throw new Error("Vui lòng nhập tên.");
+  }
+
+  return {
+    name: data.name.trim(),
+    description: data.description?.trim(),
+  };
+};
+```
+
+> Nếu sau này dùng `zod`/`class-validator`, vẫn giữ nguyên nguyên tắc: validate chạy ở middleware, controller không validate tay.
+
+### 3.4. Controller style
+
+Controller chỉ làm 4 việc:
+
+1. Lấy dữ liệu đã qua middleware (`req.user`, `req.body`, `req.params`, `req.query`).
+2. Gọi service.
+3. Trả response `{ message, data }`.
+4. Catch error và map status.
 
 ```ts
 export const createFeatureHandler = async (req: Request, res: Response) => {
   try {
-    const userId = req.user?.id; // req.user được gắn bởi isAuthenticated trên route
-
-    const validationError = validateCreateFeatureBody(req.body);
-    if (validationError) {
-      return res.status(400).json({ message: validationError });
-    }
-
+    const userId = req.user!.id;
     const result = await createFeature(userId, req.body);
 
     return res.status(201).json({
       message: "Tạo dữ liệu thành công.",
       data: result,
     });
-  } catch (error: any) {
-    return res.status(400).json({ message: error.message });
+  } catch (error: unknown) {
+    return handleControllerError(error, res);
   }
 };
 ```
 
-### 5.1 Validation style hiện tại
-
-Project hiện đang validate thủ công trong controller. Nếu chưa refactor sang thư viện validate, hãy giữ style rõ ràng:
+Controller không nên:
 
 ```ts
-const validateCreateBody = (body: any): string | null => {
-  const { title, content, is_published } = body;
+// Sai: validate tay trong controller
+if (!req.body.name) return res.status(400).json(...);
 
-  if (!title || !content) {
-    return "Vui lòng nhập đầy đủ thông tin.";
-  }
+// Sai: role check tay trong controller
+if (req.user?.role !== "Admin") return res.status(403).json(...);
 
-  if (is_published !== undefined && typeof is_published !== "boolean") {
-    return "Trạng thái hiển thị không hợp lệ.";
-  }
-
-  return null;
-};
+// Sai: business rule trong controller
+if (item.status !== "pending") return res.status(400).json(...);
 ```
 
-Nếu validate array, dùng `for...of` để kiểm tra từng phần tử:
+### 3.5. Service style
+
+Service giữ domain logic:
+
+- Đọc/ghi DB.
+- Transaction.
+- Business rule.
+- Ownership/resource scope nếu cần DB.
+- Unique/FK/cross-table constraints.
+- Throw typed error (`AppError`, `NotFoundError`) hoặc Error theo convention hiện tại.
+
+Service không nên:
 
 ```ts
-for (const item of items) {
-  if (!item.name) {
-    return "Thông tin chưa đầy đủ.";
-  }
-}
+// Sai nếu middleware đã validate body
+if (!dto.name?.trim()) throw new Error("Thiếu name");
+
+// Sai nếu route đã authorizeRole
+if (currentUser.role !== "Admin") throw new Error("Bạn không có quyền");
 ```
 
----
-
-## 6. Service style
-
-Service chứa business logic và database transaction nếu thao tác nhiều bảng.
-
-Ví dụ:
+Service đúng:
 
 ```ts
-export const submitFeature = async (userId: number, dto: CreateFeatureDto) => {
+export const approveFeature = async (id: number, reviewerId: number) => {
   return AppDataSource.transaction(async (manager) => {
-    const featureRepo = manager.getRepository(Feature);
+    const repo = manager.getRepository(Feature);
+    const item = await repo.findOne({ where: { id } });
 
-    let feature = await featureRepo.findOne({ where: { user_id: userId } });
-
-    if (!feature) {
-      feature = featureRepo.create({ user_id: userId });
+    if (!item) throw new NotFoundError("Không tìm thấy dữ liệu.");
+    if (item.status !== FeatureStatus.Pending) {
+      throw new AppError("Chỉ có thể duyệt dữ liệu đang chờ duyệt.", 400);
     }
 
-    feature.name = dto.name;
-    feature.status = FeatureStatus.Pending;
-
-    return await featureRepo.save(feature);
+    item.status = FeatureStatus.Approved;
+    item.reviewed_by = reviewerId;
+    item.reviewed_at = new Date();
+    return repo.save(item);
   });
 };
 ```
 
-Quy tắc:
-
-- Nếu chỉ đọc đơn giản có thể dùng repository trực tiếp.
-- Nếu create/update nhiều bảng, dùng `AppDataSource.transaction`.
-- Service được phép throw `new Error("message")`; controller bắt và trả response.
-- Business status phải check ở service, ví dụ chỉ được approve hồ sơ `pending`.
-
-Ví dụ đúng:
-
-```ts
-if (application.status !== ApplicationStatus.Pending) {
-  throw new Error("Chỉ có thể duyệt đơn đang chờ duyệt.");
-}
-```
-
 ---
 
-## 7. Entity/DTO/Enum style
+## 4. Validation Convention
 
-### 7.1 DTO
+### 4.1. Validation nằm ở middleware
 
-DTO nên đặt trong:
-
-```txt
-src/dtos/*.dto.ts
-```
-
-Ví dụ:
-
-```ts
-export class CreateFeatureDto {
-  name!: string;
-  description?: string;
-  image_url?: string;
-}
-```
-
-### 7.2 Entity
-
-Entity đặt trong:
+Project ưu tiên validate request ở middleware:
 
 ```txt
-src/models/*.entity.ts
+validateParams -> req.params
+validateQuery  -> req.query
+validateBody   -> req.body
 ```
 
-Style TypeORM:
+Controller không tự viết `validateXxxBody` local nữa.
 
-```ts
-@Entity("features")
-export class Feature {
-  @PrimaryGeneratedColumn()
-  id!: number;
+### 4.2. Validator placement
 
-  @Column({ type: "varchar" })
-  name!: string;
-
-  @Column({ type: "text", nullable: true })
-  description?: string;
-
-  @CreateDateColumn({ type: "timestamp" })
-  created_at!: Date;
-
-  @UpdateDateColumn({ type: "timestamp" })
-  updated_at!: Date;
-}
-```
-
-### 7.3 Enum
-
-Nếu có trạng thái, dùng enum:
-
-```ts
-export enum FeatureStatus {
-  Draft = "draft",
-  Pending = "pending",
-  Approved = "approved",
-  Rejected = "rejected",
-}
-```
-
-Không rải string kiểu `"pending"`, `"approved"` nhiều nơi trong backend service.
-
----
-
-## 8. Auth và role
-
-### 8.1 Middleware
-
-Dùng:
-
-```ts
-isAuthenticated
-authorizeRole(["Admin", "Staff"])
-```
-
-Phân biệt rõ:
+Nếu validator nhỏ, có thể đặt gần route/domain:
 
 ```txt
-Middleware check quyền truy cập.
-Service check điều kiện nghiệp vụ.
+src/middlewares/validators/feature.validator.ts
 ```
 
-Ví dụ không dư:
+Nếu project chưa có folder validators, tạo theo domain:
 
 ```txt
-Route check Admin/Staff.
-Service check application.status === pending.
+src/middlewares/validators/trainer-application.validator.ts
+src/middlewares/validators/work-shift.validator.ts
+src/middlewares/validators/common.validator.ts
 ```
 
-Ví dụ hơi dư:
+Không đặt validation trong controller.
 
-```txt
-Route đã authorizeRole(["Admin"]), service lại check user.role === "Admin" y hệt.
-```
+### 4.3. Common validators
 
-### 8.2 Trainer application role rule
-
-Với flow Trainer Application, nên hiểu chuẩn:
-
-```txt
-User đăng ký tài khoản ban đầu nên là Customer.
-User nộp hồ sơ Trainer.
-Staff/Admin approve.
-Backend mới update role_id = 5 để thành Trainer.
-```
-
-Không nên cho user tự thành Trainer chính thức nếu chưa approve hồ sơ.
-
----
-
-## 9. API response convention
-
-Response thành công nên có dạng:
+Nên có common validator cho ID:
 
 ```ts
-return res.json({
-  message: "Thao tác thành công.",
-  data: result,
-});
-```
+export const idParam = (params: unknown) => {
+  const data = params as { id?: string };
+  const id = Number(data.id);
 
-Hoặc create:
-
-```ts
-return res.status(201).json({
-  message: "Tạo dữ liệu thành công.",
-  data: result,
-});
-```
-
-Response lỗi:
-
-```ts
-return res.status(400).json({ message: error.message });
-```
-
-Frontend đọc lỗi theo pattern:
-
-```ts
-const message = error.response?.data?.message || "Thao tác thất bại.";
-toast.error(message);
-```
-
----
-
-## 10. Naming convention
-
-- Backend file: `kebab-case`, ví dụ `trainer-application.service.ts`.
-- Entity class: `PascalCase`, ví dụ `TrainerApplication`.
-- Function: `camelCase`, ví dụ `submitTrainerApplication`.
-- API object frontend: `camelCaseAPI`, ví dụ `trainerApplicationAPI`.
-- Database column hiện tại dùng `snake_case`, ví dụ `created_at`, `user_id`, `image_url`.
-- Frontend state field có thể dùng `snake_case` nếu map trực tiếp với backend payload.
-
----
-
-## 11. Checklist trước khi commit/code xong
-
-- [ ] Có tách frontend API layer chưa?
-- [ ] Backend có đủ route/controller/service chưa?
-- [ ] Controller có validate input cơ bản chưa?
-- [ ] Business logic có nằm trong service chưa?
-- [ ] API quản trị có `authorizeRole` chưa?
-- [ ] Service có check business status cần thiết chưa?
-- [ ] Response có `{ message, data }` chưa?
-- [ ] Frontend có loading/submitting state chưa?
-- [ ] Frontend có catch error và hiển thị message từ backend chưa?
-- [ ] Nếu upload ảnh, có dùng `ImageUpload` + `uploadImageToCloudinary` chưa?
-- [ ] Có tránh role check trùng lặp không cần thiết chưa?
-- [ ] Có hạn chế `any` chưa?
-
----
-
-## 12. Mẫu flow chức năng chuẩn
-
-Khi thêm chức năng mới, AI Agent nên follow flow này:
-
-```txt
-1. Tạo API function ở frontend src/api/feature.ts
-2. Tạo page/component gọi API đó
-3. Tạo backend route trong src/routes/feature.routes.ts
-4. Tạo controller trong src/controllers/feature.controller.ts
-5. Tạo service trong src/services/feature.service.ts
-6. Tạo DTO nếu cần
-7. Tạo entity/enum nếu cần lưu DB
-8. Mount route trong app.ts
-9. Test flow happy path và error path
-```
-
----
-
-## 13. Module tham chiếu nên học theo
-
-Ưu tiên đọc các file này trước khi code chức năng mới:
-
-```txt
-Frontend:
-omnigym-solution-web/src/pages/pubblic/TrainerJoin.tsx
-omnigym-solution-web/src/api/trainerApplications.ts
-omnigym-solution-web/src/components/site/ImageUpload.tsx
-omnigym-solution-web/src/utils/cloudinary.ts
-
-Backend:
-omingym_solution_api/src/routes/trainer-application.routes.ts
-omingym_solution_api/src/controllers/trainer-application.controller.ts
-omingym_solution_api/src/services/trainer-application.service.ts
-omingym_solution_api/src/models/trainer-application.entity.ts
-omingym_solution_api/src/models/trainer-application-certificate.entity.ts
-omingym_solution_api/src/models/trainer-status.enum.ts
-```
-
-Trainer Application chưa hoàn hảo, nhưng hiện là style nên dùng làm chuẩn trong project này.
-
-
----
-
-## 14. Convention ngôn ngữ
-
-Do project hiện tại đang lẫn tiếng Việt và tiếng Anh, từ bây giờ AI Agent nên ưu tiên rule sau:
-
-### 14.1 Backend response message
-
-- Ưu tiên **tiếng Việt**.
-- Ngắn, rõ, đúng nghiệp vụ.
-- Không viết message quá dài.
-
-Ví dụ:
-
-```ts
-return res.status(400).json({ message: "Vui lòng nhập đầy đủ thông tin." });
-return res.status(401).json({ message: "Bạn cần đăng nhập." });
-return res.status(403).json({ message: "Bạn không có quyền truy cập vào chức năng này." });
-```
-
-### 14.2 Frontend label/UI text
-
-- Nếu màn hình hiện tại đang thiên về tiếng Việt thì tiếp tục dùng tiếng Việt đồng nhất.
-- Nếu màn hình cũ đã viết gần như toàn bộ bằng tiếng Anh thì giữ tiếng Anh đồng nhất trong chính màn hình đó.
-- Không trộn tiếng Việt/tiếng Anh trong cùng một cụm UI nếu không cần.
-
-### 14.3 Toast / error message frontend
-
-- Ưu tiên lấy message từ backend trước:
-
-```ts
-const message = error.response?.data?.message || "Thao tác thất bại.";
-toast.error(message);
-```
-
-- Nếu tự viết toast ở frontend, ưu tiên đồng ngôn ngữ với màn hình đang hiển thị.
-
----
-
-## 15. TypeScript rule - hạn chế `any`
-
-Project hiện tại có dùng `any`, nhưng từ các chức năng mới AI Agent nên hạn chế tối đa.
-
-### 15.1 Thứ tự ưu tiên
-
-```txt
-Ưu tiên 1: type/interface rõ ràng
-Ưu tiên 2: unknown + narrowing
-Ưu tiên 3: generic đơn giản
-Cuối cùng mới dùng any
-```
-
-### 15.2 Không nên
-
-```ts
-const [user, setUser] = useState<any>(null);
-```
-
-### 15.3 Nên viết
-
-```ts
-type SessionUser = {
-  id: number;
-  full_name?: string;
-  email?: string;
-  avatar_url?: string;
-  role?: string;
-  role_id?: number;
-};
-
-const [user, setUser] = useState<SessionUser | null>(null);
-```
-
-### 15.4 Với API payload/response
-
-Nên tạo type riêng nếu object dùng nhiều lần:
-
-```ts
-export type CreateTrainerApplicationPayload = {
-  specialization: string;
-  avatar_url: string;
-  phone_number: string;
-  address: string;
-  identity_number: string;
-  identity_image_url: string;
-  certificates: {
-    cert_name: string;
-    issued_by: string;
-    certificate_number: string;
-    image_url: string;
-    issued_at?: string | null;
-    expires_at: string;
-  }[];
-};
-```
-
-### 15.5 Khi nào chấp nhận `any`
-
-Chỉ dùng `any` nếu:
-- dữ liệu bên thứ ba quá động,
-- đang ở giai đoạn bridge code tạm thời,
-- hoặc cần fix nhanh để tương thích code cũ.
-
-Nếu dùng `any`, nên có comment ngắn giải thích.
-
----
-
-## 16. Template chức năng chuẩn
-
-Khi AI Agent tạo chức năng mới, ưu tiên follow 4 nhóm phổ biến sau.
-
-### 16.1 Create flow
-
-```txt
-Frontend form
-→ validate cơ bản
-→ call POST API
-→ backend controller validate
-→ service create dữ liệu
-→ trả { message, data }
-```
-
-Template:
-
-```ts
-async function createItem() {
-  if (submitting) return;
-
-  if (!form.name.trim()) {
-    return toast.error("Vui lòng nhập tên.");
+  if (!Number.isInteger(id) || id <= 0) {
+    throw new Error("ID không hợp lệ.");
   }
 
-  try {
-    setSubmitting(true);
-    const response = await itemAPI.create({ name: form.name.trim() });
-    toast.success(response.data.message || "Tạo dữ liệu thành công.");
-    setData(response.data.data);
-  } catch (error: any) {
-    const message = error.response?.data?.message || "Tạo dữ liệu thất bại.";
-    toast.error(message);
-  } finally {
-    setSubmitting(false);
-  }
-}
+  return { id };
+};
 ```
 
-### 16.2 Update flow
-
-```txt
-Load dữ liệu cũ
-→ fill form
-→ validate
-→ call PUT/PATCH API
-→ backend update
-→ trả dữ liệu mới
-```
-
-Template API:
+Query pagination:
 
 ```ts
-update: (id: number, payload: UpdatePayload) =>
-  api.put(`/features/${id}`, payload),
+export const paginationQuery = (query: unknown) => {
+  const data = query as { page?: string; limit?: string; search?: string };
+
+  return {
+    page: data.page ? Math.max(1, Number(data.page)) : 1,
+    limit: data.limit ? Math.min(100, Math.max(1, Number(data.limit))) : 10,
+    search: data.search?.trim() || undefined,
+  };
+};
 ```
 
-### 16.3 List flow
+### 4.4. Request normalization
 
-```txt
-Page mount
-→ call GET list API
-→ render loading
-→ render empty state / table / cards
-→ hỗ trợ reload
-```
+Middleware có thể normalize:
 
-Nên có state tối thiểu:
+- `id: "12"` -> `id: 12`
+- `email` -> lowercase + trim
+- empty string -> `undefined` nếu field optional
+- date string format `YYYY-MM-DD`
 
-```ts
-const [items, setItems] = useState<ItemType[]>([]);
-const [loading, setLoading] = useState(true);
-```
-
-### 16.4 Detail flow
-
-```txt
-Lấy id từ params
-→ call GET detail API
-→ render loading
-→ render detail
-→ handle not found/error
-```
+Nhưng middleware không được query nhiều bảng để quyết định business flow, trừ khi middleware đó được đặt tên rõ là preload/scope middleware.
 
 ---
 
-## 17. Pagination / Filter / Search guideline
+## 5. Auth & Role
 
-Nếu chức năng có danh sách dữ liệu, AI Agent nên follow rule này.
-
-### 17.1 Frontend state chuẩn
+### 5.1. Standard chain
 
 ```ts
-const [currentPage, setCurrentPage] = useState(1);
-const [query, setQuery] = useState("");
-const [statusFilter, setStatusFilter] = useState("all");
-const [loading, setLoading] = useState(false);
+router.post(
+  "/admin-only",
+  isAuthenticated,
+  authorizeRole(["Admin"]),
+  validateBody(payloadValidator),
+  handler,
+);
 ```
 
-### 17.2 Query params
+### 5.2. Role checklist
 
-Frontend chỉ truyền param khi thực sự cần:
+- Role thuần -> `authorizeRole([...])`.
+- Không check role tay trong controller.
+- Không duplicate role check y hệt middleware trong service.
+- Scope theo resource -> service hoặc middleware preload resource.
+- Route admin/staff/manager luôn phải đọc lại role list đúng nghiệp vụ.
+
+### 5.3. Trainer role flow
+
+```txt
+Register account -> Customer mặc định
+Submit Trainer Application -> application pending
+Approve Trainer Application -> update role_id = Trainer + activate trainer profile
+```
+
+Không cho user tự thành Trainer chính thức chỉ bằng register.
+
+---
+
+## 6. Response & Error Convention
+
+### 6.1. Success response
 
 ```ts
-const params: Record<string, string | number> = {
-  page: currentPage,
-};
-
-if (query.trim()) params.search = query.trim();
-if (statusFilter !== "all") params.status = statusFilter;
+return res.status(200).json({ message: "Thao tác thành công.", data: result });
+return res
+  .status(201)
+  .json({ message: "Tạo dữ liệu thành công.", data: result });
 ```
 
-### 17.3 Backend list handler
-
-List API nên đọc params rõ ràng:
-
-```ts
-const page = Number(req.query.page) || 1;
-const limit = Number(req.query.limit) || 10;
-const search = String(req.query.search || "").trim();
-const status = req.query.status ? String(req.query.status) : undefined;
-```
-
-### 17.4 Response list nên có metadata nếu có pagination
+List có pagination:
 
 ```ts
 return res.json({
   data: items,
-  pagination: {
-    page,
-    limit,
-    total,
-    totalPages,
-  },
+  pagination: { page, limit, total, totalPages },
 });
+```
+
+### 6.2. Error status
+
+| Code | Ý nghĩa                                |
+| ---- | -------------------------------------- |
+| 400  | Validation input / business rule fail  |
+| 401  | Chưa đăng nhập / token không hợp lệ    |
+| 403  | Sai role / không có quyền với resource |
+| 404  | Không tìm thấy resource                |
+| 500  | Lỗi server                             |
+
+### 6.3. AppError recommendation
+
+Nên chuẩn hóa error thay vì `throw new Error(...)` mọi nơi.
+
+```ts
+export class AppError extends Error {
+  statusCode: number;
+
+  constructor(message: string, statusCode = 400) {
+    super(message);
+    this.statusCode = statusCode;
+  }
+}
+
+export class NotFoundError extends AppError {
+  constructor(message = "Không tìm thấy dữ liệu.") {
+    super(message, 404);
+  }
+}
+```
+
+Controller dùng helper chung:
+
+```ts
+export const handleControllerError = (error: unknown, res: Response) => {
+  const statusCode =
+    typeof error === "object" && error !== null && "statusCode" in error
+      ? Number((error as { statusCode?: number }).statusCode) || 500
+      : 500;
+
+  const message = error instanceof Error ? error.message : "Thao tác thất bại.";
+  return res.status(statusCode).json({ message });
+};
 ```
 
 ---
 
-## 18. Transaction guideline khi đụng nhiều bảng
+## 7. Transaction
 
-Nếu một action tác động từ 2 bảng trở lên, hoặc cần đảm bảo tính toàn vẹn dữ liệu, nên dùng transaction.
+Dùng `AppDataSource.transaction` khi:
 
-### 18.1 Nên dùng transaction khi
-
-- tạo record cha + record con,
-- approve/reject có cập nhật nhiều bảng,
-- copy dữ liệu từ application sang bảng chính thức,
-- delete dữ liệu cũ rồi insert dữ liệu mới,
-- update role user kèm tạo hồ sơ liên quan.
-
-### 18.2 Mẫu
+- Tạo record cha + record con.
+- Approve/reject cập nhật nhiều bảng.
+- Copy dữ liệu từ application sang bảng chính thức.
+- Delete dữ liệu cũ rồi insert mới.
+- Update user role kèm tạo/cập nhật hồ sơ liên quan.
 
 ```ts
 return AppDataSource.transaction(async (manager) => {
@@ -774,402 +531,30 @@ return AppDataSource.transaction(async (manager) => {
   const childRepo = manager.getRepository(Child);
 
   const parent = await parentRepo.save(parentRepo.create({ name: dto.name }));
-
   const children = dto.items.map((item) =>
     childRepo.create({ parent_id: parent.id, name: item.name }),
   );
 
   await childRepo.save(children);
-
   return { ...parent, children };
 });
 ```
 
-### 18.3 Không cần transaction khi
-
-- chỉ đọc dữ liệu,
-- update một bảng đơn giản,
-- thao tác nhỏ không có quan hệ nhiều record.
+Không cần transaction cho đọc đơn giản hoặc update 1 bảng không liên quan dữ liệu khác.
 
 ---
 
-## 19. Test case guideline tối thiểu
+## 8. Frontend Style
 
-AI Agent có thể không luôn viết test tự động, nhưng khi code xong nên tự kiểm theo các case sau.
-
-### 19.1 Happy path
-
-- nhập dữ liệu hợp lệ,
-- thao tác thành công,
-- UI cập nhật đúng,
-- backend trả đúng message/data.
-
-### 19.2 Validation path
-
-- thiếu field bắt buộc,
-- sai kiểu dữ liệu,
-- gửi request không hợp lệ,
-- UI hiển thị lỗi đúng.
-
-### 19.3 Permission path
-
-- chưa đăng nhập,
-- sai role,
-- truy cập API quản trị bằng user thường.
-
-### 19.4 Business rule path
-
-Ví dụ:
-- approve hồ sơ không phải `pending`,
-- reject khi thiếu lý do,
-- submit lại khi hồ sơ đang `approved`.
-
-### 19.5 Upload path
-
-- file không phải ảnh,
-- file quá lớn,
-- Cloudinary lỗi,
-- upload thành công và lưu đúng URL.
-
----
-
-## 20. Rule rõ hơn cho register Customer / Trainer
-
-Để tránh mâu thuẫn nghiệp vụ, từ các chức năng mới AI Agent nên follow rule này:
+### 8.1. Flow chuẩn
 
 ```txt
-Đăng ký tài khoản ban đầu: mặc định là Customer.
-Trainer chính thức chỉ được gán sau khi hồ sơ Trainer được approve.
+Page/Component -> API layer -> Backend API -> toast/message
 ```
 
-### 20.1 Quy tắc đề xuất
+Không gọi `axios` trực tiếp rải rác trong page cho cùng một domain.
 
-- Không cho người dùng tự thành Trainer chính thức ngay ở bước đăng ký tài khoản.
-- Nếu UI muốn cho user chọn hướng “Tôi muốn trở thành Trainer”, thì chỉ dùng để điều hướng sang flow nộp hồ sơ Trainer sau khi tạo account.
-- Backend approve Trainer application mới là nơi update role Trainer chính thức.
-
-### 20.2 Nghĩa là
-
-Nên ưu tiên logic này:
-
-```txt
-Register account → role Customer
-Submit Trainer Application → pending
-Approve Trainer Application → update role Trainer
-```
-
-Thay vì:
-
-```txt
-Register account → role Trainer ngay từ đầu
-```
-
-Nếu cần giữ tương thích code cũ, AI Agent phải tránh mở rộng thêm logic mâu thuẫn này.
-
----
-
-## 21. Strict rules AI Agent phải ưu tiên follow
-
-Khi có nhiều cách code, AI Agent ưu tiên theo thứ tự sau:
-
-1. **Giữ đúng flow route → controller → service → entity**.
-2. **Không nhét business logic dài vào controller**.
-3. **Không gọi API trực tiếp rải rác nếu đã có thể tách `src/api/*`**.
-4. **Không lặp check role giống hệt middleware trong service**.
-5. **Ưu tiên enum cho status nghiệp vụ**.
-6. **Ưu tiên type/interface thay vì `any`**.
-7. **Nếu upload ảnh, dùng lại `ImageUpload` + `uploadImageToCloudinary`**.
-8. **Nếu thao tác nhiều bảng, cân nhắc transaction**.
-9. **Response backend nên ổn định theo `{ message, data }`**.
-10. **Frontend phải có loading/submitting/error handling cơ bản**.
-
----
-
-## 22. Kết luận sử dụng file này
-
-File này không nhằm rewrite toàn bộ kiến trúc project, mà nhằm:
-
-```txt
-Chuẩn hóa theo style tốt nhất đang có trong project hiện tại,
-đặc biệt lấy module Trainer Application (submit / approve / reject) làm chuẩn tham chiếu chính.
-```
-
-Khi AI Agent code chức năng mới:
-
-- ưu tiên bám theo file này,
-- nếu code cũ của project có chỗ khác style, ưu tiên chọn style trong file này,
-- trừ khi bị ràng buộc bởi code legacy hoặc yêu cầu nghiệp vụ đặc biệt.
-
-
----
-
-## 23. Project folder mapping / Domain placement
-
-Mục này giúp AI Agent biết rõ **tạo file mới ở đâu** và **ưu tiên sửa file nào trước** khi thêm chức năng.
-
-### 23.1 Frontend placement
-
-#### a) Page theo chức năng
-
-- Trang public: đặt trong
-
-```txt
-omnigym-solution-web/src/pages/pubblic/
-```
-
-Ví dụ:
-
-```txt
-Login.tsx
-Register.tsx
-TrainerJoin.tsx
-```
-
-- Trang customer: đặt trong
-
-```txt
-omnigym-solution-web/src/pages/customers/
-```
-
-- Trang admin/staff/manager: đặt trong
-
-```txt
-omnigym-solution-web/src/pages/admin/
-```
-
-Nếu module lớn, nên tạo folder riêng theo domain:
-
-```txt
-src/pages/admin/feature_name/
-src/pages/admin/feature_name/components/
-```
-
-Ví dụ hiện có style này:
-
-```txt
-src/pages/admin/trainer_applications/
-src/pages/admin/trainer_applications/components/
-```
-
-#### b) API layer
-
-API riêng của từng domain đặt trong:
-
-```txt
-omnigym-solution-web/src/api/
-```
-
-Ví dụ:
-
-```txt
-trainerApplications.ts
-users.ts
-posts.ts
-```
-
-Rule:
-- 1 domain nghiệp vụ nên có 1 file API riêng.
-- Không tạo API function lẫn trong component nếu API đó có thể tái sử dụng.
-
-#### c) Shared component
-
-- Component dùng lại toàn site:
-
-```txt
-omnigym-solution-web/src/components/site/
-```
-
-Ví dụ:
-
-```txt
-ImageUpload.tsx
-Navbar.tsx
-Footer.tsx
-```
-
-- UI primitive/reusable nhỏ:
-
-```txt
-omnigym-solution-web/src/components/ui/
-```
-
-#### d) Utils
-
-Helper dùng chung đặt trong:
-
-```txt
-omnigym-solution-web/src/utils/
-```
-
-Ví dụ:
-
-```txt
-cloudinary.ts
-rsa.ts
-```
-
-#### e) Types
-
-- Nếu type chỉ dùng trong 1 page nhỏ, có thể để ngay trong file page/component.
-- Nếu type dùng lại nhiều nơi, tạo file riêng trong:
-
-```txt
-omnigym-solution-web/src/types/
-```
-
-Nếu `src/types/` chưa có, AI Agent có thể tạo khi cần.
-
----
-
-### 23.2 Backend placement
-
-#### a) Route
-
-Đặt trong:
-
-```txt
-omingym_solution_api/src/routes/
-```
-
-Pattern file name:
-
-```txt
-feature.routes.ts
-```
-
-Ví dụ:
-
-```txt
-trainer-application.routes.ts
-faq.routes.ts
-post.routes.ts
-```
-
-#### b) Controller
-
-Đặt trong:
-
-```txt
-omingym_solution_api/src/controllers/
-```
-
-Pattern:
-
-```txt
-feature.controller.ts
-```
-
-#### c) Service
-
-Đặt trong:
-
-```txt
-omingym_solution_api/src/services/
-```
-
-Pattern:
-
-```txt
-feature.service.ts
-```
-
-#### d) DTO
-
-Đặt trong:
-
-```txt
-omingym_solution_api/src/dtos/
-```
-
-Pattern:
-
-```txt
-feature.dto.ts
-```
-
-#### e) Entity / Model
-
-Đặt trong:
-
-```txt
-omingym_solution_api/src/models/
-```
-
-Pattern:
-
-```txt
-feature.entity.ts
-```
-
-Nếu là bảng con/quan hệ phụ thì đặt tên rõ:
-
-```txt
-trainer-application-certificate.entity.ts
-trainer-certificate.entity.ts
-```
-
-#### f) Enum / constant nghiệp vụ
-
-- Nếu enum nhỏ, liên quan chặt tới model, có thể để file riêng trong `src/models/` như hiện tại.
-- Nếu về sau enum/constant lớn hơn, có thể tách `src/constants/` hoặc `src/enums/`, nhưng chỉ làm khi thực sự cần.
-
-#### g) Mount route
-
-Sau khi tạo route mới, phải mount trong:
-
-```txt
-omingym_solution_api/src/app.ts
-```
-
----
-
-### 23.3 Rule chọn chỗ đặt file khi chưa chắc chắn
-
-Nếu AI Agent phân vân nên đặt file ở đâu, ưu tiên theo thứ tự:
-
-1. Đặt cạnh domain gần nhất đang tồn tại.
-2. Nếu là API/domain logic, ưu tiên tách file riêng hơn là nhét chung.
-3. Nếu là shared utility/component thật sự dùng lại được, mới đưa vào `shared/site/ui/utils`.
-4. Không tạo file/folder mới quá sớm nếu chức năng rất nhỏ và chỉ dùng 1 chỗ.
-
----
-
-## 24. Do / Don't rules
-
-Mục này là rule ngắn gọn để AI Agent đọc nhanh trước khi code.
-
-### 24.1 DO
-
-- **Do** tách `API layer` trong `src/api/*`.
-- **Do** giữ flow `route → controller → service → entity`.
-- **Do** để business logic chính trong service.
-- **Do** dùng enum cho status nghiệp vụ.
-- **Do** dùng transaction khi thao tác nhiều bảng.
-- **Do** dùng `ImageUpload` + `uploadImageToCloudinary` cho upload ảnh.
-- **Do** lấy error message từ backend nếu có.
-- **Do** thêm loading/submitting state ở frontend.
-- **Do** đặt tên file theo pattern đang có trong project.
-- **Do** ưu tiên type/interface thay vì `any`.
-
-### 24.2 DON'T
-
-- **Don't** nhét toàn bộ logic vào 1 page/component rất dài nếu có thể tách helper/API/component con.
-- **Don't** gọi `axios` trực tiếp rải rác trong nhiều component cho cùng 1 domain.
-- **Don't** để controller làm business logic nặng.
-- **Don't** check lại role y hệt middleware trong service nếu không có business rule riêng.
-- **Don't** hard-code status string khắp backend nếu đã có enum.
-- **Don't** tạo Trainer chính thức ngay ở bước register account nếu flow nghiệp vụ yêu cầu approve hồ sơ.
-- **Don't** upload file trực tiếp về backend nếu chức năng đang follow chuẩn Cloudinary URL flow.
-- **Don't** thêm thư viện validate/state management mới chỉ để giải quyết một case nhỏ nếu project chưa thống nhất dùng thư viện đó.
-- **Don't** đổi style naming của 1 module riêng lẻ khác hẳn phần còn lại của project.
-
----
-
-## 25. Copy-ready mini templates
-
-Mục này cung cấp các template cực ngắn để AI Agent có thể copy và sửa nhanh.
-
-### 25.1 Frontend API template
+### 8.2. API layer
 
 ```ts
 import api from "./axios";
@@ -1185,96 +570,20 @@ export const featureAPI = {
 };
 ```
 
-### 25.2 Backend route template
+### 8.3. Page/component order
 
-```ts
-import { Router } from "express";
-import {
-  createFeatureHandler,
-  getFeaturesHandler,
-  getFeatureByIdHandler,
-  updateFeatureHandler,
-  deleteFeatureHandler,
-} from "../controllers/feature.controller.js";
-import { isAuthenticated, authorizeRole } from "../middlewares/auth.middleware.js";
+Trong page nên tách rõ:
 
-const router = Router();
+1. State.
+2. Derived values.
+3. Load data `useEffect`.
+4. Helpers `setField`, `buildPayload`.
+5. Handlers `submit`, `update`, `delete`.
+6. Render loading/empty/error/success.
 
-router.post("/", isAuthenticated, authorizeRole(["Admin"]), createFeatureHandler);
-router.get("/", isAuthenticated, getFeaturesHandler);
-router.get("/:id", isAuthenticated, getFeatureByIdHandler);
-router.put("/:id", isAuthenticated, authorizeRole(["Admin"]), updateFeatureHandler);
-router.delete("/:id", isAuthenticated, authorizeRole(["Admin"]), deleteFeatureHandler);
+### 8.4. Upload ảnh
 
-export default router;
-```
-
-### 25.3 Backend controller template
-
-```ts
-export const createFeatureHandler = async (req: Request, res: Response) => {
-  try {
-    const userId = req.user?.id; // req.user được gắn bởi isAuthenticated trên route
-
-    const validationError = validateCreateFeatureBody(req.body);
-    if (validationError) {
-      return res.status(400).json({ message: validationError });
-    }
-
-    const result = await createFeature(userId, req.body);
-
-    return res.status(201).json({
-      message: "Tạo dữ liệu thành công.",
-      data: result,
-    });
-  } catch (error: any) {
-    return res.status(400).json({ message: error.message });
-  }
-};
-```
-
-### 25.4 Backend service template
-
-```ts
-export const createFeature = async (userId: number, dto: CreateFeatureDto) => {
-  const repo = AppDataSource.getRepository(Feature);
-
-  const item = repo.create({
-    user_id: userId,
-    name: dto.name,
-  });
-
-  return await repo.save(item);
-};
-```
-
-### 25.5 Approve / Reject action template
-
-```ts
-router.patch(
-  "/:id/approve",
-  isAuthenticated,
-  authorizeRole(["Admin", "Staff"]),
-  approveFeatureHandler,
-);
-
-router.patch(
-  "/:id/reject",
-  isAuthenticated,
-  authorizeRole(["Admin", "Staff"]),
-  rejectFeatureHandler,
-);
-```
-
-Service rule:
-
-```ts
-if (item.status !== FeatureStatus.Pending) {
-  throw new Error("Chỉ có thể xử lý dữ liệu đang chờ duyệt.");
-}
-```
-
-### 25.6 Upload image field template
+Dùng `ImageUpload` + `uploadImageToCloudinary`; backend chỉ nhận URL.
 
 ```tsx
 <ImageUpload
@@ -1285,21 +594,262 @@ if (item.status !== FeatureStatus.Pending) {
 
 ---
 
-## 26. Final note for AI Agent
+## 9. TypeScript & Naming
 
-Khi bắt đầu code một chức năng mới trong project này, AI Agent nên tự hỏi theo đúng thứ tự sau:
+### 9.1. TypeScript
 
-```txt
-1. Chức năng này thuộc domain nào?
-2. Frontend page/component nên đặt ở folder nào?
-3. Có cần file API riêng trong src/api không?
-4. Backend có cần route/controller/service riêng không?
-5. Có status nghiệp vụ không → cần enum không?
-6. Có cần role middleware không?
-7. Có cần transaction vì đụng nhiều bảng không?
-8. Có cần upload ảnh theo flow Cloudinary không?
-9. Response backend đã theo { message, data } chưa?
-10. Code này đã gần với style Trainer Application submit/approve/reject chưa?
+Ưu tiên:
+
+1. `type`/`interface` rõ ràng.
+2. `unknown` + narrowing.
+3. Generic đơn giản.
+4. `any` chỉ khi bridge code cũ hoặc data quá động.
+
+```ts
+catch (error: unknown) {
+  const message = error instanceof Error ? error.message : "Đã có lỗi xảy ra.";
+}
 ```
 
-Nếu chưa chắc cách code, ưu tiên đọc lại module tham chiếu Trainer Application trước rồi mới triển khai.
+### 9.2. Naming
+
+| Loại                       | Convention                     | Ví dụ                            |
+| -------------------------- | ------------------------------ | -------------------------------- |
+| Backend file               | `kebab-case`                   | `trainer-application.service.ts` |
+| Entity class               | `PascalCase`                   | `TrainerApplication`             |
+| Function                   | `camelCase`                    | `submitTrainerApplication`       |
+| API object frontend        | `camelCaseAPI`                 | `trainerApplicationAPI`          |
+| DB column                  | `snake_case`                   | `created_at`, `user_id`          |
+| Frontend field map backend | `snake_case` nếu map trực tiếp | `form.phone_number`              |
+
+---
+
+## 10. Project Folder Mapping
+
+### Backend
+
+| Loại                 | Folder / Pattern                        |
+| -------------------- | --------------------------------------- |
+| Route                | `src/routes/feature.routes.ts`          |
+| Controller           | `src/controllers/feature.controller.ts` |
+| Service              | `src/services/feature.service.ts`       |
+| DTO                  | `src/dtos/feature.dto.ts`               |
+| Entity               | `src/models/feature.entity.ts`          |
+| Enum nhỏ             | `src/models/feature-status.enum.ts`     |
+| Middleware           | `src/middlewares/`                      |
+| Validator middleware | `src/middlewares/validators/`           |
+| Mount route          | `src/app.ts`                            |
+
+### Frontend
+
+| Loại                      | Folder                 |
+| ------------------------- | ---------------------- |
+| API domain                | `src/api/`             |
+| Public pages              | `src/pages/pubblic/`   |
+| Customer pages            | `src/pages/customers/` |
+| Admin/staff/manager pages | `src/pages/admin/`     |
+| Shared components         | `src/components/site/` |
+| UI primitive              | `src/components/ui/`   |
+| Utils                     | `src/utils/`           |
+| Shared types              | `src/types/`           |
+
+---
+
+## 11. Module Reference
+
+Khi code feature mới, đọc các file cùng domain trước. Nếu cần module tham chiếu:
+
+```txt
+Backend:
+src/routes/trainer-application.routes.ts
+src/controllers/trainer-application.controller.ts
+src/services/trainer-application.service.ts
+src/models/trainer-application.entity.ts
+src/models/trainer-application-certificate.entity.ts
+src/models/trainer-status.enum.ts
+src/middlewares/auth.middleware.ts
+src/app.ts
+
+Frontend:
+omnigym-solution-web/src/api/trainerApplications.ts
+omnigym-solution-web/src/pages/pubblic/TrainerJoin.tsx
+omnigym-solution-web/src/components/site/ImageUpload.tsx
+omnigym-solution-web/src/utils/cloudinary.ts
+```
+
+> Lưu ý: một số module cũ chưa đúng chuẩn middleware-first. Code mới/refactor mới ưu tiên chuẩn trong file này.
+
+---
+
+## 12. Standard Templates
+
+### 12.1. CRUD route template
+
+```ts
+import { Router } from "express";
+import {
+  createFeatureHandler,
+  getFeaturesHandler,
+  getFeatureByIdHandler,
+  updateFeatureHandler,
+  deleteFeatureHandler,
+} from "../controllers/feature.controller.js";
+import {
+  isAuthenticated,
+  authorizeRole,
+} from "../middlewares/auth.middleware.js";
+import {
+  validateBody,
+  validateParams,
+  validateQuery,
+} from "../middlewares/validate.middleware.js";
+import {
+  createFeatureBody,
+  updateFeatureBody,
+  featureIdParams,
+  listFeatureQuery,
+} from "../middlewares/validators/feature.validator.js";
+
+const router = Router();
+
+router.get(
+  "/",
+  isAuthenticated,
+  authorizeRole(["Admin", "Staff"]),
+  validateQuery(listFeatureQuery),
+  getFeaturesHandler,
+);
+
+router.get(
+  "/:id",
+  isAuthenticated,
+  validateParams(featureIdParams),
+  getFeatureByIdHandler,
+);
+
+router.post(
+  "/",
+  isAuthenticated,
+  authorizeRole(["Admin"]),
+  validateBody(createFeatureBody),
+  createFeatureHandler,
+);
+
+router.put(
+  "/:id",
+  isAuthenticated,
+  authorizeRole(["Admin"]),
+  validateParams(featureIdParams),
+  validateBody(updateFeatureBody),
+  updateFeatureHandler,
+);
+
+router.delete(
+  "/:id",
+  isAuthenticated,
+  authorizeRole(["Admin"]),
+  validateParams(featureIdParams),
+  deleteFeatureHandler,
+);
+
+export default router;
+```
+
+### 12.2. Controller template
+
+```ts
+export const createFeatureHandler = async (req: Request, res: Response) => {
+  try {
+    const result = await createFeature(req.user!.id, req.body);
+    return res.status(201).json({
+      message: "Tạo dữ liệu thành công.",
+      data: result,
+    });
+  } catch (error: unknown) {
+    return handleControllerError(error, res);
+  }
+};
+```
+
+### 12.3. Middleware validator template
+
+```ts
+export const createFeatureBody = (input: unknown): CreateFeatureDto => {
+  const body = input as Partial<CreateFeatureDto>;
+
+  if (!body.name || !body.name.trim()) {
+    throw new Error("Vui lòng nhập tên.");
+  }
+
+  return {
+    name: body.name.trim(),
+    description: body.description?.trim(),
+  };
+};
+```
+
+### 12.4. Service template
+
+```ts
+export const createFeature = async (userId: number, dto: CreateFeatureDto) => {
+  const repo = AppDataSource.getRepository(Feature);
+
+  const item = repo.create({
+    user_id: userId,
+    name: dto.name,
+    description: dto.description,
+    status: FeatureStatus.Draft,
+  });
+
+  return repo.save(item);
+};
+```
+
+---
+
+## 13. Pre-Commit Checklist
+
+- [ ] Route đã gắn `isAuthenticated` đúng chưa?
+- [ ] Route đã gắn `authorizeRole([...])` đúng chưa?
+- [ ] Route có `validateParams(...)` cho `:id` chưa?
+- [ ] Route có `validateQuery(...)` cho filter/pagination chưa?
+- [ ] Route có `validateBody(...)` cho request body chưa?
+- [ ] Controller có còn validate tay không?
+- [ ] Controller có còn role check tay không?
+- [ ] Service có còn check lại role y hệt middleware không?
+- [ ] Service chỉ còn business rule + DB + transaction chưa?
+- [ ] Có duplicate check giữa middleware/controller/service không?
+- [ ] Response thành công có `{ message, data }` chưa?
+- [ ] Error có status code phù hợp chưa?
+- [ ] Status nghiệp vụ dùng enum chưa?
+- [ ] Multi-table action có transaction chưa?
+- [ ] Frontend gọi qua API layer chưa?
+- [ ] Frontend có loading/submitting/error handling chưa?
+- [ ] Upload ảnh dùng Cloudinary/ImageUpload chưa?
+- [ ] Có mount route mới trong `app.ts` chưa?
+
+---
+
+## 14. Do / Don't
+
+### Do
+
+- Khai báo role bằng `authorizeRole([...])` trong route.
+- Validate request bằng middleware.
+- Giữ controller mỏng.
+- Giữ service là nơi xử lý domain logic.
+- Dùng transaction khi đụng nhiều bảng.
+- Dùng enum cho status.
+- Tách API layer frontend.
+- Lấy error message từ backend để hiển thị toast.
+
+### Don't
+
+- Không viết `if (req.user.role...)` trong controller.
+- Không validate required/type/format trong controller nếu đã có middleware.
+- Không duplicate role check y hệt middleware trong service.
+- Không để controller làm business logic.
+- Không gọi `axios` trực tiếp rải rác trong page.
+- Không upload binary về backend nếu flow đang dùng Cloudinary.
+- Không tạo Trainer chính thức ngay lúc register.
+- Không hard-code status string nếu đã có enum.
