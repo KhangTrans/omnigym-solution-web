@@ -4,11 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import {
-  useWorkspaceNotifications,
-  type NotificationKind,
-  type WorkspaceNotification,
-} from "@/lib/workspace-notifications-store";
+import { useNotifications } from "@/contexts/NotificationContext";
+import { useState } from "react";
+
+type NotificationKind = "review" | "shift" | "staff" | "trainer" | "revenue" | "system";
 
 const ICONS: Record<NotificationKind, typeof Bell> = {
   review: Star,
@@ -20,24 +19,66 @@ const ICONS: Record<NotificationKind, typeof Bell> = {
 };
 
 function timeAgo(iso: string) {
-  const diff = Date.now() - new Date(iso).getTime();
-  const m = Math.floor(diff / 60000);
-  if (m < 1) return "vừa xong";
-  if (m < 60) return `${m} phút trước`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h} giờ trước`;
-  const d = Math.floor(h / 24);
-  return `${d} ngày trước`;
+  try {
+    const diff = Date.now() - new Date(iso).getTime();
+    const m = Math.floor(diff / 60000);
+    if (m < 1) return "vừa xong";
+    if (m < 60) return `${m} phút trước`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h} giờ trước`;
+    const d = Math.floor(h / 24);
+    return `${d} ngày trước`;
+  } catch {
+    return "vừa xong";
+  }
 }
 
+const mapTypeToKind = (type?: string): NotificationKind => {
+  switch (type) {
+    case "refund_requested":
+      return "revenue";
+    case "booking_cancelled":
+    case "booking_rescheduled":
+    case "booking_created":
+      return "shift";
+    case "trainer_application":
+    case "trainer_approved":
+      return "trainer";
+    default:
+      return "system";
+  }
+};
+
+const mapTypeToHref = (type?: string): string => {
+  switch (type) {
+    case "refund_requested":
+      return "/branchmanager/revenue";
+    case "booking_cancelled":
+    case "booking_rescheduled":
+    case "booking_created":
+      return "/branchmanager/attendance";
+    case "trainer_application":
+      return "/branchmanager/trainer-applications";
+    default:
+      return "/branchmanager";
+  }
+};
+
 export function WorkspaceNotificationsBell() {
-  const { items, unreadCount, markRead, markAllRead, remove } = useWorkspaceNotifications();
+  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const [deletedIds, setDeletedIds] = useState<number[]>([]);
   const navigate = useNavigate();
 
-  const open = (n: WorkspaceNotification) => {
-    markRead(n.id);
-    navigate(n.href);
+  const handleOpenNotification = (id: number, type?: string) => {
+    markAsRead(id);
+    navigate(mapTypeToHref(type));
   };
+
+  const handleRemoveNotification = (id: number) => {
+    setDeletedIds((prev) => [...prev, id]);
+  };
+
+  const items = notifications.filter((n) => !deletedIds.includes(n.id));
 
   return (
     <Popover>
@@ -69,7 +110,7 @@ export function WorkspaceNotificationsBell() {
               variant="ghost"
               size="sm"
               className="h-7 gap-1 px-2 text-xs text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 transition-colors"
-              onClick={markAllRead}
+              onClick={markAllAsRead}
             >
               <Check className="h-3.5 w-3.5" />
               Đọc tất cả
@@ -86,21 +127,22 @@ export function WorkspaceNotificationsBell() {
           ) : (
             <ul className="divide-y divide-slate-50">
               {items.map((n) => {
-                const Icon = ICONS[n.kind] ?? Bell;
+                const kind = mapTypeToKind(n.type);
+                const Icon = ICONS[kind] ?? Bell;
                 return (
                   <li key={n.id} className="group relative">
                     <button
                       type="button"
-                      onClick={() => open(n)}
+                      onClick={() => handleOpenNotification(n.id, n.type)}
                       className={cn(
                         "flex w-full items-start gap-3 px-4 py-3.5 text-left transition-colors hover:bg-slate-50/80",
-                        !n.read && "bg-emerald-50/15"
+                        !n.is_read && "bg-emerald-50/15"
                       )}
                     >
                       <div
                         className={cn(
                           "mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full transition-colors",
-                          !n.read
+                          !n.is_read
                             ? "bg-emerald-50 text-emerald-700"
                             : "bg-slate-100 text-slate-400"
                         )}
@@ -109,18 +151,18 @@ export function WorkspaceNotificationsBell() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <div className={cn("truncate text-sm text-slate-800", !n.read ? "font-bold" : "font-medium")}>
+                          <div className={cn("truncate text-sm text-slate-800", !n.is_read ? "font-bold" : "font-medium")}>
                             {n.title}
                           </div>
-                          {!n.read && (
+                          {!n.is_read && (
                             <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-600" />
                           )}
                         </div>
                         <p className="mt-0.5 line-clamp-2 text-xs text-slate-500 leading-normal">
-                          {n.body}
+                          {n.message}
                         </p>
                         <div className="mt-1.5 text-[9px] font-semibold uppercase tracking-wider text-slate-400">
-                          {timeAgo(n.createdAt)}
+                          {timeAgo(n.created_at)}
                         </div>
                       </div>
                     </button>
@@ -129,7 +171,7 @@ export function WorkspaceNotificationsBell() {
                       aria-label="Xóa thông báo"
                       onClick={(e) => {
                         e.stopPropagation();
-                        remove(n.id);
+                        handleRemoveNotification(n.id);
                       }}
                       className="absolute right-3 top-3.5 hidden rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 group-hover:block transition-all"
                     >
