@@ -127,8 +127,8 @@ export default function MyBookings() {
     }
   };
 
-  // Ca tập cách hiện tại trên 2 tiếng thì được hủy hoặc đổi lịch
-  const isCancellable = (booking: BookingItem): boolean => {
+  // Đổi lịch yêu cầu tối thiểu trước 2 tiếng
+  const isReschedulable = (booking: BookingItem): boolean => {
     if (booking.status !== "confirmed") return false;
     try {
       const now = new Date();
@@ -139,6 +139,23 @@ export default function MyBookings() {
       const diffMs = scheduledDateTime.getTime() - now.getTime();
       const diffHours = diffMs / (1000 * 60 * 60);
       return diffHours >= 2;
+    } catch {
+      return false;
+    }
+  };
+
+  // Hủy lịch yêu cầu tối thiểu trước 4 tiếng theo quy định BE
+  const isCancellable = (booking: BookingItem): boolean => {
+    if (booking.status !== "confirmed") return false;
+    try {
+      const now = new Date();
+      const scheduledDateTime = new Date(booking.date);
+      const [hours, minutes] = booking.time.split(":");
+      scheduledDateTime.setHours(Number(hours), Number(minutes), 0, 0);
+
+      const diffMs = scheduledDateTime.getTime() - now.getTime();
+      const diffHours = diffMs / (1000 * 60 * 60);
+      return diffHours >= 4;
     } catch {
       return false;
     }
@@ -248,8 +265,14 @@ export default function MyBookings() {
         <div>
           <strong className="font-bold">Quy định đổi/hủy lịch tập PT:</strong>
           <ul className="list-disc pl-4 mt-1 space-y-1">
-            <li>Bạn chỉ được phép đổi hoặc hủy ca tập trước giờ tập bắt đầu ít nhất 2 tiếng.</li>
-            <li>Khi bạn hủy lịch tập đúng hạn, số buổi tập trong gói PT tương ứng sẽ được cộng trả lại cho bạn.</li>
+            <li><strong>Đổi lịch:</strong> Bạn được phép đổi ca tập trước giờ bắt đầu tối thiểu <strong>2 tiếng</strong>.</li>
+            <li><strong>Hủy lịch:</strong> Bạn được phép hủy ca tập trước giờ bắt đầu tối thiểu <strong>4 tiếng</strong>.</li>
+            <li><strong>Hoàn tiền/hoàn buổi:</strong>
+              <ul className="list-circle pl-4 mt-0.5 space-y-0.5">
+                <li>Khi hủy ca của gói tập: hoàn trả 100% buổi tập vào gói.</li>
+                <li>Khi hủy ca tập lẻ: hủy trước 12 tiếng hoàn 100% tiền, hủy từ 4 - 12 tiếng hoàn 50% tiền, dưới 4 tiếng không được hoàn tiền.</li>
+              </ul>
+            </li>
           </ul>
         </div>
       </div>
@@ -280,6 +303,7 @@ export default function MyBookings() {
             const trainerUser = booking.trainer?.user;
             const trainerName = trainerUser?.full_name || "Huấn luyện viên";
             const avatar = booking.trainer?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(trainerName)}&background=4F8A74&color=fff`;
+            const reschedulable = isReschedulable(booking);
             const cancellable = isCancellable(booking);
 
             return (
@@ -331,25 +355,25 @@ export default function MyBookings() {
                         Xác nhận hoàn thành
                       </Button>
                     )}
+                    {reschedulable && (
+                      <Button
+                        onClick={() => setReschedulingBooking(booking)}
+                        variant="outline"
+                        className="h-9 rounded-xl border-emerald-200 bg-emerald-50/20 hover:bg-emerald-50 text-emerald-700 hover:text-emerald-800 font-bold text-xs flex items-center gap-1.5"
+                      >
+                        <CalendarDays className="h-3.5 w-3.5" />
+                        Đổi lịch
+                      </Button>
+                    )}
                     {cancellable && (
-                      <>
-                        <Button
-                          onClick={() => setReschedulingBooking(booking)}
-                          variant="outline"
-                          className="h-9 rounded-xl border-emerald-200 bg-emerald-50/20 hover:bg-emerald-50 text-emerald-700 hover:text-emerald-800 font-bold text-xs flex items-center gap-1.5"
-                        >
-                          <CalendarDays className="h-3.5 w-3.5" />
-                          Đổi lịch
-                        </Button>
-                        <Button
-                          onClick={() => setCancellingBooking(booking)}
-                          variant="outline"
-                          className="h-9 rounded-xl border-rose-200 bg-rose-50/30 hover:bg-rose-50 text-rose-600 hover:text-rose-700 font-bold text-xs flex items-center gap-1.5"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                          Hủy lịch
-                        </Button>
-                      </>
+                      <Button
+                        onClick={() => setCancellingBooking(booking)}
+                        variant="outline"
+                        className="h-9 rounded-xl border-rose-200 bg-rose-50/30 hover:bg-rose-50 text-rose-600 hover:text-rose-700 font-bold text-xs flex items-center gap-1.5"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Hủy lịch
+                      </Button>
                     )}
                   </div>
                 </CardContent>
