@@ -33,7 +33,48 @@ export const useNotifications = () => {
   return context;
 };
 
+const mapNotificationTypeToHref = (type?: string, userRole?: string): string => {
+  const role = String(userRole || "").toLowerCase();
+  
+  if (role === "branchmanager" || role === "staff") {
+    switch (type) {
+      case "refund_requested":
+        return "/branchmanager/revenue";
+      case "booking_cancelled":
+      case "booking_rescheduled":
+      case "booking_created":
+        return "/branchmanager/attendance";
+      case "trainer_application":
+        return "/branchmanager/trainer-applications";
+      default:
+        return "/branchmanager";
+    }
+  }
+  
+  if (role === "trainer") {
+    switch (type) {
+      case "booking_created":
+      case "booking_cancelled":
+      case "booking_rescheduled":
+        return "/trainer/bookings";
+      default:
+        return "/trainer";
+    }
+  }
+  
+  // Default for Customer / others
+  switch (type) {
+    case "booking_created":
+    case "booking_cancelled":
+    case "booking_rescheduled":
+      return "/my-bookings";
+    default:
+      return "/";
+  }
+};
+
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem("token"));
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -43,7 +84,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const socketServerUrl = "http://localhost:3000";
 
   const refreshNotifications = useCallback(async () => {
-    const token = localStorage.getItem("token");
     if (!token) return;
 
     try {
@@ -59,10 +99,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     } finally {
       setLoading(false);
     }
-  }, [apiBaseUrl]);
+  }, [apiBaseUrl, token]);
 
   const markAsRead = async (id: number) => {
-    const token = localStorage.getItem("token");
     if (!token) return;
 
     try {
@@ -79,7 +118,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   };
 
   const markAllAsRead = async () => {
-    const token = localStorage.getItem("token");
     if (!token) return;
 
     try {
@@ -93,9 +131,29 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   };
 
+  // Sync token state from localStorage
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const currentToken = localStorage.getItem("token");
+      if (currentToken !== token) {
+        setToken(currentToken);
+      }
+    };
+
+    window.addEventListener("user-login", handleStorageChange);
+    window.addEventListener("storage", handleStorageChange);
+
+    const interval = setInterval(handleStorageChange, 1000);
+
+    return () => {
+      window.removeEventListener("user-login", handleStorageChange);
+      window.removeEventListener("storage", handleStorageChange);
+      clearInterval(interval);
+    };
+  }, [token]);
+
   // Manage socket connection & Firebase token registration
   useEffect(() => {
-    const token = localStorage.getItem("token");
     if (!token) {
       if (socket) {
         socket.disconnect();
@@ -129,6 +187,16 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setNotifications((prev) => [newNotif, ...prev]);
       setUnreadCount((prev) => prev + 1);
 
+      // Determine user role
+      let userRole = "";
+      try {
+        const u = JSON.parse(localStorage.getItem("user") || "null");
+        const roleValue = typeof u?.role === "object" ? u?.role?.role_name || u?.role?.name : u?.role;
+        userRole = String(roleValue || "").toLowerCase();
+        if (!userRole && Number(u?.role_id) === 4) userRole = "staff";
+        if (!userRole && Number(u?.role_id) === 3) userRole = "branchmanager";
+      } catch {}
+
       // Display Toast Notification using sonner
       toast(newNotif.title, {
         description: newNotif.message,
@@ -138,7 +206,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           onClick: () => {
             // Mark read and navigate
             markAsRead(newNotif.id);
-            window.location.href = "/my-bookings";
+            window.location.href = mapNotificationTypeToHref(newNotif.type, userRole);
           }
         }
       });
@@ -153,22 +221,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     return () => {
       newSocket.disconnect();
     };
-  }, [refreshNotifications]);
-
-  // Periodic polling check in case localStorage is modified outside this hook
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const token = localStorage.getItem("token");
-      if (!token && socket) {
-        socket.disconnect();
-        setSocket(null);
-        setNotifications([]);
-        setUnreadCount(0);
-      }
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, [socket]);
+  }, [token, refreshNotifications]);
 
   return (
     <NotificationContext.Provider
