@@ -83,6 +83,7 @@ export function Navbar() {
   const { user, signOut } = useCurrentUser();
   const location = useLocation();
   const navigate = useNavigate();
+  const [activeSection, setActiveSection] = useState("#home");
 
   const links = [
     { label: t("nav.home"), href: "#home" },
@@ -90,6 +91,85 @@ export function Navbar() {
     { label: t("nav.contact"), href: "#contact" },
     { label: t("nav.faq"), href: "#faq" },
   ];
+
+  // Helper to determine if a link is active
+  const isActive = (href: string) => {
+    if (href.startsWith("/")) {
+      return location.pathname === href || location.pathname.startsWith(href + "/");
+    }
+    if (location.pathname === "/") {
+      return activeSection === href;
+    }
+    return false;
+  };
+
+  useEffect(() => {
+    if (location.pathname !== "/") {
+      setActiveSection("");
+      return;
+    }
+
+    const sectionIds = ["home", "pricing", "contact", "faq"];
+
+    const handleScroll = () => {
+      const scrollPosition = window.scrollY + window.innerHeight / 3;
+
+      for (const id of sectionIds) {
+        const el = document.getElementById(id);
+        if (el) {
+          const top = el.offsetTop;
+          const height = el.offsetHeight;
+          if (scrollPosition >= top && scrollPosition < top + height) {
+            setActiveSection(`#${id}`);
+            break;
+          }
+        }
+      }
+    };
+
+    const observerOptions = {
+      root: null,
+      rootMargin: "-20% 0px -60% 0px",
+      threshold: 0.1,
+    };
+
+    const observerCallback = (entries: IntersectionObserverEntry[]) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          setActiveSection(`#${entry.target.id}`);
+        }
+      });
+    };
+
+    const observer = new IntersectionObserver(observerCallback, observerOptions);
+
+    sectionIds.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) observer.observe(el);
+    });
+
+    handleScroll();
+    window.addEventListener("scroll", handleScroll);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, [location.pathname]);
+
+  // Handle initial hash scrolling
+  useEffect(() => {
+    if (location.pathname === "/" && location.hash) {
+      setActiveSection(location.hash);
+      const element = document.querySelector(location.hash);
+      if (element) {
+        const timer = setTimeout(() => {
+          element.scrollIntoView({ behavior: "smooth" });
+        }, 100);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [location.pathname, location.hash]);
 
   const goToSection = (href: string) => {
     setOpen(false);
@@ -100,6 +180,7 @@ export function Navbar() {
     }
 
     window.history.replaceState(null, "", href);
+    setActiveSection(href);
     document.querySelector(href)?.scrollIntoView({ behavior: "smooth" });
   };
 
@@ -113,18 +194,53 @@ export function Navbar() {
           <span className="tracking-tight">OmniGym</span>
         </button>
         <nav className="hidden items-center gap-8 md:flex">
-          {links.map((l) => (
-            <button key={l.href} type="button" onClick={() => goToSection(l.href)} className="group relative inline-flex items-center justify-center rounded-full px-3 py-2 text-sm font-normal text-muted-foreground transition-all duration-300 hover:-translate-y-0.5 hover:text-foreground">
-              <span className="absolute bottom-1.5 left-1/2 h-px w-0 -translate-x-1/2 bg-gradient-to-r from-transparent via-primary to-transparent transition-all duration-300 group-hover:w-[70%]" aria-hidden />
-              <span className="relative">{l.label}</span>
-            </button>
-          ))}
-          <Link to="/gyms" className="group relative inline-flex items-center justify-center rounded-full px-3 py-2 text-sm font-normal text-muted-foreground transition-all duration-300 hover:-translate-y-0.5 hover:text-foreground">
-            <span className="absolute bottom-1.5 left-1/2 h-px w-0 -translate-x-1/2 bg-gradient-to-r from-transparent via-primary to-transparent transition-all duration-300 group-hover:w-[70%]" aria-hidden />
+          {links.map((l) => {
+            const active = isActive(l.href);
+            return (
+              <button
+                key={l.href}
+                type="button"
+                onClick={() => goToSection(l.href)}
+                className={`group relative inline-flex items-center justify-center rounded-full px-3 py-2 text-sm transition-all duration-300 hover:-translate-y-0.5 ${
+                  active ? "text-primary font-medium" : "text-muted-foreground font-normal hover:text-foreground"
+                }`}
+              >
+                <span
+                  className={`absolute bottom-1.5 left-1/2 h-px -translate-x-1/2 bg-gradient-to-r from-transparent via-primary to-transparent transition-all duration-300 ${
+                    active ? "w-[70%]" : "w-0 group-hover:w-[70%]"
+                  }`}
+                  aria-hidden
+                />
+                <span className="relative">{l.label}</span>
+              </button>
+            );
+          })}
+          <Link
+            to="/gyms"
+            className={`group relative inline-flex items-center justify-center rounded-full px-3 py-2 text-sm transition-all duration-300 hover:-translate-y-0.5 ${
+              isActive("/gyms") ? "text-primary font-medium" : "text-muted-foreground font-normal hover:text-foreground"
+            }`}
+          >
+            <span
+              className={`absolute bottom-1.5 left-1/2 h-px -translate-x-1/2 bg-gradient-to-r from-transparent via-primary to-transparent transition-all duration-300 ${
+                isActive("/gyms") ? "w-[70%]" : "w-0 group-hover:w-[70%]"
+              }`}
+              aria-hidden
+            />
             <span className="relative">{t("nav.gyms")}</span>
           </Link>
-          <Link to="/blog" className="group relative inline-flex items-center justify-center rounded-full px-3 py-2 text-sm font-normal text-muted-foreground transition-all duration-300 hover:-translate-y-0.5 hover:text-foreground">
-            <span className="absolute bottom-1.5 left-1/2 h-px w-0 -translate-x-1/2 bg-gradient-to-r from-transparent via-primary to-transparent transition-all duration-300 group-hover:w-[70%]" aria-hidden />
+          <Link
+            to="/blog"
+            className={`group relative inline-flex items-center justify-center rounded-full px-3 py-2 text-sm transition-all duration-300 hover:-translate-y-0.5 ${
+              isActive("/blog") ? "text-primary font-medium" : "text-muted-foreground font-normal hover:text-foreground"
+            }`}
+          >
+            <span
+              className={`absolute bottom-1.5 left-1/2 h-px -translate-x-1/2 bg-gradient-to-r from-transparent via-primary to-transparent transition-all duration-300 ${
+                isActive("/blog") ? "w-[70%]" : "w-0 group-hover:w-[70%]"
+              }`}
+              aria-hidden
+            />
             <span className="relative">{t("nav.blog")}</span>
           </Link>
         </nav>
@@ -197,11 +313,39 @@ export function Navbar() {
       {open && (
         <div className="border-t border-border bg-background md:hidden">
           <div className="flex flex-col gap-3 px-4 py-4 text-foreground">
-            {links.map((l) => (
-              <button key={l.href} type="button" onClick={() => goToSection(l.href)} className="py-2 text-left text-sm font-medium text-foreground/85">{l.label}</button>
-            ))}
-            <Link to="/gyms" onClick={() => setOpen(false)} className="py-2 text-sm font-medium text-foreground/85">{t("nav.gyms")}</Link>
-            <Link to="/blog" onClick={() => setOpen(false)} className="py-2 text-sm font-medium text-foreground/85">{t("nav.blog")}</Link>
+            {links.map((l) => {
+              const active = isActive(l.href);
+              return (
+                <button
+                  key={l.href}
+                  type="button"
+                  onClick={() => goToSection(l.href)}
+                  className={`py-2 text-left text-sm font-medium transition-colors ${
+                    active ? "text-primary font-semibold" : "text-foreground/85 hover:text-primary"
+                  }`}
+                >
+                  {l.label}
+                </button>
+              );
+            })}
+            <Link
+              to="/gyms"
+              onClick={() => setOpen(false)}
+              className={`py-2 text-sm font-medium transition-colors ${
+                isActive("/gyms") ? "text-primary font-semibold" : "text-foreground/85 hover:text-primary"
+              }`}
+            >
+              {t("nav.gyms")}
+            </Link>
+            <Link
+              to="/blog"
+              onClick={() => setOpen(false)}
+              className={`py-2 text-sm font-medium transition-colors ${
+                isActive("/blog") ? "text-primary font-semibold" : "text-foreground/85 hover:text-primary"
+              }`}
+            >
+              {t("nav.blog")}
+            </Link>
             {user ? (
               <div className="mt-2 flex flex-col gap-3 border-t border-border py-2">
                 <div className="flex items-center gap-3">
