@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   Calendar,
   Clock,
   Loader2,
   Trash2,
   Info,
-  CalendarDays
+  CalendarDays,
+  Check
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +16,13 @@ import { trainersApi } from "@/api/trainers";
 import { notify } from "@/utils/notify";
 import { CancelBookingDialog } from "./components/CancelBookingDialog";
 import { RescheduleBookingDialog } from "./components/RescheduleBookingDialog";
+import {
+  formatDateDisplay,
+  calculateEndTime,
+  isBookingReschedulable,
+  isBookingCancellable,
+  getBookingDateTime
+} from "@/utils/bookingUtils";
 
 interface BookingItem {
   id: number;
@@ -22,7 +30,10 @@ interface BookingItem {
   trainer_id: number;
   date: string;
   time: string;
-  status: "confirmed" | "cancelled" | "pending_payment";
+  status: "confirmed" | "cancelled" | "pending_payment" | "completed";
+  customer_confirmed_completed: boolean;
+  trainer_confirmed_completed: boolean;
+  completion_notif_sent: boolean;
   created_at: string;
   updated_at: string;
   trainer?: {
@@ -42,6 +53,7 @@ export default function MyBookings() {
   const [bookings, setBookings] = useState<BookingItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"upcoming" | "past">("upcoming");
+  const [highlightedBookingId, setHighlightedBookingId] = useState<number | null>(null);
   
   // Hủy lịch state
   const [cancellingBooking, setCancellingBooking] = useState<BookingItem | null>(null);
@@ -63,9 +75,66 @@ export default function MyBookings() {
     }
   };
 
+  const location = useLocation();
+
   useEffect(() => {
     fetchBookings();
   }, []);
+
+  useEffect(() => {
+    // Parse highlight parameter from URL
+    const params = new URLSearchParams(location.search);
+    const highlight = params.get("highlight");
+    if (highlight) {
+      const id = Number(highlight);
+      if (!isNaN(id)) {
+        setHighlightedBookingId(id);
+      }
+    }
+  }, [location.search]);
+
+  useEffect(() => {
+    if (bookings.length > 0 && highlightedBookingId !== null) {
+      const found = bookings.find(b => b.id === highlightedBookingId);
+      if (found) {
+        // Determine if it is in the past
+        const scheduledDateTime = getBookingDateTime(found.date, found.time);
+        const isPast = scheduledDateTime < new Date() || found.status === "cancelled" || found.status === "completed";
+        
+        // Auto-switch tab to show the highlighted booking
+        setActiveTab(isPast ? "past" : "upcoming");
+        
+        // Scroll to the card after rendering
+        setTimeout(() => {
+          const el = document.getElementById(`booking-${highlightedBookingId}`);
+          if (el) {
+            el.scrollIntoView({ behavior: "smooth", block: "center" });
+            
+            // Remove highlight class after 6 seconds
+            setTimeout(() => {
+              setHighlightedBookingId(null);
+            }, 6000);
+          }
+        }, 500);
+      }
+    }
+  }, [bookings, highlightedBookingId]);
+
+  const [confirmLoading, setConfirmLoading] = useState<number | null>(null);
+
+  const handleConfirmCompletion = async (bookingId: number) => {
+    try {
+      setConfirmLoading(bookingId);
+      await trainersApi.confirmCompletion(bookingId);
+      notify.success("Đã xác nhận hoàn thành buổi tập! Đang đợi HLV xác nhận.");
+      fetchBookings();
+    } catch (error: any) {
+      console.error("Failed to confirm completion:", error);
+      notify.error(error.response?.data?.message || "Không thể xác nhận hoàn thành. Vui lòng thử lại.");
+    } finally {
+      setConfirmLoading(null);
+    }
+  };
 
   const handleCancelBooking = async () => {
     if (!cancellingBooking) return;
@@ -83,58 +152,16 @@ export default function MyBookings() {
     }
   };
 
-  const formatDateDisplay = (dateStr: string): string => {
-    try {
-      return new Date(dateStr).toLocaleDateString("vi-VN", {
-        weekday: "long",
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      });
-    } catch {
-      return dateStr;
-    }
-  };
 
-  const calculateEndTime = (startTime: string): string => {
-    try {
-      const [h, m] = startTime.split(":").map(Number);
-      let totalMin = h * 60 + m + 90;
-      let newH = Math.floor(totalMin / 60) % 24;
-      let newM = totalMin % 60;
-      return `${String(newH).padStart(2, "0")}:${String(newM).padStart(2, "0")}`;
-    } catch {
-      return "";
-    }
-  };
-
-  // Ca tập cách hiện tại trên 2 tiếng thì được hủy hoặc đổi lịch
-  const isCancellable = (booking: BookingItem): boolean => {
-    if (booking.status !== "confirmed") return false;
-    try {
-      const now = new Date();
-      const scheduledDateTime = new Date(booking.date);
-      const [hours, minutes] = booking.time.split(":");
-      scheduledDateTime.setHours(Number(hours), Number(minutes), 0, 0);
-
-      const diffMs = scheduledDateTime.getTime() - now.getTime();
-      const diffHours = diffMs / (1000 * 60 * 60);
-      return diffHours >= 2;
-    } catch {
-      return false;
-    }
-  };
 
   const now = new Date();
   
   // Phân loại bookings
   const categorized = bookings.reduce(
     (acc: { upcoming: BookingItem[]; past: BookingItem[] }, b) => {
-      const scheduledDateTime = new Date(b.date);
-      const [hours, minutes] = b.time.split(":");
-      scheduledDateTime.setHours(Number(hours), Number(minutes), 0, 0);
+      const scheduledDateTime = getBookingDateTime(b.date, b.time);
 
-      const isPast = scheduledDateTime < now || b.status === "cancelled";
+      const isPast = scheduledDateTime < now || b.status === "cancelled" || b.status === "completed";
       if (isPast) {
         acc.past.push(b);
       } else {
@@ -158,14 +185,26 @@ export default function MyBookings() {
         </Badge>
       );
     }
-    const scheduledDateTime = new Date(b.date);
-    const [hours, minutes] = b.time.split(":");
-    scheduledDateTime.setHours(Number(hours), Number(minutes), 0, 0);
-
-    if (scheduledDateTime < now) {
+    if (b.status === "completed") {
       return (
         <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-50 rounded-full px-3 font-semibold text-xs">
           Hoàn thành
+        </Badge>
+      );
+    }
+    const scheduledDateTime = getBookingDateTime(b.date, b.time);
+
+    if (scheduledDateTime < now) {
+      if (!b.customer_confirmed_completed) {
+        return (
+          <Badge className="bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-50 rounded-full px-3 font-semibold text-xs animate-pulse">
+            Chờ bạn xác nhận
+          </Badge>
+        );
+      }
+      return (
+        <Badge className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-50 rounded-full px-3 font-semibold text-xs">
+          Chờ HLV xác nhận
         </Badge>
       );
     }
@@ -215,8 +254,14 @@ export default function MyBookings() {
         <div>
           <strong className="font-bold">Quy định đổi/hủy lịch tập PT:</strong>
           <ul className="list-disc pl-4 mt-1 space-y-1">
-            <li>Bạn chỉ được phép đổi hoặc hủy ca tập trước giờ tập bắt đầu ít nhất 2 tiếng.</li>
-            <li>Khi bạn hủy lịch tập đúng hạn, số buổi tập trong gói PT tương ứng sẽ được cộng trả lại cho bạn.</li>
+            <li><strong>Đổi lịch:</strong> Bạn được phép đổi ca tập trước giờ bắt đầu tối thiểu <strong>2 tiếng</strong>.</li>
+            <li><strong>Hủy lịch:</strong> Bạn được phép hủy ca tập trước giờ bắt đầu tối thiểu <strong>4 tiếng</strong>.</li>
+            <li><strong>Hoàn tiền/hoàn buổi:</strong>
+              <ul className="list-circle pl-4 mt-0.5 space-y-0.5">
+                <li>Khi hủy ca của gói tập: hoàn trả 100% buổi tập vào gói.</li>
+                <li>Khi hủy ca tập lẻ: hủy trước 12 tiếng hoàn 100% tiền, hủy từ 4 - 12 tiếng hoàn 50% tiền, dưới 4 tiếng không được hoàn tiền.</li>
+              </ul>
+            </li>
           </ul>
         </div>
       </div>
@@ -247,10 +292,19 @@ export default function MyBookings() {
             const trainerUser = booking.trainer?.user;
             const trainerName = trainerUser?.full_name || "Huấn luyện viên";
             const avatar = booking.trainer?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(trainerName)}&background=4F8A74&color=fff`;
-            const cancellable = isCancellable(booking);
+            const reschedulable = isBookingReschedulable(booking.date, booking.time, booking.status);
+            const cancellable = isBookingCancellable(booking.date, booking.time, booking.status);
 
             return (
-              <Card key={booking.id} className="border border-slate-100 hover:border-slate-200 shadow-sm transition-all overflow-hidden bg-white/70 backdrop-blur-xl">
+              <Card
+                key={booking.id}
+                id={`booking-${booking.id}`}
+                className={`border shadow-sm transition-all overflow-hidden bg-white/70 backdrop-blur-xl duration-500 ${
+                  highlightedBookingId === booking.id
+                    ? "border-emerald-500 ring-2 ring-emerald-500 ring-offset-2 shadow-md scale-[1.01] bg-emerald-50/5"
+                    : "border-slate-100 hover:border-slate-200"
+                }`}
+              >
                 <CardContent className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-5">
                   <div className="flex items-start gap-4 min-w-0">
                     <img
@@ -284,25 +338,39 @@ export default function MyBookings() {
                   </div>
 
                   <div className="flex items-center gap-2.5 self-end md:self-center shrink-0">
+                    {booking.status === "confirmed" && getBookingDateTime(booking.date, booking.time) < now && !booking.customer_confirmed_completed && (
+                      <Button
+                        onClick={() => handleConfirmCompletion(booking.id)}
+                        disabled={confirmLoading === booking.id}
+                        className="h-9 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm"
+                      >
+                        {confirmLoading === booking.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Check className="h-3.5 w-3.5" />
+                        )}
+                        Xác nhận hoàn thành
+                      </Button>
+                    )}
+                    {reschedulable && (
+                      <Button
+                        onClick={() => setReschedulingBooking(booking)}
+                        variant="outline"
+                        className="h-9 rounded-xl border-emerald-200 bg-emerald-50/20 hover:bg-emerald-50 text-emerald-700 hover:text-emerald-800 font-bold text-xs flex items-center gap-1.5"
+                      >
+                        <CalendarDays className="h-3.5 w-3.5" />
+                        Đổi lịch
+                      </Button>
+                    )}
                     {cancellable && (
-                      <>
-                        <Button
-                          onClick={() => setReschedulingBooking(booking)}
-                          variant="outline"
-                          className="h-9 rounded-xl border-emerald-200 bg-emerald-50/20 hover:bg-emerald-50 text-emerald-700 hover:text-emerald-800 font-bold text-xs flex items-center gap-1.5"
-                        >
-                          <CalendarDays className="h-3.5 w-3.5" />
-                          Đổi lịch
-                        </Button>
-                        <Button
-                          onClick={() => setCancellingBooking(booking)}
-                          variant="outline"
-                          className="h-9 rounded-xl border-rose-200 bg-rose-50/30 hover:bg-rose-50 text-rose-600 hover:text-rose-700 font-bold text-xs flex items-center gap-1.5"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                          Hủy lịch
-                        </Button>
-                      </>
+                      <Button
+                        onClick={() => setCancellingBooking(booking)}
+                        variant="outline"
+                        className="h-9 rounded-xl border-rose-200 bg-rose-50/30 hover:bg-rose-50 text-rose-600 hover:text-rose-700 font-bold text-xs flex items-center gap-1.5"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Hủy lịch
+                      </Button>
                     )}
                   </div>
                 </CardContent>
@@ -319,7 +387,6 @@ export default function MyBookings() {
         booking={cancellingBooking}
         onConfirm={handleCancelBooking}
         loading={cancelLoading}
-        formatDateDisplay={formatDateDisplay}
       />
 
       {/* Reschedule Dialog */}
@@ -328,8 +395,6 @@ export default function MyBookings() {
         onClose={() => setReschedulingBooking(null)}
         booking={reschedulingBooking}
         onSuccess={fetchBookings}
-        formatDateDisplay={formatDateDisplay}
-        calculateEndTime={calculateEndTime}
       />
     </div>
   );

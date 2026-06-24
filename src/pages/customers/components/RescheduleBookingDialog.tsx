@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { TrainerSchedule } from "../../pubblic/trainers/components/TrainerSchedule";
 import { trainersApi } from "@/api/trainers";
 import { notify } from "@/utils/notify";
+import { formatDateDisplay, calculateEndTime } from "@/utils/bookingUtils";
 
 interface BookingItem {
   id: number;
@@ -33,8 +34,6 @@ interface RescheduleBookingDialogProps {
   onClose: () => void;
   booking: BookingItem | null;
   onSuccess: () => void;
-  formatDateDisplay: (dateStr: string) => string;
-  calculateEndTime: (startTime: string) => string;
 }
 
 export function RescheduleBookingDialog({
@@ -42,8 +41,6 @@ export function RescheduleBookingDialog({
   onClose,
   booking,
   onSuccess,
-  formatDateDisplay,
-  calculateEndTime,
 }: RescheduleBookingDialogProps) {
   const [rescheduleSchedule, setRescheduleSchedule] = useState<any[]>([]);
   const [rescheduleScheduleLoading, setRescheduleScheduleLoading] = useState(false);

@@ -9,6 +9,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { formatDateDisplay } from "@/utils/bookingUtils";
 
 interface BookingItem {
   id: number;
@@ -38,7 +39,6 @@ interface CancelBookingDialogProps {
   booking: BookingItem | null;
   onConfirm: () => Promise<void>;
   loading: boolean;
-  formatDateDisplay: (dateStr: string) => string;
 }
 
 export function CancelBookingDialog({
@@ -47,7 +47,6 @@ export function CancelBookingDialog({
   booking,
   onConfirm,
   loading,
-  formatDateDisplay,
 }: CancelBookingDialogProps) {
   return (
     <AlertDialog open={isOpen} onOpenChange={(open) => !open && onClose()}>

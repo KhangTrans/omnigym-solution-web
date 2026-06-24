@@ -24,6 +24,8 @@ export type PTBooking = {
   customerPhone?: string;
   customerAvatar?: string;
   note?: string;
+  customerConfirmedCompleted?: boolean;
+  trainerConfirmedCompleted?: boolean;
 };
 
 const MEM_KEY = "pt-memberships";

@@ -149,6 +149,10 @@ export const trainersApi = {
     api.get<{ message: string; data: any[] }>("/bookings/my-bookings"),
   cancelBooking: (bookingId: number) =>
     api.post<{ message: string }>(`/bookings/${bookingId}/cancel`),
+  confirmCompletion: (bookingId: number) =>
+    api.post<{ message: string; data: any }>(`/bookings/${bookingId}/confirm-completion`),
+  trainerConfirmCompletion: (bookingId: number) =>
+    api.post<{ message: string; data: any }>(`/bookings/${bookingId}/trainer-confirm-completion`),
   getTrainerBookings: (startDate?: string, endDate?: string) =>
     api.get<{ message: string; data: any[] }>("/bookings/trainer", {
       params: { start_date: startDate, end_date: endDate }
