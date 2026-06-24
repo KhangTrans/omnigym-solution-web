@@ -12,6 +12,7 @@ export interface NotificationItem {
   type?: string;
   is_read: boolean;
   created_at: string;
+  booking_id?: number | null;
 }
 
 interface NotificationContextProps {
@@ -33,17 +34,31 @@ export const useNotifications = () => {
   return context;
 };
 
-const mapNotificationTypeToHref = (type?: string, userRole?: string): string => {
-  const role = String(userRole || "").toLowerCase();
+export const getCurrentUserRole = (): string => {
+  try {
+    const u = JSON.parse(localStorage.getItem("user") || "null");
+    const roleValue = typeof u?.role === "object" ? u?.role?.role_name || u?.role?.name : u?.role;
+    let userRole = String(roleValue || "").toLowerCase();
+    if (!userRole && Number(u?.role_id) === 4) userRole = "staff";
+    if (!userRole && Number(u?.role_id) === 3) userRole = "branchmanager";
+    return userRole;
+  } catch {
+    return "";
+  }
+};
+
+export const getNotificationHref = (item: NotificationItem, userRole?: string): string => {
+  const role = userRole || getCurrentUserRole();
+  const bookingQuery = item.booking_id ? `?highlight=${item.booking_id}` : "";
   
   if (role === "branchmanager" || role === "staff") {
-    switch (type) {
+    switch (item.type) {
       case "refund_requested":
-        return "/branchmanager/revenue";
+        return `/branchmanager/revenue${bookingQuery}`;
       case "booking_cancelled":
       case "booking_rescheduled":
       case "booking_created":
-        return "/branchmanager/attendance";
+        return `/branchmanager/attendance${bookingQuery}`;
       case "trainer_application":
         return "/branchmanager/trainer-applications";
       default:
@@ -52,24 +67,26 @@ const mapNotificationTypeToHref = (type?: string, userRole?: string): string => 
   }
   
   if (role === "trainer") {
-    switch (type) {
+    switch (item.type) {
       case "booking_created":
       case "booking_cancelled":
       case "booking_rescheduled":
-        return "/trainer/bookings";
+      case "trainer_completion_request":
+        return `/trainer/bookings${bookingQuery}`;
       default:
         return "/trainer";
     }
   }
   
   // Default for Customer / others
-  switch (type) {
+  switch (item.type) {
     case "booking_created":
     case "booking_cancelled":
     case "booking_rescheduled":
-      return "/my-bookings";
+    case "booking_completion_request":
+      return `/my-bookings${bookingQuery}`;
     default:
-      return "/";
+      return `/my-bookings${bookingQuery}`;
   }
 };
 
@@ -206,7 +223,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           onClick: () => {
             // Mark read and navigate
             markAsRead(newNotif.id);
-            window.location.href = mapNotificationTypeToHref(newNotif.type, userRole);
+            window.location.href = getNotificationHref(newNotif, userRole);
           }
         }
       });

@@ -1,7 +1,7 @@
 import { RouterProvider } from 'react-router-dom';
 import router from './routes';
 import { Toaster } from './components/ui/sonner';
-import { NotificationProvider } from './contexts/NotificationContext';
+import { NotificationProvider } from '@/contexts/NotificationContext';
 import './App.css'
 
 function App() {

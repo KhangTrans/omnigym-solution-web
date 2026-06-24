@@ -22,7 +22,7 @@ import {
 import { toast } from "sonner";
 import { trainersApi } from "@/api/trainers";
 import { type PTBooking } from "@/lib/pt-membership";
-import { useOutletContext } from "react-router-dom";
+import { useOutletContext, useLocation } from "react-router-dom";
 import { getBookingDateTime, formatDateShort, formatDateLong } from "@/utils/bookingUtils";
 
 function StatCard({
@@ -111,6 +111,7 @@ export default function ClientBookings() {
 
   const [bookings, setBookings] = useState<PTBooking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [highlightedBookingId, setHighlightedBookingId] = useState<number | null>(null);
 
   const [filter, setFilter] = useState<"upcoming" | "past" | "all">("upcoming");
   const [query, setQuery] = useState("");
@@ -144,9 +145,50 @@ export default function ClientBookings() {
     }
   };
 
+  const location = useLocation();
+
   useEffect(() => {
     fetchTrainerBookings();
   }, [trainerId]);
+
+  useEffect(() => {
+    // Parse highlight parameter from URL
+    const params = new URLSearchParams(location.search);
+    const highlight = params.get("highlight");
+    if (highlight) {
+      const id = Number(highlight);
+      if (!isNaN(id)) {
+        setHighlightedBookingId(id);
+      }
+    }
+  }, [location.search]);
+
+  useEffect(() => {
+    if (bookings.length > 0 && highlightedBookingId !== null) {
+      const found = bookings.find(b => Number(b.id) === highlightedBookingId);
+      if (found) {
+        // Determine if it is in the past
+        const scheduledDateTime = getBookingDateTime(found.date, found.time);
+        const isPast = scheduledDateTime < new Date() || found.status === "cancelled" || found.status === "completed";
+        
+        // Auto-switch filter tab
+        setFilter(isPast ? "past" : "upcoming");
+
+        // Scroll to the card after rendering
+        setTimeout(() => {
+          const el = document.getElementById(`booking-${highlightedBookingId}`);
+          if (el) {
+            el.scrollIntoView({ behavior: "smooth", block: "center" });
+
+            // Remove highlight class after 6 seconds
+            setTimeout(() => {
+              setHighlightedBookingId(null);
+            }, 6000);
+          }
+        }, 500);
+      }
+    }
+  }, [bookings, highlightedBookingId]);
 
   const now = Date.now();
 
@@ -266,7 +308,12 @@ export default function ClientBookings() {
               {filtered.map((b) => (
                 <li
                   key={b.id}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 hover:bg-slate-50/50 transition-colors"
+                  id={`booking-${b.id}`}
+                  className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 transition-all duration-500 ${
+                    highlightedBookingId === Number(b.id)
+                      ? "bg-emerald-50/20 border-l-4 border-emerald-500 pl-3 scale-[1.005] ring-1 ring-emerald-500/10"
+                      : "hover:bg-slate-50/50"
+                  }`}
                 >
                   <div className="flex items-start gap-3 min-w-0 flex-1">
                     {b.customerAvatar ? (

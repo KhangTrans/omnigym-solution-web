@@ -1,11 +1,13 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Bell, Calendar, Clock, Check, RefreshCw, AlertTriangle, Trash2 } from "lucide-react";
-import { useNotifications, NotificationItem } from "../contexts/NotificationContext";
+import { useNotifications, NotificationItem, getNotificationHref, getCurrentUserRole } from "@/contexts/NotificationContext";
+import { useNavigate } from "react-router-dom";
 
 export const NotificationBell: React.FC = () => {
   const { notifications, unreadCount, markAsRead, markAllAsRead, refreshNotifications, loading } = useNotifications();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -33,8 +35,8 @@ export const NotificationBell: React.FC = () => {
   const handleNotificationClick = (item: NotificationItem) => {
     markAsRead(item.id);
     setIsOpen(false);
-    // Redirect to customer bookings page
-    window.location.href = "/my-bookings";
+    // Redirect to specific page matching notification type and item
+    navigate(getNotificationHref(item));
   };
 
   const formatTime = (timeStr: string) => {
@@ -171,11 +173,22 @@ export const NotificationBell: React.FC = () => {
             <button
               onClick={() => {
                 setIsOpen(false);
-                window.location.href = "/my-bookings";
+                const role = getCurrentUserRole();
+                if (role === "trainer") {
+                  navigate("/trainer/bookings");
+                } else if (role === "branchmanager" || role === "staff") {
+                  navigate("/branchmanager/attendance");
+                } else {
+                  navigate("/my-bookings");
+                }
               }}
               className="text-xs font-bold text-slate-500 hover:text-slate-800 transition-all"
             >
-              Xem lịch tập của tôi
+              {getCurrentUserRole() === "trainer"
+                ? "Xem lịch hẹn của tôi"
+                : getCurrentUserRole() === "branchmanager" || getCurrentUserRole() === "staff"
+                ? "Xem lịch làm việc chi nhánh"
+                : "Xem lịch tập của tôi"}
             </button>
           </div>
         </div>

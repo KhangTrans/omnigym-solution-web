@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   Calendar,
   Clock,
@@ -53,6 +53,7 @@ export default function MyBookings() {
   const [bookings, setBookings] = useState<BookingItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"upcoming" | "past">("upcoming");
+  const [highlightedBookingId, setHighlightedBookingId] = useState<number | null>(null);
   
   // Hủy lịch state
   const [cancellingBooking, setCancellingBooking] = useState<BookingItem | null>(null);
@@ -74,9 +75,50 @@ export default function MyBookings() {
     }
   };
 
+  const location = useLocation();
+
   useEffect(() => {
     fetchBookings();
   }, []);
+
+  useEffect(() => {
+    // Parse highlight parameter from URL
+    const params = new URLSearchParams(location.search);
+    const highlight = params.get("highlight");
+    if (highlight) {
+      const id = Number(highlight);
+      if (!isNaN(id)) {
+        setHighlightedBookingId(id);
+      }
+    }
+  }, [location.search]);
+
+  useEffect(() => {
+    if (bookings.length > 0 && highlightedBookingId !== null) {
+      const found = bookings.find(b => b.id === highlightedBookingId);
+      if (found) {
+        // Determine if it is in the past
+        const scheduledDateTime = getBookingDateTime(found.date, found.time);
+        const isPast = scheduledDateTime < new Date() || found.status === "cancelled" || found.status === "completed";
+        
+        // Auto-switch tab to show the highlighted booking
+        setActiveTab(isPast ? "past" : "upcoming");
+        
+        // Scroll to the card after rendering
+        setTimeout(() => {
+          const el = document.getElementById(`booking-${highlightedBookingId}`);
+          if (el) {
+            el.scrollIntoView({ behavior: "smooth", block: "center" });
+            
+            // Remove highlight class after 6 seconds
+            setTimeout(() => {
+              setHighlightedBookingId(null);
+            }, 6000);
+          }
+        }, 500);
+      }
+    }
+  }, [bookings, highlightedBookingId]);
 
   const [confirmLoading, setConfirmLoading] = useState<number | null>(null);
 
@@ -254,7 +296,15 @@ export default function MyBookings() {
             const cancellable = isBookingCancellable(booking.date, booking.time, booking.status);
 
             return (
-              <Card key={booking.id} className="border border-slate-100 hover:border-slate-200 shadow-sm transition-all overflow-hidden bg-white/70 backdrop-blur-xl">
+              <Card
+                key={booking.id}
+                id={`booking-${booking.id}`}
+                className={`border shadow-sm transition-all overflow-hidden bg-white/70 backdrop-blur-xl duration-500 ${
+                  highlightedBookingId === booking.id
+                    ? "border-emerald-500 ring-2 ring-emerald-500 ring-offset-2 shadow-md scale-[1.01] bg-emerald-50/5"
+                    : "border-slate-100 hover:border-slate-200"
+                }`}
+              >
                 <CardContent className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-5">
                   <div className="flex items-start gap-4 min-w-0">
                     <img
