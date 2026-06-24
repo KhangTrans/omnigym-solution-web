@@ -22,7 +22,10 @@ interface BookingItem {
   trainer_id: number;
   date: string;
   time: string;
-  status: "confirmed" | "cancelled" | "pending_payment";
+  status: "confirmed" | "cancelled" | "pending_payment" | "completed";
+  customer_confirmed_completed: boolean;
+  trainer_confirmed_completed: boolean;
+  completion_notif_sent: boolean;
   created_at: string;
   updated_at: string;
   trainer?: {
@@ -66,6 +69,22 @@ export default function MyBookings() {
   useEffect(() => {
     fetchBookings();
   }, []);
+
+  const [confirmLoading, setConfirmLoading] = useState<number | null>(null);
+
+  const handleConfirmCompletion = async (bookingId: number) => {
+    try {
+      setConfirmLoading(bookingId);
+      await trainersApi.confirmCompletion(bookingId);
+      notify.success("Đã xác nhận hoàn thành buổi tập! Đang đợi HLV xác nhận.");
+      fetchBookings();
+    } catch (error: any) {
+      console.error("Failed to confirm completion:", error);
+      notify.error(error.response?.data?.message || "Không thể xác nhận hoàn thành. Vui lòng thử lại.");
+    } finally {
+      setConfirmLoading(null);
+    }
+  };
 
   const handleCancelBooking = async () => {
     if (!cancellingBooking) return;
@@ -134,7 +153,7 @@ export default function MyBookings() {
       const [hours, minutes] = b.time.split(":");
       scheduledDateTime.setHours(Number(hours), Number(minutes), 0, 0);
 
-      const isPast = scheduledDateTime < now || b.status === "cancelled";
+      const isPast = scheduledDateTime < now || b.status === "cancelled" || b.status === "completed";
       if (isPast) {
         acc.past.push(b);
       } else {
@@ -158,14 +177,28 @@ export default function MyBookings() {
         </Badge>
       );
     }
+    if (b.status === "completed") {
+      return (
+        <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-50 rounded-full px-3 font-semibold text-xs">
+          Hoàn thành
+        </Badge>
+      );
+    }
     const scheduledDateTime = new Date(b.date);
     const [hours, minutes] = b.time.split(":");
     scheduledDateTime.setHours(Number(hours), Number(minutes), 0, 0);
 
     if (scheduledDateTime < now) {
+      if (!b.customer_confirmed_completed) {
+        return (
+          <Badge className="bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-50 rounded-full px-3 font-semibold text-xs animate-pulse">
+            Chờ bạn xác nhận
+          </Badge>
+        );
+      }
       return (
-        <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-50 rounded-full px-3 font-semibold text-xs">
-          Hoàn thành
+        <Badge className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-50 rounded-full px-3 font-semibold text-xs">
+          Chờ HLV xác nhận
         </Badge>
       );
     }
@@ -284,6 +317,20 @@ export default function MyBookings() {
                   </div>
 
                   <div className="flex items-center gap-2.5 self-end md:self-center shrink-0">
+                    {booking.status === "confirmed" && new Date(`${booking.date.slice(0, 10)}T${booking.time}:00`) < now && !booking.customer_confirmed_completed && (
+                      <Button
+                        onClick={() => handleConfirmCompletion(booking.id)}
+                        disabled={confirmLoading === booking.id}
+                        className="h-9 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm"
+                      >
+                        {confirmLoading === booking.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Check className="h-3.5 w-3.5" />
+                        )}
+                        Xác nhận hoàn thành
+                      </Button>
+                    )}
                     {cancellable && (
                       <>
                         <Button

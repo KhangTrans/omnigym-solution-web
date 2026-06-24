@@ -55,9 +55,13 @@ function StatCard({
 function BookingStatusBadge({
   status,
   isPast,
+  customerConfirmedCompleted,
+  trainerConfirmedCompleted,
 }: {
   status: "confirmed" | "completed" | "cancelled";
   isPast: boolean;
+  customerConfirmedCompleted?: boolean;
+  trainerConfirmedCompleted?: boolean;
 }) {
   if (status === "completed") {
     return (
@@ -74,6 +78,20 @@ function BookingStatusBadge({
     );
   }
   if (isPast) {
+    if (!customerConfirmedCompleted) {
+      return (
+        <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 border border-amber-200 text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+          Chờ học viên xác nhận
+        </Badge>
+      );
+    }
+    if (!trainerConfirmedCompleted) {
+      return (
+        <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 border border-blue-200 text-[9px] font-bold px-1.5 py-0.5 rounded-full animate-pulse">
+          Chờ bạn xác nhận
+        </Badge>
+      );
+    }
     return (
       <Badge
         variant="outline"
@@ -117,6 +135,8 @@ export default function ClientBookings() {
         customerPhone: b.user?.phone_number || "",
         customerAvatar: b.user?.avatar_url || "",
         note: b.note || "",
+        customerConfirmedCompleted: b.customer_confirmed_completed || false,
+        trainerConfirmedCompleted: b.trainer_confirmed_completed || false,
       }));
       setBookings(mapped);
     } catch (err: any) {
@@ -169,11 +189,11 @@ export default function ClientBookings() {
 
   const markComplete = async (b: PTBooking) => {
     try {
-      await trainersApi.updateBooking(Number(b.id), { status: "completed" });
-      toast.success("Đã ghi nhận buổi tập hoàn thành.");
+      await trainersApi.trainerConfirmCompletion(Number(b.id));
+      toast.success("Xác nhận hoàn thành buổi tập thành công!");
       fetchTrainerBookings();
     } catch (err: any) {
-      toast.error(err.response?.data?.message || "Không thể cập nhật trạng thái.");
+      toast.error(err.response?.data?.message || "Không thể xác nhận hoàn thành.");
     }
   };
 
@@ -271,6 +291,8 @@ export default function ClientBookings() {
                         <BookingStatusBadge
                           status={b.status ?? "confirmed"}
                           isPast={b.isPast}
+                          customerConfirmedCompleted={b.customerConfirmedCompleted}
+                          trainerConfirmedCompleted={b.trainerConfirmedCompleted}
                         />
                       </div>
                       <div className="mt-1 flex flex-col sm:flex-row sm:items-center gap-x-3 gap-y-1 text-[10px] font-medium text-slate-400">
@@ -321,6 +343,17 @@ export default function ClientBookings() {
                         {b.time}
                       </div>
                     </div>
+
+                    {b.status === "confirmed" && b.isPast && b.customerConfirmedCompleted && !b.trainerConfirmedCompleted && (
+                      <Button
+                        onClick={() => markComplete(b)}
+                        size="sm"
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1 h-8 rounded-lg shadow-sm"
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        Xác nhận hoàn thành
+                      </Button>
+                    )}
 
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
