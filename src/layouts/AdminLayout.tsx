@@ -18,7 +18,6 @@ import {
   CircleHelp,
   ClipboardCheck,
   Calendar,
-  UserPlus,
   MessageSquareQuote,
   KeyRound,
 } from "lucide-react";
@@ -91,12 +90,6 @@ const NAV: NavItem[] = [
     label: "Thanh toán chi nhánh",
     icon: Banknote,
     group: "GymOps",
-  },
-  {
-    to: "/admin/staff-accounts",
-    label: "Tài khoản Staff",
-    icon: UserPlus,
-    group: "HrOps",
   },
   {
     to: "/admin/trainers",
@@ -266,7 +259,6 @@ const AdminLayout = () => {
       "/admin/branch-management",
       "/admin/trainer-applications",
       "/admin/users",
-      "/admin/staff-accounts",
     ];
     const isRestricted = blockedForPartner.some(
       (path) => pathname === path || pathname.startsWith(path + "/"),
@@ -300,8 +292,7 @@ const AdminLayout = () => {
         item.to === "/admin/attendance-management" ||
         item.to === "/admin/branch-management" ||
         item.to === "/admin/trainer-applications" ||
-        item.to === "/admin/users" ||
-        item.to === "/admin/staff-accounts"
+        item.to === "/admin/users"
       ) {
         return !isStaff;
       }
