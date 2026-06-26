@@ -1,5 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getMessaging, getToken, onMessage } from "firebase/messaging";
+import { getFirestore } from "firebase/firestore";
 import axios from "axios";
 
 const firebaseConfig = {
@@ -14,6 +15,9 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
+
+// Initialize Firestore
+export const db = getFirestore(app);
 
 // Initialize Firebase Cloud Messaging
 export const messaging = typeof window !== "undefined" ? getMessaging(app) : null;

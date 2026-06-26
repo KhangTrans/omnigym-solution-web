@@ -1,8 +1,10 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
-import io, { Socket } from "socket.io-client";
 import axios from "axios";
 import { toast } from "sonner";
-import { requestNotificationPermissionAndGetToken } from "../firebase";
+import { collection, query, orderBy, limit, onSnapshot } from "firebase/firestore";
+import { requestNotificationPermissionAndGetToken, db } from "../firebase";
+
+
 
 export interface NotificationItem {
   id: number;
@@ -95,10 +97,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [socket, setSocket] = useState<Socket | null>(null);
 
   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api";
-  const socketServerUrl = "http://localhost:3000";
 
   const refreshNotifications = useCallback(async () => {
     if (!token) return;
@@ -169,74 +169,95 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     };
   }, [token]);
 
-  // Manage socket connection & Firebase token registration
+  // Manage Firestore listener & Firebase token registration
   useEffect(() => {
     if (!token) {
-      if (socket) {
-        socket.disconnect();
-        setSocket(null);
-      }
       setNotifications([]);
       setUnreadCount(0);
       return;
     }
 
-    // 1. Fetch initial notification list
+    // 1. Fetch initial notification list from SQL
     refreshNotifications();
 
     // 2. Request Firebase Push permission and save token
     requestNotificationPermissionAndGetToken();
 
-    // 3. Initialize Socket.io
-    const newSocket = io(socketServerUrl, {
-      auth: { token },
-      transports: ["websocket"]
-    });
+    // 3. Initialize Firestore real-time listener
+    let currentUser: any = null;
+    try {
+      currentUser = JSON.parse(localStorage.getItem("user") || "null");
+    } catch {}
+    
+    const userId = currentUser?.id;
+    if (!userId) return;
 
-    newSocket.on("connect", () => {
-      console.log("[Socket] Connected to server");
-    });
+    console.log("[Firestore] Attaching real-time notification listener for user:", userId);
+    
+    const q = query(
+      collection(db, "users", String(userId), "notifications"),
+      orderBy("created_at", "desc"),
+      limit(50)
+    );
 
-    newSocket.on("notification", (newNotif: NotificationItem) => {
-      console.log("[Socket] Real-time notification received:", newNotif);
-      
-      // Update local state
-      setNotifications((prev) => [newNotif, ...prev]);
-      setUnreadCount((prev) => prev + 1);
+    let isInitialLoad = true;
 
-      // Determine user role
-      let userRole = "";
-      try {
-        const u = JSON.parse(localStorage.getItem("user") || "null");
-        const roleValue = typeof u?.role === "object" ? u?.role?.role_name || u?.role?.name : u?.role;
-        userRole = String(roleValue || "").toLowerCase();
-        if (!userRole && Number(u?.role_id) === 4) userRole = "staff";
-        if (!userRole && Number(u?.role_id) === 3) userRole = "branchmanager";
-      } catch {}
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      if (isInitialLoad) {
+        isInitialLoad = false;
+        // Skip processing initial documents to avoid duplicate alerts
+        return;
+      }
 
-      // Display Toast Notification using sonner
-      toast(newNotif.title, {
-        description: newNotif.message,
-        duration: 5000,
-        action: {
-          label: "Xem",
-          onClick: () => {
-            // Mark read and navigate
-            markAsRead(newNotif.id);
-            window.location.href = getNotificationHref(newNotif, userRole);
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === "added") {
+          const newNotif = change.doc.data() as NotificationItem;
+          console.log("[Firestore] Real-time notification received:", newNotif);
+
+          // Update local notifications state
+          setNotifications((prev) => {
+            if (prev.some((n) => n.id === newNotif.id)) return prev;
+            return [newNotif, ...prev];
+          });
+          setUnreadCount((prev) => prev + 1);
+
+          // Determine user role
+          let userRole = "";
+          try {
+            const u = JSON.parse(localStorage.getItem("user") || "null");
+            const roleValue = typeof u?.role === "object" ? u?.role?.role_name || u?.role?.name : u?.role;
+            userRole = String(roleValue || "").toLowerCase();
+            if (!userRole && Number(u?.role_id) === 4) userRole = "staff";
+            if (!userRole && Number(u?.role_id) === 3) userRole = "branchmanager";
+          } catch {}
+
+          // Display Toast
+          try {
+            toast(newNotif.title, {
+              description: newNotif.message,
+              duration: 5000,
+              action: {
+                label: "Xem",
+                onClick: () => {
+                  markAsRead(newNotif.id);
+                  window.location.href = getNotificationHref(newNotif, userRole);
+                }
+              }
+            });
+          } catch (toastErr: any) {
+            console.error("[NotificationContext] Error calling toast:", toastErr.message);
           }
+
+
         }
       });
+    }, (error) => {
+      console.warn("[Firestore] Listener connection error:", error.message);
     });
-
-    newSocket.on("connect_error", (err) => {
-      console.warn("[Socket] Connection error:", err.message);
-    });
-
-    setSocket(newSocket);
 
     return () => {
-      newSocket.disconnect();
+      console.log("[Firestore] Detaching notification listener for user:", userId);
+      unsubscribe();
     };
   }, [token, refreshNotifications]);
 
