@@ -7,9 +7,19 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { paymentsApi, Transaction } from "@/api/payments";
 import { membershipPackagesApi, MembershipPackage } from "@/api/membershipPackages";
+import { trainersApi } from "@/api/trainers";
 import { toast } from "sonner";
-import { CheckCircle2, Calendar, CreditCard, ArrowRight, Home, User, Loader2, Sparkles } from "lucide-react";
+import { CheckCircle2, Calendar, CreditCard, ArrowRight, Home, User, Loader2, Sparkles, Info } from "lucide-react";
 import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export default function PaymentSuccess() {
   const [searchParams] = useSearchParams();
@@ -20,6 +30,13 @@ export default function PaymentSuccess() {
   const [pkg, setPkg] = useState<MembershipPackage | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // States for Auto-scheduling PT package bookings after payment
+  const [showAutoScheduleModal, setShowAutoScheduleModal] = useState(false);
+  const [autoStartDate, setAutoStartDate] = useState<string>("");
+  const [autoPreferredTime, setAutoPreferredTime] = useState<string>("08:00");
+  const [autoSelectedDays, setAutoSelectedDays] = useState<number[]>([]);
+  const [autoScheduleLoading, setAutoScheduleLoading] = useState(false);
 
   useEffect(() => {
     if (!orderCode) {
@@ -52,6 +69,17 @@ export default function PaymentSuccess() {
           if (tx.customer_subscription?.membership_id) {
             const pkgRes = await membershipPackagesApi.getById(tx.customer_subscription.membership_id);
             setPkg(pkgRes.data);
+          } else if (tx.customer_trainer_package) {
+            // Automatically pre-populate default start date to next Monday
+            const nextMonday = new Date();
+            const day = nextMonday.getDay();
+            const daysToAdd = day === 0 ? 1 : 8 - day;
+            nextMonday.setDate(nextMonday.getDate() + daysToAdd);
+            const year = nextMonday.getFullYear();
+            const month = String(nextMonday.getMonth() + 1).padStart(2, '0');
+            const d = String(nextMonday.getDate()).padStart(2, '0');
+            setAutoStartDate(`${year}-${month}-${d}`);
+            setShowAutoScheduleModal(true);
           }
           setLoading(false);
         } else if (tx.transaction_status === "cancelled") {
@@ -76,6 +104,42 @@ export default function PaymentSuccess() {
       isMounted = false;
     };
   }, [orderCode, navigate]);
+
+  const handleAutoSchedule = async () => {
+    if (!transaction?.customer_trainer_package) return;
+    const trainerId = transaction.customer_trainer_package.trainer_id;
+    if (autoSelectedDays.length === 0) {
+      toast.error("Vui lòng chọn ít nhất một thứ trong tuần.");
+      return;
+    }
+    setAutoScheduleLoading(true);
+    try {
+      const recurring_slots = autoSelectedDays.map((dayValue) => {
+        // Map FE (0=Sunday, 1=Monday... 6=Saturday) to BE (1=Monday... 7=Sunday)
+        const dayOfWeek = dayValue === 0 ? 7 : dayValue;
+        return {
+          dayOfWeek,
+          time: autoPreferredTime,
+        };
+      });
+
+      const response = await trainersApi.autoGenerateBookings({
+        trainer_id: trainerId,
+        start_date: autoStartDate,
+        recurring_slots,
+      });
+
+      toast.success(response.data.message || "Tự động xếp lịch tập thành công!");
+      setShowAutoScheduleModal(false);
+      navigate("/profile");
+    } catch (err: any) {
+      console.error("Auto schedule error:", err);
+      const errorMsg = err?.response?.data?.message || "Không thể tự động xếp lịch. Vui lòng thử lại.";
+      toast.error(errorMsg);
+    } finally {
+      setAutoScheduleLoading(false);
+    }
+  };
 
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return "N/A";
@@ -172,29 +236,44 @@ export default function PaymentSuccess() {
                       <span className="text-slate-500">Mã giao dịch (Order Code)</span>
                       <span className="font-semibold text-slate-800">#{orderCode}</span>
                     </div>
-                    <div className="flex justify-between items-center py-1 border-b border-slate-200/50">
-                      <span className="text-slate-500">Gói tập đăng ký</span>
-                      <span className="font-semibold text-primary">{pkg?.name || "OmniGym Member Package"}</span>
-                    </div>
-                    <div className="flex justify-between items-center py-1 border-b border-slate-200/50">
-                      <span className="text-slate-500">Giá trị thanh toán</span>
-                      <span className="font-bold text-slate-800">
-                        {transaction?.amount ? parseFloat(String(transaction.amount)).toLocaleString("vi-VN") : "0"}đ
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center py-1 border-b border-slate-200/50">
-                      <span className="text-slate-500">Phương thức</span>
-                      <span className="font-semibold text-slate-800">Cổng thanh toán PayOS</span>
-                    </div>
-                    <div className="flex justify-between items-start py-1">
-                      <span className="text-slate-500 shrink-0">Thời hạn sử dụng</span>
-                      <div className="text-right">
-                        <span className="font-semibold text-slate-800 block">
-                          {formatDate(transaction?.customer_subscription?.start_date)} - {formatDate(transaction?.customer_subscription?.end_date)}
-                        </span>
-                        <span className="text-[10px] text-slate-400 font-medium">({pkg?.duration_months || 1} tháng hiệu lực)</span>
-                      </div>
-                    </div>
+                    {transaction?.customer_trainer_package ? (
+                      <>
+                        <div className="flex justify-between items-center py-1 border-b border-slate-200/50">
+                          <span className="text-slate-500">Gói tập PT đăng ký</span>
+                          <span className="font-semibold text-primary">
+                            {transaction.customer_trainer_package.trainer_package?.package_name || "Gói tập cá nhân"}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center py-1 border-b border-slate-200/50">
+                          <span className="text-slate-500">Huấn luyện viên</span>
+                          <span className="font-semibold text-slate-800">
+                            HLV {transaction.customer_trainer_package.trainer?.user?.full_name || "PT"}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center py-1">
+                          <span className="text-slate-500">Tổng số ca tập</span>
+                          <span className="font-semibold text-slate-800">
+                            {transaction.customer_trainer_package.total_sessions} buổi
+                          </span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex justify-between items-center py-1 border-b border-slate-200/50">
+                          <span className="text-slate-500">Gói tập đăng ký</span>
+                          <span className="font-semibold text-primary">{pkg?.name || "OmniGym Member Package"}</span>
+                        </div>
+                        <div className="flex justify-between items-start py-1">
+                          <span className="text-slate-500 shrink-0">Thời hạn sử dụng</span>
+                          <div className="text-right">
+                            <span className="font-semibold text-slate-800 block">
+                              {formatDate(transaction?.customer_subscription?.start_date)} - {formatDate(transaction?.customer_subscription?.end_date)}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-medium">({pkg?.duration_months || 1} tháng hiệu lực)</span>
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -206,19 +285,158 @@ export default function PaymentSuccess() {
                       Về trang chủ
                     </Link>
                   </Button>
-                  <Button asChild className="rounded-full py-5 px-6 font-semibold bg-primary hover:bg-primary-deep text-white flex items-center justify-center gap-2 shadow-glow">
-                    <Link to="/profile">
-                      <User className="h-4 w-4" />
-                      Xem hồ sơ cá nhân
+                  {transaction?.customer_trainer_package ? (
+                    <Button
+                      onClick={() => setShowAutoScheduleModal(true)}
+                      className="rounded-full py-5 px-6 font-semibold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-2 shadow-glow"
+                    >
+                      <Calendar className="h-4 w-4" />
+                      Tự động xếp lịch ngay
                       <ArrowRight className="h-4 w-4" />
-                    </Link>
-                  </Button>
+                    </Button>
+                  ) : (
+                    <Button asChild className="rounded-full py-5 px-6 font-semibold bg-primary hover:bg-primary-deep text-white flex items-center justify-center gap-2 shadow-glow">
+                      <Link to="/profile">
+                        <User className="h-4 w-4" />
+                        Xem hồ sơ cá nhân
+                        <ArrowRight className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
           </motion.div>
         )}
       </main>
+
+      {/* Hộp thoại Tự động xếp lịch sau thanh toán thành công */}
+      <Dialog open={showAutoScheduleModal} onOpenChange={setShowAutoScheduleModal}>
+        <DialogContent className="max-w-md rounded-2xl border-0 p-6 shadow-lg bg-white">
+          <DialogHeader className="space-y-3">
+            <DialogTitle className="text-xl font-bold text-slate-800 flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-emerald-600 animate-pulse" />
+              Lên lịch tập PT định kỳ tự động
+            </DialogTitle>
+            <DialogDescription className="text-slate-500 text-sm">
+              Bạn vừa mua thành công gói tập PT <strong>{transaction?.customer_trainer_package?.trainer_package?.package_name || "gói tập"}</strong> ({transaction?.customer_trainer_package?.total_sessions} buổi). Hãy chọn lịch tập mong muốn của bạn!
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="mt-4 space-y-4 text-sm">
+            <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-xs text-emerald-800 leading-normal flex gap-2">
+              <CheckCircle2 className="h-4.5 w-4.5 text-emerald-600 shrink-0 mt-0.5" />
+              <span>Hệ thống sẽ tự động tìm lịch trống và xếp <strong>toàn bộ {transaction?.customer_trainer_package?.total_sessions} buổi tập</strong> của bạn với HLV <strong>{transaction?.customer_trainer_package?.trainer?.user?.full_name || "PT"}</strong>.</span>
+            </div>
+
+            {/* Ngày bắt đầu */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">Ngày bắt đầu tập:</label>
+              <input
+                type="date"
+                value={autoStartDate}
+                onChange={(e) => setAutoStartDate(e.target.value)}
+                className="w-full h-10 px-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-slate-50 text-slate-800 font-medium"
+              />
+            </div>
+
+            {/* Khung giờ */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">Khung giờ tập ưa thích:</label>
+              <select
+                 value={autoPreferredTime}
+                 onChange={(e) => setAutoPreferredTime(e.target.value)}
+                 className="w-full h-10 px-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-slate-50 text-slate-800 font-medium"
+              >
+                <option value="05:00">05:00 – 06:30 (Sáng)</option>
+                <option value="06:30">06:30 – 08:00 (Sáng)</option>
+                <option value="08:00">08:00 – 09:30 (Sáng)</option>
+                <option value="09:30">09:30 – 11:00 (Sáng)</option>
+                <option value="11:00">11:00 – 12:30 (Sáng)</option>
+                <option value="13:00">13:00 – 14:30 (Chiều)</option>
+                <option value="14:30">14:30 – 16:00 (Chiều)</option>
+                <option value="16:00">16:00 – 17:30 (Chiều)</option>
+                <option value="17:30">17:30 – 19:00 (Tối)</option>
+                <option value="19:00">19:00 – 20:30 (Tối)</option>
+              </select>
+            </div>
+
+            {/* Chọn thứ */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">Chọn các thứ trong tuần (Tối đa 4 ngày):</label>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { label: "T2", value: 1 },
+                  { label: "T3", value: 2 },
+                  { label: "T4", value: 3 },
+                  { label: "T5", value: 4 },
+                  { label: "T6", value: 5 },
+                  { label: "T7", value: 6 },
+                  { label: "CN", value: 0 },
+                ].map((day) => {
+                  const isSelected = autoSelectedDays.includes(day.value);
+                  return (
+                    <button
+                      key={day.value}
+                      type="button"
+                      onClick={() => {
+                        setAutoSelectedDays((prev) => {
+                          if (prev.includes(day.value)) {
+                            return prev.filter((d) => d !== day.value);
+                          } else {
+                            if (prev.length >= 4) {
+                              toast.error("Chỉ được chọn tối đa 4 ngày trong tuần.");
+                              return prev;
+                            }
+                            return [...prev, day.value];
+                          }
+                        });
+                      }}
+                      className={cn(
+                        "h-10 w-10 rounded-full font-bold text-xs flex items-center justify-center transition-all border",
+                        isSelected
+                          ? "bg-emerald-600 border-emerald-600 text-white shadow-sm scale-105"
+                          : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                      )}
+                    >
+                      {day.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="flex flex-col sm:flex-row gap-2 pt-5 mt-4 border-t border-slate-50">
+            <button
+              type="button"
+              disabled={autoScheduleLoading}
+              onClick={() => setShowAutoScheduleModal(false)}
+              className="h-10 sm:flex-1 rounded-xl border border-slate-200 bg-white text-slate-700 font-medium hover:bg-slate-50 order-2 sm:order-1"
+            >
+              Để sau
+            </button>
+            <Button
+              type="button"
+              disabled={autoScheduleLoading || autoSelectedDays.length === 0}
+              onClick={handleAutoSchedule}
+              className="h-10 sm:flex-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-md flex items-center justify-center gap-1.5 order-1 sm:order-2"
+            >
+              {autoScheduleLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Đang xếp lịch...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4" />
+                  Xếp lịch tự động
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Footer />
     </div>

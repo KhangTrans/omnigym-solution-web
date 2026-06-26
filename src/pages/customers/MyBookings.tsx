@@ -36,6 +36,7 @@ interface BookingItem {
   completion_notif_sent: boolean;
   created_at: string;
   updated_at: string;
+  is_retail?: boolean;
   trainer?: {
     id: number;
     user_id: number;
@@ -141,7 +142,7 @@ export default function MyBookings() {
     try {
       setCancelLoading(true);
       await trainersApi.cancelBooking(cancellingBooking.id);
-      notify.success("Đã hủy lịch tập thành công và hoàn lại buổi tập vào gói!");
+      notify.success("Đã hủy lịch tập thành công!");
       setCancellingBooking(null);
       fetchBookings();
     } catch (error: any) {
@@ -254,12 +255,13 @@ export default function MyBookings() {
         <div>
           <strong className="font-bold">Quy định đổi/hủy lịch tập PT:</strong>
           <ul className="list-disc pl-4 mt-1 space-y-1">
-            <li><strong>Đổi lịch:</strong> Bạn được phép đổi ca tập trước giờ bắt đầu tối thiểu <strong>2 tiếng</strong>.</li>
-            <li><strong>Hủy lịch:</strong> Bạn được phép hủy ca tập trước giờ bắt đầu tối thiểu <strong>4 tiếng</strong>.</li>
-            <li><strong>Hoàn tiền/hoàn buổi:</strong>
+            <li><strong>Đổi lịch (Tất cả hình thức):</strong> Bạn được phép đổi ca tập trước giờ bắt đầu tối thiểu <strong>2 tiếng</strong>.</li>
+            <li><strong>Hủy lịch (Chỉ áp dụng với lịch mua lẻ):</strong> Bạn được phép hủy ca tập mua lẻ trước giờ bắt đầu tối thiểu <strong>4 tiếng</strong>. Không hỗ trợ hủy đối với lịch hẹn theo gói tập.</li>
+            <li><strong>Chính sách hoàn tiền khi hủy ca lẻ:</strong>
               <ul className="list-circle pl-4 mt-0.5 space-y-0.5">
-                <li>Khi hủy ca của gói tập: hoàn trả 100% buổi tập vào gói.</li>
-                <li>Khi hủy ca tập lẻ: hủy trước 12 tiếng hoàn 100% tiền, hủy từ 4 - 12 tiếng hoàn 50% tiền, dưới 4 tiếng không được hoàn tiền.</li>
+                <li>Hủy trước 12 tiếng: hoàn 100% tiền.</li>
+                <li>Hủy từ 4 - 12 tiếng: hoàn 50% tiền.</li>
+                <li>Hủy dưới 4 tiếng: không được hoàn tiền.</li>
               </ul>
             </li>
           </ul>
@@ -293,7 +295,7 @@ export default function MyBookings() {
             const trainerName = trainerUser?.full_name || "Huấn luyện viên";
             const avatar = booking.trainer?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(trainerName)}&background=4F8A74&color=fff`;
             const reschedulable = isBookingReschedulable(booking.date, booking.time, booking.status);
-            const cancellable = isBookingCancellable(booking.date, booking.time, booking.status);
+            const cancellable = isBookingCancellable(booking.date, booking.time, booking.status) && booking.is_retail;
 
             return (
               <Card
