@@ -1,13 +1,33 @@
 import { useNavigate } from "react-router-dom";
-import { Bell, Check, Star, CalendarCheck2, Users, UserSquare2, DollarSign, Info, Trash2 } from "lucide-react";
+import {
+  Bell,
+  Check,
+  Star,
+  CalendarCheck2,
+  Users,
+  UserSquare2,
+  DollarSign,
+  Info,
+  Trash2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { useNotifications } from "@/contexts/NotificationContext";
 import { useState } from "react";
 
-type NotificationKind = "review" | "shift" | "staff" | "trainer" | "revenue" | "system";
+type NotificationKind =
+  | "review"
+  | "shift"
+  | "staff"
+  | "trainer"
+  | "revenue"
+  | "system";
 
 const ICONS: Record<NotificationKind, typeof Bell> = {
   review: Star,
@@ -65,7 +85,8 @@ const mapTypeToHref = (type?: string): string => {
 };
 
 export function WorkspaceNotificationsBell() {
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const { notifications, unreadCount, markAsRead, markAllAsRead } =
+    useNotifications();
   const [deletedIds, setDeletedIds] = useState<number[]>([]);
   const navigate = useNavigate();
 
@@ -97,12 +118,19 @@ export function WorkspaceNotificationsBell() {
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-[360px] p-0 border border-slate-100 shadow-xl rounded-xl">
+      <PopoverContent
+        align="end"
+        className="w-[360px] p-0 border border-slate-100 shadow-xl rounded-xl"
+      >
         <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 bg-slate-50/50 rounded-t-xl">
           <div>
-            <div className="text-sm font-semibold text-slate-800">Thông báo</div>
+            <div className="text-sm font-semibold text-slate-800">
+              Thông báo
+            </div>
             <div className="text-[11px] text-slate-500 mt-0.5">
-              {unreadCount > 0 ? `${unreadCount} thông báo chưa đọc` : "Đã đọc hết thông báo"}
+              {unreadCount > 0
+                ? `${unreadCount} thông báo chưa đọc`
+                : "Đã đọc hết thông báo"}
             </div>
           </div>
           {unreadCount > 0 && (
@@ -136,7 +164,7 @@ export function WorkspaceNotificationsBell() {
                       onClick={() => handleOpenNotification(n.id, n.type)}
                       className={cn(
                         "flex w-full items-start gap-3 px-4 py-3.5 text-left transition-colors hover:bg-slate-50/80",
-                        !n.is_read && "bg-emerald-50/15"
+                        !n.is_read && "bg-emerald-50/15",
                       )}
                     >
                       <div
@@ -144,14 +172,19 @@ export function WorkspaceNotificationsBell() {
                           "mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full transition-colors",
                           !n.is_read
                             ? "bg-emerald-50 text-emerald-700"
-                            : "bg-slate-100 text-slate-400"
+                            : "bg-slate-100 text-slate-400",
                         )}
                       >
                         <Icon className="h-4 w-4" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <div className={cn("truncate text-sm text-slate-800", !n.is_read ? "font-bold" : "font-medium")}>
+                          <div
+                            className={cn(
+                              "truncate text-sm text-slate-800",
+                              !n.is_read ? "font-bold" : "font-medium",
+                            )}
+                          >
                             {n.title}
                           </div>
                           {!n.is_read && (
