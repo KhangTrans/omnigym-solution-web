@@ -143,6 +143,11 @@ export const trainersApi = {
     time?: string;
     slots?: Array<{ date: string; time: string }>;
   }) => api.post<{ message: string; data: any }>("/bookings", payload),
+  autoGenerateBookings: (payload: {
+    trainer_id: number;
+    start_date: string;
+    recurring_slots: Array<{ dayOfWeek: number; time: string }>;
+  }) => api.post<{ message: string; data: any }>("/bookings/auto-generate", payload),
   rescheduleBooking: (bookingId: number, payload: { new_date: string; new_time: string }) =>
     api.put<{ message: string; data: any }>(`/bookings/${bookingId}/reschedule`, payload),
   getMyBookings: () =>

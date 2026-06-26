@@ -16,9 +16,31 @@ export interface CustomerSubscription {
   end_date?: string;
 }
 
+export interface CustomerTrainerPackage {
+  id: number;
+  customer_id: number;
+  trainer_package_id: number;
+  trainer_id: number;
+  total_sessions: number;
+  remaining_sessions: number;
+  status: string;
+  trainer_package?: {
+    id: number;
+    package_name: string;
+    session_count: number;
+  };
+  trainer?: {
+    id: number;
+    user?: {
+      full_name: string;
+    };
+  };
+}
+
 export interface Transaction {
   id: number;
-  customer_subscription_id: number;
+  customer_subscription_id?: number;
+  customer_trainer_package_id?: number;
   amount: string | number;
   payment_method: string;
   transaction_status: 'pending' | 'paid' | 'cancelled';
@@ -28,6 +50,7 @@ export interface Transaction {
   created_at: string;
   updated_at: string;
   customer_subscription?: CustomerSubscription;
+  customer_trainer_package?: CustomerTrainerPackage;
 }
 
 export const paymentsApi = {

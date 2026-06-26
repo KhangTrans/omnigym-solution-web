@@ -12,6 +12,8 @@ import {
   Users,
   UserCog,
   Calendar as CalIcon,
+  UserCheck,
+  Camera,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -290,6 +292,12 @@ export default function TrainerDashboard() {
           <TabsList className="bg-slate-100/80 p-1 border rounded-xl w-full flex overflow-x-auto flex-nowrap justify-start md:justify-center scrollbar-none">
             <TabsTrigger value="schedule" className="gap-1.5 rounded-lg shrink-0">
               <CalIcon className="h-3.5 w-3.5" /> Lịch làm việc
+            </TabsTrigger>
+            <TabsTrigger value="attendance" className="gap-1.5 rounded-lg shrink-0">
+              <UserCheck className="h-3.5 w-3.5" /> Điểm danh ca trực
+            </TabsTrigger>
+            <TabsTrigger value="face-registration" className="gap-1.5 rounded-lg shrink-0">
+              <Camera className="h-3.5 w-3.5" /> Đăng ký gương mặt
             </TabsTrigger>
             <TabsTrigger value="bookings" className="gap-1.5 rounded-lg shrink-0">
               <Users className="h-3.5 w-3.5" /> Lịch hẹn đặt

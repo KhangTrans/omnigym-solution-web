@@ -351,179 +351,40 @@ export default function TrainerDetail() {
   };
 
   const handleAutoSchedule = async () => {
-    if (!id) return;
+    if (!id || autoSelectedDays.length === 0) return;
     setAutoScheduleLoading(true);
     try {
-      // 1. Tính ngày kết thúc (StartDate + 28 ngày) để lấy lịch biểu HLV trong 4 tuần tới
-      const start = new Date(autoStartDate);
-      const end = new Date(start);
-      end.setDate(start.getDate() + 27); // 28 ngày bao gồm start date
+      const recurring_slots = autoSelectedDays.map((dayValue) => {
+        // Map FE (0=Sunday, 1=Monday... 6=Saturday) to BE (1=Monday... 7=Sunday)
+        const dayOfWeek = dayValue === 0 ? 7 : dayValue;
+        return {
+          dayOfWeek,
+          time: autoPreferredTime,
+        };
+      });
 
-      const startStr = formatLocalDate(start);
-      const endStr = formatLocalDate(end);
+      const response = await trainersApi.autoGenerateBookings({
+        trainer_id: Number(id),
+        start_date: autoStartDate,
+        recurring_slots,
+      });
 
-      // 2. Fetch schedule của trainer
-      const scheduleRes = await trainersApi.getSchedule(id, startStr, endStr);
-      const trainerSchedule = scheduleRes.data.data || [];
+      // Tải lại lịch
+      const start_date = formatLocalDate(weekStart);
+      const future = new Date(weekStart);
+      future.setDate(weekStart.getDate() + 6);
+      const end_date = formatLocalDate(future);
 
-      // Group trainer schedule by date key
-      const groupedSchedule: Record<string, typeof trainerSchedule[0]> = {};
-      for (const entry of trainerSchedule) {
-        const dateKey = entry.date.split("T")[0];
-        groupedSchedule[dateKey] = entry;
-      }
+      const scheduleRes = await trainersApi.getSchedule(id, start_date, end_date);
+      setSchedule(scheduleRes.data.data);
 
-      // 3. Khởi tạo danh sách slots mới chọn được
-      const newSelected: Array<{ date: string; time: string }> = [];
-      
-      // Để theo dõi giới hạn số buổi tập mỗi tuần:
-      const weekCounts: Record<string, number> = {};
-
-      const getStartOfWeekTimeStr = (dateStr: string): string => {
-        const target = new Date(dateStr);
-        const day = target.getDay();
-        const offset = day === 0 ? -6 : 1 - day;
-        const monday = new Date(target);
-        monday.setDate(target.getDate() + offset);
-        monday.setHours(0, 0, 0, 0);
-        return formatLocalDate(monday);
-      };
-
-      const initialSelected = [...selectedSlots];
-      for (const slot of initialSelected) {
-        const monKey = getStartOfWeekTimeStr(slot.date);
-        weekCounts[monKey] = (weekCounts[monKey] || 0) + 1;
-      }
-
-      // Duyệt qua từng ngày trong 28 ngày tới
-      let currentDate = new Date(start);
-      for (let i = 0; i < 28; i++) {
-        if (newSelected.length >= autoSessionsCount) {
-          break;
-        }
-
-        const dateStr = formatLocalDate(currentDate);
-        const weekday = currentDate.getDay(); // 0 is Sunday, 1 is Monday...
-
-        // Kiểm tra xem thứ này có được người dùng chọn không
-        if (autoSelectedDays.includes(weekday)) {
-          // Kiểm tra xem HLV có nghỉ phép (daysOff) ngày này không
-          const isTrainerOff = daysOff.some(
-            (d) => d.trainerId === id && d.date === dateStr
-          );
-
-          if (!isTrainerOff) {
-            const monKey = getStartOfWeekTimeStr(dateStr);
-            const currentWeekCount = weekCounts[monKey] || 0;
-
-            // Kiểm tra giới hạn 4 ca/tuần và khách hàng chưa chọn ca nào ngày này
-            const hasSlotToday = initialSelected.some((s) => s.date === dateStr) || newSelected.some((s) => s.date === dateStr);
-
-            if (currentWeekCount < 4 && !hasSlotToday) {
-              const entry = groupedSchedule[dateStr];
-              let isAvailable = false;
-
-              if (entry && entry.slots) {
-                // HLV có lịch trực → tìm slot khớp giờ
-                const matchingSlot = entry.slots.find(
-                  (s) => s.start_time === autoPreferredTime
-                );
-
-                if (matchingSlot && matchingSlot.status === "available") {
-                  // Kiểm tra xem có bị đóng/bận bởi closures không
-                  const isClosed = closures.some(
-                    (c) =>
-                      c.trainerId === id &&
-                      c.date === dateStr &&
-                      c.time === autoPreferredTime
-                  );
-
-                  // Kiểm tra xem slot có ở quá khứ không
-                  const isPast = new Date(`${dateStr}T${autoPreferredTime}:00`) < new Date();
-
-                  if (!isClosed && !isPast) {
-                    isAvailable = true;
-                  }
-                }
-              } else {
-                // HLV chưa xếp ca làm việc ngày này → "lịch linh hoạt"
-                const standardSlots = generateDefaultSlots();
-                const isPast = new Date(`${dateStr}T${autoPreferredTime}:00`) < new Date();
-                const isSlotValid = standardSlots.some(
-                  (s) => s.start_time === autoPreferredTime
-                );
-
-                if (isSlotValid && !isPast) {
-                  isAvailable = true;
-                }
-              }
-
-              if (isAvailable) {
-                newSelected.push({ date: dateStr, time: autoPreferredTime });
-                weekCounts[monKey] = currentWeekCount + 1;
-              }
-            }
-          }
-        }
-
-        // Tăng thêm 1 ngày
-        currentDate.setDate(currentDate.getDate() + 1);
-      }
-
-      if (newSelected.length === 0) {
-        notify.info("Không tìm thấy ca tập trống nào phù hợp với cấu hình của bạn trong 4 tuần tới.");
-      } else {
-        // Gộp vào selectedSlots, tránh trùng lặp
-        setSelectedSlots((prev) => {
-          const merged = [...prev];
-          let addedCount = 0;
-          for (const ns of newSelected) {
-            const exists = merged.some(
-              (s) => s.date === ns.date && s.time === ns.time
-            );
-            if (!exists) {
-              const dayHasSlot = merged.some((s) => s.date === ns.date);
-              const getStartOfWeekTimeMs = (dateStr: string): number => {
-                const target = new Date(dateStr);
-                const day = target.getDay();
-                const offset = day === 0 ? -6 : 1 - day;
-                const monday = new Date(target);
-                monday.setDate(target.getDate() + offset);
-                monday.setHours(0, 0, 0, 0);
-                return monday.getTime();
-              };
-              const targetWeekTime = getStartOfWeekTimeMs(ns.date);
-              const slotsInSameWeek = merged.filter(
-                (s) => getStartOfWeekTimeMs(s.date) === targetWeekTime
-              );
-
-              if (!dayHasSlot && slotsInSameWeek.length < 4) {
-                merged.push(ns);
-                addedCount++;
-              }
-            }
-          }
-          if (addedCount > 0) {
-            if (addedCount < autoSessionsCount) {
-              notify.success(
-                `Đã tự động chọn thêm ${addedCount} ca tập phù hợp (yêu cầu ${autoSessionsCount} ca nhưng các ca còn lại đã bận hoặc vượt giới hạn tuần).`
-              );
-            } else {
-              notify.success(`Đã tự động chọn thành công ${addedCount} ca tập phù hợp!`);
-            }
-          } else {
-            notify.info(
-              "Các ca tập phù hợp được tìm thấy đều trùng với những ca bạn đã chọn hoặc vượt giới hạn ca tập."
-            );
-          }
-          return merged;
-        });
-
-        setAutoScheduleOpen(false);
-      }
+      notify.success(response.data.message || "Tự động sinh lịch tập thành công!");
+      setAutoScheduleOpen(false);
+      setSelectedSlots([]);
     } catch (err: any) {
       console.error("Auto schedule error:", err);
-      notify.error("Không thể tự động xếp ca làm việc. Vui lòng thử lại.");
+      const errorMsg = err?.response?.data?.message || "Không thể tự động xếp lịch. Vui lòng thử lại.";
+      notify.error(errorMsg);
     } finally {
       setAutoScheduleLoading(false);
     }
@@ -1458,17 +1319,9 @@ export default function TrainerDetail() {
           </DialogHeader>
 
           <div className="mt-4 space-y-4 text-sm">
-            {/* Số buổi */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Số buổi tập muốn xếp:</label>
-              <input
-                type="number"
-                min={1}
-                max={10}
-                value={autoSessionsCount}
-                onChange={(e) => setAutoSessionsCount(Math.max(1, Number(e.target.value)))}
-                className="w-full h-10 px-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-slate-50 text-slate-800 font-medium"
-              />
+            <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-xs text-emerald-800 leading-normal flex gap-2">
+              <Info className="h-4.5 w-4.5 text-emerald-600 shrink-0 mt-0.5" />
+              <span>Hệ thống sẽ tự động tìm lịch trống và xếp <strong>toàn bộ số buổi tập còn lại</strong> của gói PT đang hoạt động của bạn.</span>
             </div>
 
             {/* Ngày bắt đầu */}

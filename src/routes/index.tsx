@@ -110,6 +110,8 @@ export const routesConfig: RouteObject[] = [
       { path: "bookings", element: <ClientBookings /> },
       { path: "clients", element: <ClientsList /> },
       { path: "profile", element: <TrainerProfileEditor /> },
+      { path: "attendance", element: <ShiftAttendance /> },
+      { path: "face-registration", element: <AdminFaceRegistration /> },
     ],
   },
   {
