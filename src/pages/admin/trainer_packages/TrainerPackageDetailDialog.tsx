@@ -43,14 +43,21 @@ export function TrainerPackageDetailDialog({
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-4 text-sm">
+            <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <p className="text-muted-foreground text-xs">Sessions</p>
-                <p className="font-medium">{pkg.session_count}</p>
+                <p className="font-medium">{pkg.session_count} buổi</p>
               </div>
               <div>
+                <p className="text-muted-foreground text-xs">Thời hạn</p>
+                <p className="font-medium">{pkg.duration_days} ngày</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
                 <p className="text-muted-foreground text-xs">Trainer level</p>
-                <p className="font-medium">{pkg.trainer_level}</p>
+                <p className="font-medium capitalize">{pkg.trainer_level}</p>
               </div>
               <div>
                 <p className="text-muted-foreground text-xs">Format</p>

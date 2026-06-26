@@ -20,6 +20,7 @@ import {
   Calendar,
   MessageSquareQuote,
   KeyRound,
+  UserPlus,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "../utils/cn";
@@ -84,6 +85,12 @@ const NAV: NavItem[] = [
     label: "Gói PT",
     icon: Dumbbell,
     group: "GymOps",
+  },
+  {
+    to: "/admin/branch-managers",
+    label: "Tài khoản Quản lý",
+    icon: UserPlus,
+    group: "HrOps",
   },
   {
     to: "/admin/payouts",
@@ -259,6 +266,7 @@ const AdminLayout = () => {
       "/admin/branch-management",
       "/admin/trainer-applications",
       "/admin/users",
+      "/admin/branch-managers",
     ];
     const isRestricted = blockedForPartner.some(
       (path) => pathname === path || pathname.startsWith(path + "/"),
@@ -292,7 +300,8 @@ const AdminLayout = () => {
         item.to === "/admin/attendance-management" ||
         item.to === "/admin/branch-management" ||
         item.to === "/admin/trainer-applications" ||
-        item.to === "/admin/users"
+        item.to === "/admin/users" ||
+        item.to === "/admin/branch-managers"
       ) {
         return !isStaff;
       }

@@ -29,6 +29,7 @@ import PostManagement from "../pages/admin/post_management";
 import FAQ from "../pages/admin/faq_management/FAQ";
 import CustomerProfile from "../pages/customers/Profile";
 import FavoriteTrainers from "../pages/customers/FavoriteTrainers";
+import MyBookings from "../pages/customers/MyBookings";
 import BranchList from "../pages/admin/branch_management/BranchList";
 import CreateBranch from "../pages/admin/branch_management/CreateBranch";
 import MembershipPackage from "@/pages/admin/membership_packages/MembershipPackage";
@@ -41,6 +42,8 @@ import ShiftAttendance from "../pages/staffs/ShiftAttendance";
 import StaffSchedule from "../pages/staffs/StaffSchedule";
 import AttendanceManagement from "../pages/admin/attendance_management/AttendanceManagement";
 import Checkout from "../pages/customers/transaction/Checkout";
+import CheckoutTrainerPackage from "../pages/customers/transaction/CheckoutTrainerPackage";
+import CheckoutSlot from "../pages/customers/transaction/CheckoutSlot";
 import PaymentSuccess from "../pages/customers/transaction/PaymentSuccess";
 import PaymentCancel from "../pages/customers/transaction/PaymentCancel";
 import CustomerAttendance from "../pages/admin/attendance_management/CustomerAttendance";
@@ -53,6 +56,7 @@ import BranchManagerCustomerCheckin from "../pages/branchmanager/BranchManagerCu
 import BranchManagerStaff from "../pages/branchmanager/BranchManagerStaff";
 import BranchManagerRevenue from "../pages/branchmanager/BranchManagerRevenue";
 import BranchManagerStaffAttendance from "../pages/branchmanager/BranchManagerStaffAttendance";
+import BranchManagerAccounts from "../pages/admin/branch_manager_accounts/BranchManagerAccounts";
 import BranchManagerTrainers from "../pages/branchmanager/BranchManagerTrainers";
 import AdminTrainers from "../pages/admin/trainers/AdminTrainers";
 import TrainerDashboard from "../pages/trainer/TrainerDashboard";
@@ -117,7 +121,7 @@ export const routesConfig: RouteObject[] = [
     element: <GymDetail />,
   },
   {
-    path: "/trainers/:id",
+    path: "/trainers/:slug",
     element: <TrainerDetail />,
   },
   {
@@ -151,11 +155,23 @@ export const routesConfig: RouteObject[] = [
         path: "/favorites/trainers",
         element: <FavoriteTrainers />,
       },
+      {
+        path: "/my-bookings",
+        element: <MyBookings />,
+      },
     ],
   },
   {
     path: "/checkout/:packageId",
     element: <Checkout />,
+  },
+  {
+    path: "/checkout-trainer-package/:trainerId/:packageId",
+    element: <CheckoutTrainerPackage />,
+  },
+  {
+    path: "/checkout-slot/:trainerId/:date/:time",
+    element: <CheckoutSlot />,
   },
   {
     path: "/payment/success",
@@ -196,6 +212,7 @@ export const routesConfig: RouteObject[] = [
       { path: "shift-attendance", element: <ShiftAttendance /> },
       { path: "attendance-management", element: <AttendanceManagement /> },
       { path: "customer-attendance", element: <CustomerAttendance /> },
+      { path: "branch-managers", element: <BranchManagerAccounts /> },
       { path: "trainers", element: <AdminTrainers /> },
       { path: "reviews", element: <ReviewsPage /> },
     ],

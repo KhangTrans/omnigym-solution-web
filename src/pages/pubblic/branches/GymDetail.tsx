@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
+import { trainerSlug } from "@/utils/slugify";
 import { Navbar } from "@/components/site/Navbar";
 import { Footer } from "@/components/site/Footer";
 import {
@@ -781,8 +782,8 @@ export default function GymDetail() {
                   const trainerName =
                     trainer.user?.full_name?.trim() || "Huấn luyện viên";
                   const avatar =
-                    trainer.avatar_url ||
                     trainer.user?.avatar_url ||
+                    trainer.avatar_url ||
                     buildAvatarFallback(trainerName);
                   const specialization = trainer.specialization || null;
                   const ratingNum = Number(trainer.rating ?? 0);
@@ -826,7 +827,7 @@ export default function GymDetail() {
                       transition={{ duration: 0.35, delay: i * 0.05 }}
                     >
                       <Link
-                        to={`/trainers/${trainer.id}`}
+                        to={`/trainers/${trainerSlug(trainerName, trainer.id)}`}
                         className={`group flex h-full flex-col overflow-hidden rounded-2xl border bg-card shadow-sm transition-transform hover:-translate-y-1 hover:shadow-md ${
                           isSelectedForCompare
                             ? "border-emerald-300 ring-2 ring-emerald-400/70"

@@ -16,7 +16,7 @@ export type PTBooking = {
   trainerId: string;
   date: string; // ISO date (yyyy-mm-dd)
   time: string; // "08:00"
-  createdAt: string;
+  createdAt?: string;
   status?: BookingStatus;
   customerId?: string;
   customerName?: string;
@@ -24,6 +24,8 @@ export type PTBooking = {
   customerPhone?: string;
   customerAvatar?: string;
   note?: string;
+  customerConfirmedCompleted?: boolean;
+  trainerConfirmedCompleted?: boolean;
 };
 
 const MEM_KEY = "pt-memberships";

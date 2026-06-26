@@ -9,6 +9,8 @@ import {
   Users,
   CheckCircle2,
   X,
+  Mail,
+  Phone,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -25,20 +27,37 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
-  SCHEDULE_SLOTS,
   SESSION_LEN_MIN,
   useTrainerClosures,
   useTrainerDaysOff,
   type TrainerClosure,
   type TrainerDayOff,
 } from "@/lib/trainer-schedule-store";
-import { BOOKINGS_EVT, getBookings, type PTBooking } from "@/lib/pt-membership";
+import { type PTBooking } from "@/lib/pt-membership";
+import { trainersApi } from "@/api/trainers";
+import { Badge } from "@/components/ui/badge";
+
+const SCHEDULE_SLOTS = [
+  "05:00",
+  "06:30",
+  "08:00",
+  "09:30",
+  "11:00",
+  "12:30",
+  "13:00",
+  "14:30",
+  "16:00",
+  "17:30",
+  "19:00",
+  "20:30",
+];
 
 type SlotState =
   | { kind: "past" }
   | { kind: "booked"; booking: PTBooking }
   | { kind: "dayOff"; dayOff: TrainerDayOff }
   | { kind: "closed"; closure: TrainerClosure }
+  | { kind: "locked" }
   | { kind: "open" };
 
 type DayCell = {
@@ -97,20 +116,32 @@ function StatCard({
   label,
   value,
   hint,
+  icon: Icon,
+  color,
 }: {
   label: string;
   value: string;
   hint?: string;
+  icon?: any;
+  color?: string;
 }) {
   return (
-    <Card className="shadow-sm border-slate-100 hover:border-primary/20 transition-all bg-white/70 backdrop-blur-sm">
-      <CardContent className="p-4">
-        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-          {label}
+    <Card className="relative overflow-hidden shadow-sm border border-slate-100 hover:border-[#4F8A74]/30 hover:shadow-md transition-all duration-300 bg-white/80 backdrop-blur-md rounded-2xl group">
+      <div className={`absolute top-0 left-0 w-1.5 h-full ${color || "bg-[#4F8A74]"}`} />
+      <CardContent className="p-5 flex items-center justify-between">
+        <div className="space-y-1">
+          <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+            {label}
+          </div>
+          <div className="text-3xl font-black text-slate-800 tracking-tight">{value}</div>
+          {hint && (
+            <div className="text-[10px] text-slate-500 italic mt-0.5 group-hover:text-[#4F8A74] transition-colors">{hint}</div>
+          )}
         </div>
-        <div className="mt-1 text-2xl font-black text-slate-800">{value}</div>
-        {hint && (
-          <div className="mt-0.5 text-[10px] text-slate-500 italic">{hint}</div>
+        {Icon && (
+          <div className={`p-3 rounded-2xl ${color === "bg-rose-500" ? "bg-rose-50 text-rose-600" : color === "bg-emerald-500" ? "bg-emerald-50 text-emerald-600" : "bg-teal-50 text-[#4F8A74]"} group-hover:scale-110 transition-transform duration-300`}>
+            <Icon className="h-6 w-6" />
+          </div>
         )}
       </CardContent>
     </Card>
@@ -136,6 +167,18 @@ function SlotCell({
         title={`${dateLabel} · Đã qua`}
       >
         <Lock className="h-3.5 w-3.5 opacity-60" />
+      </button>
+    );
+  }
+
+  if (state.kind === "locked") {
+    return (
+      <button
+        disabled
+        className="flex h-14 w-full items-center justify-center rounded-lg border border-dashed border-slate-100 bg-slate-50/20 text-slate-400 cursor-not-allowed"
+        title={`${dateLabel} · Ngoài ca trực`}
+      >
+        <Lock className="h-3.5 w-3.5 opacity-30" />
       </button>
     );
   }
@@ -231,6 +274,13 @@ export default function ScheduleManager() {
   const [weekStart, setWeekStart] = useState<Date>(() =>
     startOfWeek(new Date()),
   );
+  
+  // Real DB state
+  const [bookings, setBookings] = useState<PTBooking[]>([]);
+  const [dbShifts, setDbShifts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedBookingForModal, setSelectedBookingForModal] = useState<PTBooking | null>(null);
+
   const [selectedDayIndex, setSelectedDayIndex] = useState<number>(() => {
     const today = new Date().toISOString().slice(0, 10);
     const start = startOfWeek(new Date());
@@ -255,22 +305,45 @@ export default function ScheduleManager() {
   );
   const [daysOffReason, setDaysOffReason] = useState("");
 
-  const [bookingsTick, setBookingsTick] = useState(0);
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const startStr = weekStart.toISOString().slice(0, 10);
+      const endStr = new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      
+      const [scheduleRes, bookingsRes] = await Promise.all([
+        trainersApi.getSchedule(trainerId, startStr, endStr),
+        trainersApi.getTrainerBookings(),
+      ]);
+      
+      setDbShifts(scheduleRes.data.data);
+      
+      const mappedBookings = bookingsRes.data.data.map((b: any) => ({
+        id: String(b.id),
+        trainerId: String(b.trainer_id),
+        date: typeof b.date === 'string' ? b.date.slice(0, 10) : new Date(b.date).toISOString().slice(0, 10),
+        time: b.time.slice(0, 5),
+        status: b.status,
+        customerName: b.user?.full_name || "Khách vãng lai",
+        customerEmail: b.user?.email || "",
+        customerPhone: b.user?.phone_number || "",
+        customerAvatar: b.user?.avatar_url || "",
+        note: b.note || "",
+      }));
+      setBookings(mappedBookings);
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Không thể tải lịch làm việc hoặc thông tin đặt hẹn.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const sync = () => setBookingsTick((t) => t + 1);
-    window.addEventListener("storage", sync);
-    window.addEventListener(BOOKINGS_EVT, sync);
-    return () => {
-      window.removeEventListener("storage", sync);
-      window.removeEventListener(BOOKINGS_EVT, sync);
-    };
-  }, []);
+    fetchData();
+  }, [trainerId, weekStart]);
 
   const days = useMemo(() => weekDays(weekStart), [weekStart]);
-  const bookings = useMemo(
-    () => getBookings(trainerId),
-    [trainerId, bookingsTick],
-  );
 
   const closureMap = useMemo(() => {
     const map = new Map<string, TrainerClosure>();
@@ -292,48 +365,77 @@ export default function ScheduleManager() {
 
   function cellState(date: string, time: string, isPast: boolean): SlotState {
     if (isPast) return { kind: "past" };
+    
+    // Check if booked first
     const k = `${date}_${time}`;
     const b = bookingMap.get(k);
     if (b) return { kind: "booked", booking: b };
+    
+    // Check if this date has a shift in dbShifts
+    const dayShift = dbShifts.find((s) => s.date === date);
+    if (!dayShift) return { kind: "locked" };
+    
+    // Check if this slot is covered by the shift
+    const matchedSlot = dayShift.slots.find((sl: any) => sl.start_time.slice(0, 5) === time);
+    if (!matchedSlot) return { kind: "locked" };
+    
     const off = dayOffMap.get(date);
     if (off) return { kind: "dayOff", dayOff: off };
     const c = closureMap.get(k);
     if (c) return { kind: "closed", closure: c };
+    
     return { kind: "open" };
   }
 
   const weekKeys = new Set(
     days.flatMap((d) => SCHEDULE_SLOTS.map((t) => `${d.iso}_${t}`)),
   );
-  const totalFutureSlots = days.reduce(
-    (n, d) => n + (d.isPast ? 0 : SCHEDULE_SLOTS.length),
-    0,
-  );
+  
+  // Tổng số slot của ca trực trong tương lai
+  const totalFutureShiftSlots = dbShifts.reduce((acc, currentShift) => {
+    const day = days.find(d => d.iso === currentShift.date);
+    if (!day || day.isPast) return acc;
+    return acc + currentShift.slots.length;
+  }, 0);
+  
   const weekClosed = closures.filter((c) =>
     weekKeys.has(`${c.date}_${c.time}`),
   ).length;
+  
   const weekBooked = bookings.filter((b) =>
-    weekKeys.has(`${b.date}_${b.time}`),
+    weekKeys.has(`${b.date}_${b.time}`) && b.status === "confirmed",
   ).length;
+  
+  // A day off locks all slots on that day
   const weekDaysOff = daysOff.filter((d) =>
     days.some((day) => day.iso === d.date && !day.isPast),
   );
+  
   const weekDaysOffSlots = weekDaysOff.reduce((n, d) => {
     const day = days.find((x) => x.iso === d.date);
     if (!day || day.isPast) return n;
-    const bookedOnDay = bookings.filter((b) => b.date === d.date).length;
-    return n + SCHEDULE_SLOTS.length - bookedOnDay;
+    
+    const dayShift = dbShifts.find((s) => s.date === d.date);
+    if (!dayShift) return n;
+    
+    const bookedOnDay = bookings.filter((b) => b.date === d.date && b.status === "confirmed").length;
+    return n + dayShift.slots.length - bookedOnDay;
   }, 0);
+
   const weekOpen = Math.max(
     0,
-    totalFutureSlots - weekClosed - weekBooked - weekDaysOffSlots,
+    totalFutureShiftSlots - weekClosed - weekBooked - weekDaysOffSlots,
   );
 
-  const perDay = days.map((d, i) => ({
-    closed: closures.filter((c) => c.date === d.iso).length,
-    booked: bookings.filter((b) => b.date === d.iso).length,
-    dayOff: !!dayOffMap.get(d.iso),
-  }));
+  const perDay = days.map((d, i) => {
+    const dayShift = dbShifts.find((s) => s.date === d.iso);
+    const daySlotsCount = dayShift ? dayShift.slots.length : 0;
+    return {
+      closed: closures.filter((c) => c.date === d.iso).length,
+      booked: bookings.filter((b) => b.date === d.iso && b.status === "confirmed").length,
+      dayOff: !!dayOffMap.get(d.iso),
+    };
+  });
 
   const shiftWeek = (delta: number) => {
     const x = new Date(weekStart);
@@ -346,10 +448,7 @@ export default function ScheduleManager() {
   const handleCellClick = (date: string, time: string, state: SlotState) => {
     if (state.kind === "past") return;
     if (state.kind === "booked") {
-      toast.info(
-        `Đã đặt lịch · ${date} ${time}–${addMinutes(time, SESSION_LEN_MIN)}`,
-        { description: "Khung giờ này đã được học viên đặt chỗ." },
-      );
+      setSelectedBookingForModal(state.booking);
       return;
     }
     if (state.kind === "dayOff") {
@@ -452,25 +551,31 @@ export default function ScheduleManager() {
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-3">
         <StatCard
           label="Giờ rảnh trong tuần"
           value={String(weekOpen)}
           hint="Học viên có thể đăng ký"
+          icon={CheckCircle2}
+          color="bg-[#4F8A74]"
         />
         <StatCard
           label="Giờ đã được đặt"
           value={String(weekBooked)}
           hint="Học viên đã xác nhận lịch"
+          icon={Users}
+          color="bg-emerald-500"
         />
         <StatCard
           label="Giờ tạm đóng"
           value={String(weekClosed)}
           hint="Trainer bận hoặc tạm đóng"
+          icon={Ban}
+          color="bg-rose-500"
         />
       </div>
 
-      <Card className="border-primary/10 shadow-card">
+      <Card className="border border-slate-100 shadow-md rounded-2xl bg-white/80 backdrop-blur-md">
         <CardContent className="space-y-5 p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -735,83 +840,50 @@ export default function ScheduleManager() {
             </div>
           </div>
 
-          {(weekClosed > 0 || weekBooked > 0) && (
-            <div className="grid gap-4 md:grid-cols-2 pt-2">
-              {weekBooked > 0 && (
-                <div className="rounded-2xl border border-emerald-100 bg-emerald-50/20 p-4">
-                  <h3 className="text-sm font-bold inline-flex items-center gap-2 text-emerald-950">
-                    <Users className="h-4 w-4 text-emerald-600" /> Đã đặt trong
-                    tuần
-                  </h3>
-                  <ul className="mt-3 space-y-1.5">
-                    {bookings
-                      .filter((b) => weekKeys.has(`${b.date}_${b.time}`))
-                      .sort((a, b) =>
-                        (a.date + a.time).localeCompare(b.date + b.time),
-                      )
-                      .map((b) => {
-                        const d = days.find((x) => x.iso === b.date)!;
-                        return (
-                          <li
-                            key={b.id}
-                            className="flex items-center justify-between rounded-lg bg-white px-3 py-2 text-xs shadow-sm border border-slate-100"
-                          >
-                            <span className="font-semibold text-slate-700">
-                              {d.weekday} {d.day} Thg {d.iso.slice(5, 7)}
-                            </span>
-                            <span className="font-mono text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded">
-                              {b.time} – {addMinutes(b.time, SESSION_LEN_MIN)}
-                            </span>
-                          </li>
-                        );
-                      })}
-                  </ul>
-                </div>
-              )}
-              {weekClosed > 0 && (
-                <div className="rounded-2xl border border-red-100 bg-red-50/20 p-4">
-                  <h3 className="text-sm font-bold inline-flex items-center gap-2 text-red-950">
-                    <Ban className="h-4 w-4 text-red-600" /> Tạm đóng trong tuần
-                  </h3>
-                  <ul className="mt-3 space-y-1.5">
-                    {closures
-                      .filter((c) => weekKeys.has(`${c.date}_${c.time}`))
-                      .sort((a, b) =>
-                        (a.date + a.time).localeCompare(b.date + b.time),
-                      )
-                      .map((c) => {
-                        const d = days.find((x) => x.iso === c.date)!;
-                        return (
-                          <li
-                            key={c.id}
-                            className="flex items-center justify-between gap-2 rounded-lg bg-white px-3 py-2 text-xs shadow-sm border border-slate-100"
-                          >
-                            <div className="min-w-0 flex-1">
-                              <div className="font-semibold text-slate-700">
-                                {d.weekday} {d.day} Thg {d.iso.slice(5, 7)} ·{" "}
-                                {c.time}–{addMinutes(c.time, SESSION_LEN_MIN)}
-                              </div>
-                              <div className="mt-0.5 truncate text-slate-500 italic">
-                                {c.reason}
-                              </div>
+          {weekClosed > 0 && (
+            <div className="pt-2">
+              <div className="rounded-2xl border border-red-100 bg-red-50/20 p-4">
+                <h3 className="text-sm font-bold inline-flex items-center gap-2 text-red-950">
+                  <Ban className="h-4 w-4 text-red-600" /> Tạm đóng trong tuần
+                </h3>
+                <ul className="mt-3 space-y-1.5">
+                  {closures
+                    .filter((c) => weekKeys.has(`${c.date}_${c.time}`))
+                    .sort((a, b) =>
+                      (a.date + a.time).localeCompare(b.date + b.time),
+                    )
+                    .map((c) => {
+                      const d = days.find((x) => x.iso === c.date)!;
+                      return (
+                        <li
+                          key={c.id}
+                          className="flex items-center justify-between gap-2 rounded-lg bg-white px-3 py-2 text-xs shadow-sm border border-slate-100"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="font-semibold text-slate-700">
+                              {d.weekday} {d.day} Thg {d.iso.slice(5, 7)} ·{" "}
+                              {c.time}–{addMinutes(c.time, SESSION_LEN_MIN)}
                             </div>
-                            <button
-                              onClick={() => {
-                                reopen(c.id);
-                                toast.success("Đã mở lại khung giờ.");
-                              }}
-                              className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition"
-                              aria-label="Mở lại khung giờ"
-                              title="Mở lại khung giờ"
-                            >
-                              <RotateCcw className="h-3.5 w-3.5" />
-                            </button>
-                          </li>
-                        );
-                      })}
-                  </ul>
-                </div>
-              )}
+                            <div className="mt-0.5 truncate text-slate-500 italic">
+                              {c.reason}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => {
+                              reopen(c.id);
+                              toast.success("Đã mở lại khung giờ.");
+                            }}
+                            className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition"
+                            aria-label="Mở lại khung giờ"
+                            title="Mở lại khung giờ"
+                          >
+                            <RotateCcw className="h-3.5 w-3.5" />
+                          </button>
+                        </li>
+                      );
+                    })}
+                </ul>
+              </div>
             </div>
           )}
         </CardContent>
@@ -1095,6 +1167,78 @@ export default function ScheduleManager() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {selectedBookingForModal && (
+        <Dialog
+          open={!!selectedBookingForModal}
+          onOpenChange={(o) => {
+            if (!o) setSelectedBookingForModal(null);
+          }}
+        >
+          <DialogContent className="max-w-md bg-white">
+            <DialogHeader>
+              <DialogTitle className="text-lg font-bold text-slate-800">Chi tiết lịch đặt hẹn</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 mt-2">
+              <div className="rounded-lg border border-emerald-100 bg-emerald-50/20 p-3 text-sm flex items-center justify-between">
+                <div>
+                  <div className="font-bold text-slate-800">
+                    {new Date(selectedBookingForModal.date).toLocaleDateString("vi-VN", {
+                      weekday: "long",
+                      day: "numeric",
+                      month: "long",
+                    })}
+                  </div>
+                  <div className="text-xs text-[#4F8A74] mt-0.5 font-semibold">
+                    {selectedBookingForModal.time} – {addMinutes(selectedBookingForModal.time, SESSION_LEN_MIN)} · 1h30 phút
+                  </div>
+                </div>
+                <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 border-emerald-200">
+                  Đã xác nhận
+                </Badge>
+              </div>
+              
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold text-slate-600">Thông tin học viên</Label>
+                <div className="flex items-center gap-3 rounded-lg border p-3 bg-white">
+                  {selectedBookingForModal.customerAvatar ? (
+                    <img
+                      src={selectedBookingForModal.customerAvatar}
+                      alt={selectedBookingForModal.customerName}
+                      className="h-10 w-10 rounded-full object-cover shrink-0"
+                    />
+                  ) : (
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-700 font-bold">
+                      {selectedBookingForModal.customerName?.slice(0, 1).toUpperCase()}
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="font-bold text-slate-800 truncate">{selectedBookingForModal.customerName}</div>
+                    <div className="flex flex-col gap-0.5 mt-0.5 text-xs text-slate-500">
+                      <div className="flex items-center gap-1"><Mail className="h-3 w-3 shrink-0" /> {selectedBookingForModal.customerEmail}</div>
+                      <div className="flex items-center gap-1"><Phone className="h-3 w-3 shrink-0" /> {selectedBookingForModal.customerPhone}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {selectedBookingForModal.note && (
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold text-slate-600">Ghi chú buổi học</Label>
+                  <div className="rounded-lg border p-3 bg-slate-50 text-xs text-slate-600 italic whitespace-pre-wrap">
+                    {selectedBookingForModal.note}
+                  </div>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button onClick={() => setSelectedBookingForModal(null)} className="bg-[#4F8A74] hover:bg-[#3f6e5d] text-white">
+                Đóng
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

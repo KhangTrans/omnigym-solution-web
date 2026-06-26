@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Mail, Phone, StickyNote, MoreHorizontal, CheckCircle2 } from "lucide-react";
+import { Mail, Phone, StickyNote, MoreHorizontal, CheckCircle2, Ban } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -20,26 +20,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
-import { BOOKINGS_EVT, getBookings, updateBooking, type PTBooking } from "@/lib/pt-membership";
-import { useOutletContext } from "react-router-dom";
-
-function useBookingsTick() {
-  const [tick, setTick] = useState(0);
-  useEffect(() => {
-    const bump = () => setTick((t) => t + 1);
-    window.addEventListener(BOOKINGS_EVT, bump);
-    window.addEventListener("storage", bump);
-    return () => {
-      window.removeEventListener(BOOKINGS_EVT, bump);
-      window.removeEventListener("storage", bump);
-    };
-  }, []);
-  return tick;
-}
-
-function bookingDateTime(b: PTBooking) {
-  return new Date(`${b.date}T${b.time}:00`);
-}
+import { trainersApi } from "@/api/trainers";
+import { type PTBooking } from "@/lib/pt-membership";
+import { useOutletContext, useLocation } from "react-router-dom";
+import { getBookingDateTime, formatDateShort, formatDateLong } from "@/utils/bookingUtils";
 
 function StatCard({
   label,
@@ -68,9 +52,13 @@ function StatCard({
 function BookingStatusBadge({
   status,
   isPast,
+  customerConfirmedCompleted,
+  trainerConfirmedCompleted,
 }: {
   status: "confirmed" | "completed" | "cancelled";
   isPast: boolean;
+  customerConfirmedCompleted?: boolean;
+  trainerConfirmedCompleted?: boolean;
 }) {
   if (status === "completed") {
     return (
@@ -87,6 +75,20 @@ function BookingStatusBadge({
     );
   }
   if (isPast) {
+    if (!customerConfirmedCompleted) {
+      return (
+        <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 border border-amber-200 text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+          Chờ học viên xác nhận
+        </Badge>
+      );
+    }
+    if (!trainerConfirmedCompleted) {
+      return (
+        <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 border border-blue-200 text-[9px] font-bold px-1.5 py-0.5 rounded-full animate-pulse">
+          Chờ bạn xác nhận
+        </Badge>
+      );
+    }
     return (
       <Badge
         variant="outline"
@@ -106,20 +108,94 @@ function BookingStatusBadge({
 export default function ClientBookings() {
   const { trainer } = useOutletContext<any>();
   const trainerId = trainer.id;
-  const tick = useBookingsTick();
-  const bookings = useMemo(() => getBookings(trainerId), [trainerId, tick]);
+
+  const [bookings, setBookings] = useState<PTBooking[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [highlightedBookingId, setHighlightedBookingId] = useState<number | null>(null);
 
   const [filter, setFilter] = useState<"upcoming" | "past" | "all">("upcoming");
   const [query, setQuery] = useState("");
   const [editingNote, setEditingNote] = useState<PTBooking | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
 
+  const fetchTrainerBookings = async () => {
+    try {
+      setLoading(true);
+      const res = await trainersApi.getTrainerBookings();
+      const mapped = res.data.data.map((b: any) => ({
+        id: String(b.id),
+        trainerId: String(b.trainer_id),
+        date: typeof b.date === 'string' ? b.date.slice(0, 10) : new Date(b.date).toISOString().slice(0, 10),
+        time: b.time.slice(0, 5), // Keep HH:mm
+        status: b.status,
+        customerName: b.user?.full_name || "Khách vãng lai",
+        customerEmail: b.user?.email || "",
+        customerPhone: b.user?.phone_number || "",
+        customerAvatar: b.user?.avatar_url || "",
+        note: b.note || "",
+        customerConfirmedCompleted: b.customer_confirmed_completed || false,
+        trainerConfirmedCompleted: b.trainer_confirmed_completed || false,
+      }));
+      setBookings(mapped);
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Không thể tải danh sách lịch hẹn.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const location = useLocation();
+
+  useEffect(() => {
+    fetchTrainerBookings();
+  }, [trainerId]);
+
+  useEffect(() => {
+    // Parse highlight parameter from URL
+    const params = new URLSearchParams(location.search);
+    const highlight = params.get("highlight");
+    if (highlight) {
+      const id = Number(highlight);
+      if (!isNaN(id)) {
+        setHighlightedBookingId(id);
+      }
+    }
+  }, [location.search]);
+
+  useEffect(() => {
+    if (bookings.length > 0 && highlightedBookingId !== null) {
+      const found = bookings.find(b => Number(b.id) === highlightedBookingId);
+      if (found) {
+        // Determine if it is in the past
+        const scheduledDateTime = getBookingDateTime(found.date, found.time);
+        const isPast = scheduledDateTime < new Date() || found.status === "cancelled" || found.status === "completed";
+        
+        // Auto-switch filter tab
+        setFilter(isPast ? "past" : "upcoming");
+
+        // Scroll to the card after rendering
+        setTimeout(() => {
+          const el = document.getElementById(`booking-${highlightedBookingId}`);
+          if (el) {
+            el.scrollIntoView({ behavior: "smooth", block: "center" });
+
+            // Remove highlight class after 6 seconds
+            setTimeout(() => {
+              setHighlightedBookingId(null);
+            }, 6000);
+          }
+        }, 500);
+      }
+    }
+  }, [bookings, highlightedBookingId]);
+
   const now = Date.now();
 
   const enriched = bookings.map((b) => ({
     ...b,
-    when: bookingDateTime(b),
-    isPast: bookingDateTime(b).getTime() < now,
+    when: getBookingDateTime(b.date, b.time),
+    isPast: getBookingDateTime(b.date, b.time).getTime() < now,
   }));
 
   const filtered = enriched
@@ -150,17 +226,27 @@ export default function ClientBookings() {
     (b) => b.status === "cancelled",
   ).length;
 
-  const markComplete = (b: PTBooking) => {
-    updateBooking(b.id, { status: "completed" });
-    toast.success("Đã ghi nhận buổi tập hoàn thành.");
+  const markComplete = async (b: PTBooking) => {
+    try {
+      await trainersApi.trainerConfirmCompletion(Number(b.id));
+      toast.success("Xác nhận hoàn thành buổi tập thành công!");
+      fetchTrainerBookings();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Không thể xác nhận hoàn thành.");
+    }
   };
 
-  const saveNote = () => {
+  const saveNote = async () => {
     if (!editingNote) return;
-    updateBooking(editingNote.id, { note: noteDraft.trim() });
-    setEditingNote(null);
-    setNoteDraft("");
-    toast.success("Đã lưu nhận xét buổi tập.");
+    try {
+      await trainersApi.updateBooking(Number(editingNote.id), { note: noteDraft.trim() });
+      toast.success("Đã lưu nhận xét buổi tập.");
+      setEditingNote(null);
+      setNoteDraft("");
+      fetchTrainerBookings();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Không thể lưu nhận xét.");
+    }
   };
 
   return (
@@ -222,7 +308,12 @@ export default function ClientBookings() {
               {filtered.map((b) => (
                 <li
                   key={b.id}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 hover:bg-slate-50/50 transition-colors"
+                  id={`booking-${b.id}`}
+                  className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 transition-all duration-500 ${
+                    highlightedBookingId === Number(b.id)
+                      ? "bg-emerald-50/20 border-l-4 border-emerald-500 pl-3 scale-[1.005] ring-1 ring-emerald-500/10"
+                      : "hover:bg-slate-50/50"
+                  }`}
                 >
                   <div className="flex items-start gap-3 min-w-0 flex-1">
                     {b.customerAvatar ? (
@@ -244,6 +335,8 @@ export default function ClientBookings() {
                         <BookingStatusBadge
                           status={b.status ?? "confirmed"}
                           isPast={b.isPast}
+                          customerConfirmedCompleted={b.customerConfirmedCompleted}
+                          trainerConfirmedCompleted={b.trainerConfirmedCompleted}
                         />
                       </div>
                       <div className="mt-1 flex flex-col sm:flex-row sm:items-center gap-x-3 gap-y-1 text-[10px] font-medium text-slate-400">
@@ -261,11 +354,7 @@ export default function ClientBookings() {
                       {/* Mobile Date and Time (shown inside client info area on mobile) */}
                       <div className="mt-2 flex items-center gap-2 sm:hidden">
                         <span className="text-xs font-bold text-slate-700">
-                          {b.when.toLocaleDateString("vi-VN", {
-                            weekday: "short",
-                            day: "numeric",
-                            month: "short",
-                          })}
+                          {formatDateShort(b.when)}
                         </span>
                         <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
                           {b.time}
@@ -284,16 +373,23 @@ export default function ClientBookings() {
                     {/* Desktop Date and Time */}
                     <div className="hidden sm:block text-right min-w-[120px]">
                       <div className="text-sm font-bold text-slate-800">
-                        {b.when.toLocaleDateString("vi-VN", {
-                          weekday: "short",
-                          day: "numeric",
-                          month: "short",
-                        })}
+                        {formatDateShort(b.when)}
                       </div>
                       <div className="text-xs font-mono font-bold text-emerald-600 mt-0.5 bg-emerald-50 px-2 py-0.5 rounded inline-block">
                         {b.time}
                       </div>
                     </div>
+
+                    {b.status === "confirmed" && b.isPast && b.customerConfirmedCompleted && !b.trainerConfirmedCompleted && (
+                      <Button
+                        onClick={() => markComplete(b)}
+                        size="sm"
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1 h-8 rounded-lg shadow-sm"
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        Xác nhận hoàn thành
+                      </Button>
+                    )}
 
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -311,13 +407,29 @@ export default function ClientBookings() {
                           <StickyNote className="mr-2 h-4 w-4" /> Ghi chú buổi học
                         </DropdownMenuItem>
                         {b.status !== "completed" && b.status !== "cancelled" && (
-                          <DropdownMenuItem
-                            onClick={() => markComplete(b)}
-                            className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
-                          >
-                            <CheckCircle2 className="mr-2 h-4 w-4" /> Hoàn thành
-                            buổi học
-                          </DropdownMenuItem>
+                          <>
+                            <DropdownMenuItem
+                              onClick={() => markComplete(b)}
+                              className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                            >
+                              <CheckCircle2 className="mr-2 h-4 w-4" /> Hoàn thành
+                              buổi học
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={async () => {
+                                try {
+                                  await trainersApi.updateBooking(Number(b.id), { status: "cancelled" });
+                                  toast.success("Đã hủy lịch tập.");
+                                  fetchTrainerBookings();
+                                } catch (err: any) {
+                                  toast.error(err.response?.data?.message || "Không thể hủy lịch tập.");
+                                }
+                              }}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <Ban className="mr-2 h-4 w-4" /> Hủy buổi học
+                            </DropdownMenuItem>
+                          </>
                         )}
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -349,11 +461,7 @@ export default function ClientBookings() {
                   {editingNote.customerName ?? "Khách vãng lai"}
                 </div>
                 <div className="text-xs text-slate-500 mt-0.5">
-                  {new Date(editingNote.date).toLocaleDateString("vi-VN", {
-                    weekday: "long",
-                    day: "numeric",
-                    month: "long",
-                  })}{" "}
+                  {formatDateLong(editingNote.date)}{" "}
                   · {editingNote.time}
                 </div>
               </div>
