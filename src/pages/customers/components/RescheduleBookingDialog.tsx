@@ -13,7 +13,7 @@ interface BookingItem {
   trainer_id: number;
   date: string;
   time: string;
-  status: "confirmed" | "cancelled" | "pending_payment";
+  status: "confirmed" | "cancelled" | "pending_payment" | "completed";
   created_at: string;
   updated_at: string;
   trainer?: {
@@ -92,7 +92,7 @@ export function RescheduleBookingDialog({
         const end_date = formatLocalDate(future);
 
         const res = await trainersApi.getSchedule(
-          booking.trainer_id,
+          booking!.trainer_id,
           start_date,
           end_date
         );

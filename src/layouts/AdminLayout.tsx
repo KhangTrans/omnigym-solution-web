@@ -18,9 +18,9 @@ import {
   CircleHelp,
   ClipboardCheck,
   Calendar,
-  UserPlus,
   MessageSquareQuote,
   KeyRound,
+  UserPlus,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "../utils/cn";
@@ -97,12 +97,6 @@ const NAV: NavItem[] = [
     label: "Thanh toán chi nhánh",
     icon: Banknote,
     group: "GymOps",
-  },
-  {
-    to: "/admin/staff-accounts",
-    label: "Tài khoản Staff",
-    icon: UserPlus,
-    group: "HrOps",
   },
   {
     to: "/admin/trainers",
@@ -272,7 +266,6 @@ const AdminLayout = () => {
       "/admin/branch-management",
       "/admin/trainer-applications",
       "/admin/users",
-      "/admin/staff-accounts",
       "/admin/branch-managers",
     ];
     const isRestricted = blockedForPartner.some(
@@ -298,22 +291,23 @@ const AdminLayout = () => {
     }
   };
 
-  const filteredNav = NAV.filter((item) => {
-    if (item.to === "/admin/shift-attendance") {
-      return isStaff;
-    }
-    if (
-      item.to === "/admin/attendance-management" ||
-      item.to === "/admin/branch-management" ||
-      item.to === "/admin/trainer-applications" ||
-      item.to === "/admin/users" ||
-      item.to === "/admin/staff-accounts" ||
-      item.to === "/admin/branch-managers"
-    ) {
-      return !isStaff;
-    }
-    return true;
-  });
+  const filteredNav = useMemo(() => {
+    return NAV.filter((item) => {
+      if (item.to === "/admin/shift-attendance") {
+        return isStaff;
+      }
+      if (
+        item.to === "/admin/attendance-management" ||
+        item.to === "/admin/branch-management" ||
+        item.to === "/admin/trainer-applications" ||
+        item.to === "/admin/users" ||
+        item.to === "/admin/branch-managers"
+      ) {
+        return !isStaff;
+      }
+      return true;
+    });
+  }, [isStaff]);
 
   const profile = {
     name: user?.full_name || "Quản trị viên",

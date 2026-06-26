@@ -17,7 +17,7 @@ interface BookingItem {
   trainer_id: number;
   date: string;
   time: string;
-  status: "confirmed" | "cancelled" | "pending_payment";
+  status: "confirmed" | "cancelled" | "pending_payment" | "completed";
   created_at: string;
   updated_at: string;
   trainer?: {
