@@ -70,5 +70,17 @@ export const branchesApi = {
 
   createReview: (id: string | number, data: { rating: number; comment?: string }) => {
     return api.post(`/branches/${id}/reviews`, data);
+  },
+
+  getStaticQr: (id: string | number) => {
+    return api.get<{
+      message: string;
+      data: {
+        branch_id: number;
+        branch_name: string;
+        qr_text: string;
+        qr_image_url: string;
+      }
+    }>(`/branches/${id}/qr-code`);
   }
 };

@@ -7,7 +7,8 @@ import {
   RefreshCw, 
   Users, 
   MapPin, 
-  Clock 
+  Clock,
+  QrCode
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -62,6 +63,35 @@ export default function CustomerAttendance() {
   
   const [loadingBranches, setLoadingBranches] = useState(false);
   const [loadingCheckIns, setLoadingCheckIns] = useState(false);
+
+  // States for Branch QR code display
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [qrCodeData, setQrCodeData] = useState<{
+    branch_id: number;
+    branch_name: string;
+    qr_text: string;
+    qr_image_url: string;
+  } | null>(null);
+  const [loadingQr, setLoadingQr] = useState(false);
+
+  const handleOpenQrModal = async () => {
+    if (filterBranchId === "all") {
+      toast.warning("Vui lòng chọn một chi nhánh cụ thể để xem mã QR check-in");
+      return;
+    }
+    
+    try {
+      setLoadingQr(true);
+      const res = await branchesApi.getStaticQr(filterBranchId);
+      setQrCodeData(res.data.data);
+      setShowQrModal(true);
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Không thể tải mã QR của chi nhánh");
+    } finally {
+      setLoadingQr(false);
+    }
+  };
 
   function getTodayDateString() {
     const today = new Date();
@@ -191,8 +221,23 @@ export default function CustomerAttendance() {
         <Button 
           variant="outline" 
           size="sm"
+          onClick={handleOpenQrModal}
+          disabled={loadingQr}
+          className="h-9 gap-1.5 ml-auto text-emerald-600 border-emerald-200 hover:bg-emerald-50/50 hover:text-emerald-700"
+        >
+          {loadingQr ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <QrCode className="h-3.5 w-3.5" />
+          )}
+          Mã QR Check-in
+        </Button>
+
+        <Button 
+          variant="outline" 
+          size="sm"
           onClick={fetchCheckIns} 
-          className="h-9 gap-1.5 ml-auto text-slate-700 border-border"
+          className="h-9 gap-1.5 text-slate-700 border-border"
         >
           <RefreshCw className="h-3.5 w-3.5" /> Làm mới
         </Button>
@@ -284,6 +329,69 @@ export default function CustomerAttendance() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* QR Code Modal */}
+      {showQrModal && qrCodeData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200 border border-slate-100">
+            <div className="flex flex-col items-center text-center space-y-4">
+              {/* Header */}
+              <div className="w-full flex justify-between items-center pb-2 border-b">
+                <h3 className="font-bold text-lg text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                  <QrCode className="h-5 w-5 text-emerald-600" />
+                  Mã QR Check-in
+                </h3>
+                <button 
+                  onClick={() => setShowQrModal(false)}
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm font-bold p-1.5 rounded-full hover:bg-slate-100 transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Branch Name */}
+              <div className="space-y-1 mt-2">
+                <p className="font-bold text-slate-800 dark:text-slate-200 text-base">{qrCodeData.branch_name}</p>
+                <p className="text-xs text-muted-foreground">Mã QR tĩnh cố định phục vụ quét check-in</p>
+              </div>
+
+              {/* QR Image */}
+              <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100">
+                <img 
+                  src={qrCodeData.qr_image_url} 
+                  alt={`QR Code ${qrCodeData.branch_name}`} 
+                  className="w-48 h-48 object-contain rounded-lg shadow-sm"
+                />
+              </div>
+
+              {/* QR Text details */}
+              <div className="w-full bg-muted/30 p-3 rounded-lg text-left space-y-1.5">
+                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Nội dung QR thô:</p>
+                <code className="text-xs block bg-white dark:bg-slate-950 p-2 rounded border font-mono select-all text-slate-800 dark:text-slate-200 break-all">
+                  {qrCodeData.qr_text}
+                </code>
+              </div>
+
+              {/* Actions */}
+              <div className="w-full flex gap-3 pt-2">
+                <Button 
+                  onClick={() => window.open(qrCodeData.qr_image_url, '_blank')} 
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-10 rounded-lg text-xs animate-none transition-colors"
+                >
+                  Tải xuống / Mở ảnh
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowQrModal(false)}
+                  className="flex-1 text-slate-700 border-border h-10 rounded-lg text-xs"
+                >
+                  Đóng
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
