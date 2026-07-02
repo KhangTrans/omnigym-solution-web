@@ -59,6 +59,7 @@ import BranchManagerStaffAttendance from "../pages/branchmanager/BranchManagerSt
 import BranchManagerAccounts from "../pages/admin/branch_manager_accounts/BranchManagerAccounts";
 import BranchManagerTrainers from "../pages/branchmanager/BranchManagerTrainers";
 import AdminTrainers from "../pages/admin/trainers/AdminTrainers";
+import AdminSalaryList from "../pages/admin/payroll_management";
 import TrainerDashboard from "../pages/trainer/TrainerDashboard";
 import ScheduleManager from "../pages/trainer/ScheduleManager";
 import ClientBookings from "../pages/trainer/ClientBookings";
@@ -66,6 +67,7 @@ import ClientsList from "../pages/trainer/ClientsList";
 import TrainerProfileEditor from "../pages/trainer/TrainerProfileEditor";
 import ReviewsPage from "../pages/admin/reviews/Reviews";
 import BranchManagerReviews from "../pages/branchmanager/BranchManagerReviews";
+import BranchManagerSalaries from "../pages/branchmanager/BranchManagerSalaries";
 import { DashboardRedirect, RoleOnly } from "./routeGuards";
 import { authApi } from "@/api/auth";
 
@@ -216,6 +218,7 @@ export const routesConfig: RouteObject[] = [
       { path: "customer-attendance", element: <CustomerAttendance /> },
       { path: "branch-managers", element: <BranchManagerAccounts /> },
       { path: "trainers", element: <AdminTrainers /> },
+      { path: "salaries", element: <AdminSalaryList /> },
       { path: "reviews", element: <ReviewsPage /> },
     ],
   },
@@ -269,6 +272,14 @@ export const routesConfig: RouteObject[] = [
         ),
       },
       { path: "revenue", element: <BranchManagerRevenue /> },
+      {
+        path: "salaries",
+        element: (
+          <RoleOnly allow={["branchmanager"]}>
+            <BranchManagerSalaries />
+          </RoleOnly>
+        ),
+      },
       { path: "reviews", element: <BranchManagerReviews /> },
       { path: "profile", element: <AdminProfile /> },
       { path: "change-password", element: <AdminChangePassword /> },

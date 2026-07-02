@@ -21,6 +21,7 @@ import {
   MessageSquareQuote,
   KeyRound,
   UserPlus,
+  Wallet,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "../utils/cn";
@@ -102,6 +103,12 @@ const NAV: NavItem[] = [
     to: "/admin/trainers",
     label: "Danh sách Trainer",
     icon: Users,
+    group: "HrOps",
+  },
+  {
+    to: "/admin/salaries",
+    label: "Bảng lương",
+    icon: Wallet,
     group: "HrOps",
   },
   {
@@ -267,6 +274,7 @@ const AdminLayout = () => {
       "/admin/trainer-applications",
       "/admin/users",
       "/admin/branch-managers",
+      "/admin/salaries",
     ];
     const isRestricted = blockedForPartner.some(
       (path) => pathname === path || pathname.startsWith(path + "/"),
@@ -301,7 +309,8 @@ const AdminLayout = () => {
         item.to === "/admin/branch-management" ||
         item.to === "/admin/trainer-applications" ||
         item.to === "/admin/users" ||
-        item.to === "/admin/branch-managers"
+        item.to === "/admin/branch-managers" ||
+        item.to === "/admin/salaries"
       ) {
         return !isStaff;
       }
