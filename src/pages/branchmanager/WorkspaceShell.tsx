@@ -17,6 +17,7 @@ import {
   Camera,
   ChevronDown,
   ChevronRight,
+  Wallet,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -51,6 +52,7 @@ const NAV: NavItem[] = [
   { to: "/branchmanager/revenue", label: "Doanh thu", icon: DollarSign, group: "Insights" },
   
   { to: "/branchmanager/users", label: "Tài khoản Nhân viên", icon: Users, roles: ["branchmanager"], group: "HrOps" },
+  { to: "/branchmanager/salaries", label: "Bảng lương", icon: Wallet, roles: ["branchmanager"], group: "Insights" },
   { to: "/branchmanager/staff-schedule", label: "Lịch làm việc", icon: CalendarCheck2, roles: ["staff"], group: "HrOps" },
   { to: "/branchmanager/staff-attendance", label: "Điểm danh nhân viên", icon: ScanFace, roles: ["staff"], group: "HrOps" },
   { to: "/branchmanager/attendance", label: "Điểm danh ca trực", icon: ScanFace, group: "HrOps" },
